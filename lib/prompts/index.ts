@@ -50,7 +50,7 @@ export {
 
 export { CATEGORIES, TOTAL_PROMPTS, findCategory } from "./categories";
 
-export { NO_REAL_BRAND_RULE } from "./guardrails";
+export { NO_REAL_BRAND_RULE, NO_AI_BORDER_RULE } from "./guardrails";
 
 export {
   STORY_PAGE_TODDLER_SYSTEM,

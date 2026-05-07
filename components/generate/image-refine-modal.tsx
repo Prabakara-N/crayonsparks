@@ -156,6 +156,18 @@ export interface ImageRefineModalProps {
    * default (cover surfaces → Pro, others → Flash).
    */
   model?: ImageModel;
+  /**
+   * Notifies the parent when the modal enters / leaves a background-refine
+   * state. The user clicks Close while a refine is mid-flight; the modal
+   * stays mounted (visually hidden), the fetch completes, and the result
+   * auto-applies via `onRefined`. Parent uses these transitions to show a
+   * "refine in process" badge on the relevant card and a brief "refine done"
+   * toast when it finishes.
+   *   "running" → modal hidden, fetch still in flight
+   *   "done"    → fetch resolved, onRefined was called
+   *   "idle"    → no background work
+   */
+  onBackgroundChange?: (state: "idle" | "running" | "done") => void;
 }
 
 export function ImageRefineModal(props: ImageRefineModalProps) {
@@ -168,6 +180,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
     title,
     subtitle,
     onRefined,
+    onBackgroundChange,
     downloadName = "image.png",
     quality,
     bookContext,
@@ -238,6 +251,17 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
   const composerRef = useRef<ChatComposerHandle | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Background-refine state: when the user clicks Close while a fetch is
+  // in flight, we don't abort and we don't tell the parent yet. Instead we
+  // mark `closingWhileBusy` so the modal renders invisibly and the in-flight
+  // request keeps running. When it resolves, we auto-apply the latest
+  // version via onRefined and finally call onClose to release the parent.
+  const [closingWhileBusy, setClosingWhileBusy] = useState(false);
+  // Snapshot of onRefined captured when entering background mode — we use
+  // it instead of the live prop because the parent may swap onRefined on
+  // close (rare, but cheap to be defensive).
+  const pendingOnRefinedRef = useRef<((dataUrl: string) => void) | null>(null);
+
   function stopInFlight() {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -246,6 +270,35 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
   function editLastUserMessage(text: string) {
     composerRef.current?.setText(text);
   }
+
+  // Close button + backdrop click handler. While a refine is in flight,
+  // close in the BACKGROUND: stay mounted, hide visually, let the fetch
+  // finish, then apply + close. Outside of busy state behaves as a normal
+  // close.
+  const handleCloseRequest = useCallback(() => {
+    if (busy) {
+      pendingOnRefinedRef.current = onRefined ?? null;
+      setClosingWhileBusy(true);
+      onBackgroundChange?.("running");
+      return;
+    }
+    onClose();
+  }, [busy, onClose, onRefined, onBackgroundChange]);
+
+  // When the in-flight fetch resolves while we're in background-close mode,
+  // apply the latest version (only if the user actually iterated past the
+  // source) and release the parent.
+  useEffect(() => {
+    if (!closingWhileBusy || busy) return;
+    const latest = versions[versions.length - 1];
+    if (latest && versions.length > 1 && pendingOnRefinedRef.current) {
+      pendingOnRefinedRef.current(latest.dataUrl);
+    }
+    pendingOnRefinedRef.current = null;
+    setClosingWhileBusy(false);
+    onBackgroundChange?.("done");
+    onClose();
+  }, [closingWhileBusy, busy, versions, onClose, onBackgroundChange]);
 
   // Reset everything whenever the modal is opened with a fresh source.
   useEffect(() => {
@@ -782,19 +835,29 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
   if (!mounted) return null;
   if (!open) return null;
 
+  // When the user clicked Close while a refine was in flight, we keep the
+  // modal mounted but visually hidden so the fetch can finish and the result
+  // can auto-apply. The "open" prop from the parent is still true (we
+  // delayed onClose) — this flag layers a hide on top.
+  const visuallyHidden = closingWhileBusy;
+
   return createPortal(
     <AnimatePresence>
       {open && current && (
         <motion.div
           key="overlay"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: visuallyHidden ? 0 : 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-9999 bg-black/90 backdrop-blur-md flex items-center justify-center p-2 md:p-4"
-          onClick={onClose}
+          style={{
+            pointerEvents: visuallyHidden ? "none" : "auto",
+            visibility: visuallyHidden ? "hidden" : "visible",
+          }}
+          onClick={handleCloseRequest}
         >
           <button
-            onClick={onClose}
+            onClick={handleCloseRequest}
             // On mobile the modal puts a white image directly under this
             // button, and bg-white/10 was disappearing into it. Use a
             // dark, opaque pill so the close affordance is always visible

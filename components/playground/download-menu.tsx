@@ -87,7 +87,7 @@ export function DownloadMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-busy={pdfBuilding}
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-black text-white hover:bg-neutral-800 disabled:opacity-60 disabled:cursor-not-allowed shadow-md"
+        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-zinc-700 text-white border border-white/10 hover:bg-zinc-600 hover:border-white/20 disabled:opacity-60 disabled:cursor-not-allowed shadow-md transition-colors"
       >
         {pdfBuilding ? (
           <Loader2 className="w-4 h-4 animate-spin" />

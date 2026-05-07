@@ -22,6 +22,7 @@ import { ImagePreviewDialog } from "@/components/ui/image-preview-dialog";
 import { MultiSelectChips } from "@/components/generate/multi-select-chips";
 import { SparkyThinkingBubble } from "@/components/generate/sparky-thinking-bubble";
 import { useDialog } from "@/components/ui/confirm-dialog";
+import { PlanReviewButton } from "@/components/playground/plan-review-panel";
 
 const MAX_REFERENCE_BYTES = 6 * 1024 * 1024; // 6MB
 const ACCEPTED_REFERENCE_TYPES = ["image/png", "image/jpeg", "image/webp"];
@@ -180,6 +181,7 @@ export function GuidedChat({
   seedMode,
   seedIdea,
   onSeedConsumed,
+  onActiveChange,
 }: {
   onBrief: (
     brief: BookBrief,
@@ -201,6 +203,13 @@ export function GuidedChat({
    * already-edited chat.
    */
   onSeedConsumed?: () => void;
+  /**
+   * Notifies the shell whenever the chat enters or leaves the actual
+   * conversation. When `true`, the shell hides the page hero so the
+   * conversation can claim more vertical space; when `false` (mode
+   * picker landing), the hero stays visible.
+   */
+  onActiveChange?: (active: boolean) => void;
 }) {
   const [reference, setReference] = useState<string | null>(null);
   const [referenceError, setReferenceError] = useState<string | null>(null);
@@ -226,6 +235,9 @@ export function GuidedChat({
     }
   }
   const [mode, setMode] = useState<Mode | null>(null);
+  useEffect(() => {
+    onActiveChange?.(mode !== null);
+  }, [mode, onActiveChange]);
   const [messages, setMessages] = useState<unknown[]>([]);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [view, setView] = useState<View | null>(null);
@@ -472,7 +484,7 @@ export function GuidedChat({
   const inputDisabled = busy;
 
   return (
-    <div className="flex flex-col h-[60vh] min-h-[420px]">
+    <div className="flex flex-col min-h-[72vh] max-h-[88vh]">
       <div className="px-6 md:px-8 pt-3 pb-3 flex items-center gap-2">
         <button
           onClick={() => {
@@ -502,16 +514,18 @@ export function GuidedChat({
           )}
           {mode === "story" ? "Story book" : "Coloring book"}
         </span>
-        <button
-          onClick={clearChat}
-          disabled={busy || bubbles.length <= 1}
-          className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium text-neutral-400 hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          title="Clear chat and start over"
-          aria-label="Clear chat"
-        >
-          <Eraser className="w-3.5 h-3.5" />
-          Clear chat
-        </button>
+        {bubbles.some((b) => b.role === "user") && (
+          <button
+            onClick={clearChat}
+            disabled={busy}
+            className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium text-neutral-400 hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="Clear chat and start over"
+            aria-label="Clear chat"
+          >
+            <Eraser className="w-3.5 h-3.5" />
+            Clear chat
+          </button>
+        )}
       </div>
 
       <div
@@ -751,28 +765,6 @@ function BriefPreview({
         </div>
       </div>
 
-      <details className="group">
-        <summary className="cursor-pointer text-xs text-violet-200 hover:text-white font-semibold list-none flex items-center gap-1 select-none">
-          <span className="group-open:rotate-90 transition-transform inline-block">
-            ▶
-          </span>
-          Show all {brief.prompts.length} prompts
-        </summary>
-        <div className="mt-3 max-h-48 overflow-y-auto rounded-lg bg-black/30 border border-white/10 p-3 space-y-1.5 text-xs">
-          {brief.prompts.map((p, i) => (
-            <div key={i} className="flex gap-2">
-              <span className="text-violet-400 font-mono shrink-0 w-6">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <span className="text-neutral-300">
-                <span className="font-semibold text-white">{p.name}:</span>{" "}
-                {p.subject}
-              </span>
-            </div>
-          ))}
-        </div>
-      </details>
-
       {tweakOpen ? (
         <div className="space-y-2">
           <textarea
@@ -802,19 +794,35 @@ function BriefPreview({
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={onConfirm}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-linear-to-r from-emerald-500 to-cyan-500 shadow-lg shadow-emerald-500/30 hover:shadow-xl"
-          >
-            ✓ Looks good — save it
-          </button>
-          <button
-            onClick={() => setTweakOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-violet-100 bg-white/5 border border-white/15 hover:bg-white/10"
-          >
-            ✏️ Tweak this
-          </button>
+        <div className="space-y-2">
+          <PlanReviewButton
+            data={{
+              title: brief.name,
+              coverTitle: brief.name,
+              coverScene: brief.coverScene,
+              scene: brief.pageScene,
+              prompts: brief.prompts,
+            }}
+            modeNotice={
+              brief.characters?.length || brief.palette
+                ? "Story-book pages also receive locked characters, palette, dialogue, and narration at render time — those aren't shown here because they're produced per page when generation starts."
+                : undefined
+            }
+          />
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={onConfirm}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-linear-to-r from-emerald-500 to-cyan-500 shadow-lg shadow-emerald-500/30 hover:shadow-xl"
+            >
+              ✓ Looks good — save it
+            </button>
+            <button
+              onClick={() => setTweakOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-violet-100 bg-white/5 border border-white/15 hover:bg-white/10"
+            >
+              ✏️ Tweak this
+            </button>
+          </div>
         </div>
       )}
     </div>

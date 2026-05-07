@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Wand2, Sparkles, BookPlus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { PlaygroundStudio } from "@/components/playground/playground-studio";
 import { BookStudio, type Plan } from "@/components/playground/book-studio";
 import { GuidedChat } from "@/components/generate/guided-chat";
@@ -123,9 +124,16 @@ export function PlaygroundShell() {
       }
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-      // Always scroll to top so the user lands at the start of the new tab.
+      // Smooth-scroll to the top after the new tab's React tree has mounted
+      // and laid out — calling scrollTo synchronously can be interrupted
+      // when the swapped panel changes the document height a frame later.
+      // Two rAFs guarantees layout has settled before the scroll starts.
       if (typeof window !== "undefined") {
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          });
+        });
       }
     },
     [router, pathname, searchParams],
@@ -164,6 +172,30 @@ export function PlaygroundShell() {
   // mount via the seed props on GuidedChat, then cleared.
   const [chatSeedMode, setChatSeedMode] = useState<"qa" | "story" | null>(null);
   const [chatSeedIdea, setChatSeedIdea] = useState<string>("");
+  // Tracks whether GuidedChat is in an active conversation (mode picked)
+  // vs the mode-picker landing. While on the landing the page hero stays
+  // visible; once the user picks a mode the hero hides so the chat panel
+  // can claim more vertical space.
+  const [chatActive, setChatActive] = useState(false);
+
+  // When chatActive flips, the page hero appears or disappears and the
+  // total document height changes. The browser keeps the user's previous
+  // scroll position, which can leave them looking at the footer when the
+  // page just got shorter. Smooth-scroll back to the top in either
+  // direction so the relevant content is visible after the layout shift.
+  // Two rAFs — first lets React commit the new layout, second waits for
+  // browser layout pass — then the smooth scroll runs uninterrupted.
+  const prevChatActiveRef = useRef(chatActive);
+  useEffect(() => {
+    if (prevChatActiveRef.current === chatActive) return;
+    prevChatActiveRef.current = chatActive;
+    if (typeof window === "undefined") return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
+  }, [chatActive]);
 
   const switchToChat = useCallback(
     (idea: string, mode: "qa" | "story") => {
@@ -204,8 +236,32 @@ export function PlaygroundShell() {
     [setTab],
   );
 
+  // While the Sparky AI chat is in an active conversation (mode picked),
+  // hide the page hero and the per-tab description band so the chat panel
+  // can claim more vertical space. The tab toggle stays visible so the
+  // user can switch back. The mode-picker landing keeps the hero visible.
+  const isChatTab = activeTab === "chat-book";
+  const hideHero = isChatTab && chatActive;
+
   return (
-    <div className="space-y-6">
+    <div className={cn(hideHero ? "space-y-4" : "space-y-6")}>
+      {!hideHero && (
+        <div className="text-center mb-10 md:mb-14">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-linear-to-r from-violet-500/10 to-cyan-500/10 border border-violet-500/20 text-xs font-medium text-violet-300 mb-5 backdrop-blur">
+            <Wand2 className="w-3 h-3" />
+            Free-form · Iterative · Powered by AI
+          </div>
+          <h1 className="font-display text-4xl md:text-6xl font-bold tracking-tight text-white">
+            Your own <span className="gradient-text">AI playground</span>
+          </h1>
+          <p className="mt-4 text-neutral-400 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
+            Generate a single image and refine it with natural-language
+            feedback — or switch to chat mode and let AI plan a complete
+            coloring book from your idea.
+          </p>
+        </div>
+      )}
+
       <div className="flex justify-center">
         <div
           role="tablist"
@@ -234,7 +290,9 @@ export function PlaygroundShell() {
         </div>
       </div>
 
-      <ActiveTabDescription tab={TABS.find((t) => t.slug === activeTab)!} />
+      {!hideHero && (
+        <ActiveTabDescription tab={TABS.find((t) => t.slug === activeTab)!} />
+      )}
 
       {activeTab === "single-image" && <PlaygroundStudio />}
 
@@ -254,6 +312,7 @@ export function PlaygroundShell() {
               setChatSeedMode(null);
               setChatSeedIdea("");
             }}
+            onActiveChange={setChatActive}
           />
         </div>
       )}

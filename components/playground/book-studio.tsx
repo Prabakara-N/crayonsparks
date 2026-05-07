@@ -48,6 +48,7 @@ import { CoverPair } from "@/components/playground/cover-pair";
 import { RegenerateCardButton } from "@/components/playground/regenerate-card-button";
 import { IdeaSuggestionsPanel } from "@/components/playground/idea-suggestions-panel";
 import { ModelPicker } from "@/components/playground/model-picker";
+import { PlanReviewButton } from "@/components/playground/plan-review-panel";
 import { AspectRatioPicker } from "@/components/playground/aspect-ratio-picker";
 import type { KdpMetadata } from "@/lib/kdp-metadata";
 import { type StoryType } from "@/lib/story-book-planner";
@@ -498,6 +499,15 @@ export function BookStudio({
      */
     model?: ImageModel;
   }>({ open: false, context: "page", targetId: "" });
+
+  // Per-target background-refine status. Populated when the user closes the
+  // modal mid-fetch (status = "running") and updated to "done" when the
+  // request resolves. Cards read from this map to surface a "refine in
+  // process" / "refine done" pill so the user knows their close didn't
+  // cancel the work. "done" entries auto-clear after a short delay below.
+  const [refineStatus, setRefineStatus] = useState<
+    Record<string, "running" | "done">
+  >({});
 
   // Toggle: carousel grid vs inline page-flip book preview
   const [viewMode, setViewMode] = useState<"carousel" | "book">("carousel");
@@ -1026,12 +1036,20 @@ export function BookStudio({
             variantSeed: seed,
             referenceDataUrl: reference ?? undefined,
             chainReferenceDataUrl,
-            // Pass cover as a SECOND visual reference (when present and
-            // different from the chain ref). Locks character design to the
-            // cover for every interior page, fixing the drift that creeps
-            // in once the chain ref is promoted from cover → first page.
+            // Pass cover as a SECOND visual reference ONLY for books
+            // with recurring characters (story mode, OR Q&A pages whose
+            // subject shares a key noun with the cover scene — e.g. a
+            // "cute cats" book where every page is some kind of cat).
+            // For alphabet / themed Q&A books where each page is a
+            // wholly different subject (Apple, Ball, Cat, Drum…),
+            // sending the cover as a reference forces the cover's main
+            // subject (an apple) onto every other page. Same gate as
+            // chainReferenceDataUrl above so the two refs travel
+            // together.
             coverReferenceDataUrl:
-              cover.dataUrl && cover.dataUrl !== chainReferenceDataUrl
+              cover.dataUrl &&
+              cover.dataUrl !== chainReferenceDataUrl &&
+              shareKeyNoun(plan.coverScene ?? "", item.subject)
                 ? cover.dataUrl
                 : undefined,
             characterLock: characterLock.block,
@@ -1169,11 +1187,16 @@ export function BookStudio({
           }
           continue;
         }
-        const coverOrInteriorAnchor = !!anchor;
+        // Story mode = always chain (recurring named characters across
+        // every page). Q&A coloring mode = chain ONLY when the new page's
+        // subject shares a key noun with the anchor — otherwise alphabet /
+        // themed books where each page is a different subject (Apple,
+        // Ball, Cat, Drum…) all bleed the anchor's character/scene into
+        // every page. The previous always-on coverOrInteriorAnchor flag
+        // was the cause of "every alphabet page showed the same apple".
         const useChain =
-          anchor &&
-          (coverOrInteriorAnchor ||
-            mode === "story" ||
+          !!anchor &&
+          (mode === "story" ||
             shareKeyNoun(anchor.subject, item.subject));
         const dataUrl = await generatePage(
           item,
@@ -1235,24 +1258,39 @@ export function BookStudio({
   const downloadZip = useCallback(async () => {
     const done = items.filter((i) => i.status === "done" && i.dataUrl);
     if (done.length === 0 && cover.status !== "done") return;
-    const { default: JSZip } = await import("jszip");
-    const zip = new JSZip();
-    if (cover.status === "done" && cover.dataUrl) {
-      zip.file("00_cover.png", cover.dataUrl.split(",")[1], { base64: true });
+    setPdfBuilding(true);
+    try {
+      const { default: JSZip } = await import("jszip");
+      const zip = new JSZip();
+      if (cover.status === "done" && cover.dataUrl) {
+        zip.file("00_cover.png", cover.dataUrl.split(",")[1], { base64: true });
+      }
+      for (const item of done) {
+        const safe = item.name.replace(/[^a-z0-9]+/gi, "_");
+        zip.file(`${item.id}_${safe}.png`, item.dataUrl!.split(",")[1], {
+          base64: true,
+        });
+      }
+      // PNGs are already DEFLATE-compressed inside the file format, so
+      // re-running JSZip's compression on them buys ~0% size and burns
+      // 10-60 seconds of CPU on a 26+ page book at 1024×1536 (the size
+      // OpenAI gpt-image returns). Use STORE to skip the redundant pass —
+      // the zip is just a container here, not a compression archive.
+      const blob = await zip.generateAsync({
+        type: "blob",
+        compression: "STORE",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(plan?.coverTitle ?? "coloring-book").replace(/[^a-z0-9]+/gi, "_")}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setPdfBuilding(false);
     }
-    for (const item of done) {
-      const safe = item.name.replace(/[^a-z0-9]+/gi, "_");
-      zip.file(`${item.id}_${safe}.png`, item.dataUrl!.split(",")[1], { base64: true });
-    }
-    const blob = await zip.generateAsync({ type: "blob" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(plan?.coverTitle ?? "coloring-book").replace(/[^a-z0-9]+/gi, "_")}.zip`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   }, [items, cover, plan]);
 
   const downloadPdf = useCallback(async () => {
@@ -1570,13 +1608,6 @@ export function BookStudio({
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {(phase === "done" || phase === "review") && allDone && (
-                  <DownloadMenu
-                    onPdf={downloadPdf}
-                    onZip={downloadZip}
-                    pdfBuilding={pdfBuilding}
-                  />
-                )}
                 <button
                   onClick={reset}
                   disabled={pdfBuilding}
@@ -1625,6 +1656,23 @@ export function BookStudio({
             onChange={setInteriorModel}
             title="Image model used for interior pages and the 'this book belongs to' page. 3.1 Flash is the workhorse default — keeps cost predictable on bulk runs."
           />
+          <div className="ml-auto">
+            <PlanReviewButton
+              data={{
+                title: plan.title,
+                coverTitle: plan.coverTitle,
+                description: plan.description,
+                scene: plan.scene,
+                coverScene: plan.coverScene,
+                prompts: plan.prompts,
+              }}
+              modeNotice={
+                mode === "story"
+                  ? "Story-book pages also receive locked characters, palette, dialogue, and narration at render time — those aren't shown here because they're produced per page when generation starts."
+                  : undefined
+              }
+            />
+          </div>
         </div>
       )}
 
@@ -1819,36 +1867,46 @@ export function BookStudio({
           interior pages + back cover) so the page-flip view shows a
           complete, cohesive book rather than a half-empty placeholder. */}
       {plan && allDone && (
-        <div className="flex justify-center">
-          <div
-            role="tablist"
-            aria-label="Page view"
-            className="inline-flex p-1 rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur"
-          >
-            <button
-              role="tab"
-              aria-selected={viewMode === "carousel"}
-              onClick={() => setViewMode("carousel")}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${viewMode === "carousel"
-                  ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow"
-                  : "text-neutral-300 hover:text-white"
-                }`}
+        <div className="grid grid-cols-3 items-center gap-2">
+          <div aria-hidden />
+          <div className="flex justify-center">
+            <div
+              role="tablist"
+              aria-label="Page view"
+              className="inline-flex p-1 rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur"
             >
-              <GalleryHorizontal className="w-4 h-4" />
-              Carousel
-            </button>
-            <button
-              role="tab"
-              aria-selected={viewMode === "book"}
-              onClick={() => setViewMode("book")}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${viewMode === "book"
-                  ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow"
-                  : "text-neutral-300 hover:text-white"
-                }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              Book preview
-            </button>
+              <button
+                role="tab"
+                aria-selected={viewMode === "carousel"}
+                onClick={() => setViewMode("carousel")}
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${viewMode === "carousel"
+                    ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow"
+                    : "text-neutral-300 hover:text-white"
+                  }`}
+              >
+                <GalleryHorizontal className="w-4 h-4" />
+                Carousel
+              </button>
+              <button
+                role="tab"
+                aria-selected={viewMode === "book"}
+                onClick={() => setViewMode("book")}
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${viewMode === "book"
+                    ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow"
+                    : "text-neutral-300 hover:text-white"
+                  }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                Book preview
+              </button>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <DownloadMenu
+              onPdf={downloadPdf}
+              onZip={downloadZip}
+              pdfBuilding={pdfBuilding}
+            />
           </div>
         </div>
       )}
@@ -1988,6 +2046,7 @@ export function BookStudio({
                   bookTitle={plan?.coverTitle ?? plan?.title}
                   coverScene={plan?.coverScene}
                   characterLockBlock={characterLock.block}
+                  refineStatus={refineStatus}
                 />
               </motion.div>
             ) : null}
@@ -2007,6 +2066,29 @@ export function BookStudio({
         onRefined={refine.onRefined}
         quality={refine.quality}
         model={refine.model}
+        onBackgroundChange={(state) => {
+          // Track per-target so cards can render a "refine in process" /
+          // "refine done" pill. "done" entries clear themselves after a
+          // few seconds so the page card returns to its normal state.
+          const id = refine.targetId;
+          if (!id) return;
+          setRefineStatus((prev) => {
+            if (state === "idle") {
+              const { [id]: _omit, ...rest } = prev;
+              return rest;
+            }
+            return { ...prev, [id]: state };
+          });
+          if (state === "done") {
+            setTimeout(() => {
+              setRefineStatus((prev) => {
+                if (prev[id] !== "done") return prev;
+                const { [id]: _omit, ...rest } = prev;
+                return rest;
+              });
+            }, 4000);
+          }
+        }}
         // Back-cover refine panel pulls its color palette from the front
         // cover and uses the book title/scene to seed tagline candidates.
         // These props are no-ops on other surfaces.
@@ -2482,6 +2564,8 @@ interface CarouselProps {
   bookTitle?: string;
   coverScene?: string;
   characterLockBlock?: string;
+  /** Per-target background-refine status for in-process / done badges. */
+  refineStatus?: Record<string, "running" | "done">;
 }
 
 function Carousel({
@@ -2505,6 +2589,7 @@ function Carousel({
   bookTitle,
   coverScene,
   characterLockBlock,
+  refineStatus,
 }: CarouselProps) {
   // When a failed page is clicked, open a small modal that lets the user
   // edit the page's subject text and regenerate. Refine isn't useful for
@@ -2577,6 +2662,7 @@ function Carousel({
     // Covers are rendered separately above the carousel via <CoverPair>.
     // The apple carousel only holds the interior page cards now.
     return items.map((it, i) => {
+      const refineState = refineStatus?.[it.id];
       const card: CardData = {
         title: it.name,
         category: `Page ${i + 1} / ${items.length}`,
@@ -2589,7 +2675,11 @@ function Carousel({
             showFrame
           />
         ),
-        badge: <StatusBadge status={it.status} />,
+        badge: refineState ? (
+          <RefineStatusBadge state={refineState} />
+        ) : (
+          <StatusBadge status={it.status} />
+        ),
         action:
           it.status === "done" ? (
             <RegenerateCardButton
@@ -2635,7 +2725,7 @@ function Carousel({
         />
       );
     });
-  }, [items, aspectRatio, onRegenerateItem, onOpenRefine, onSetItem]);
+  }, [items, aspectRatio, onRegenerateItem, onOpenRefine, onSetItem, refineStatus]);
 
   return (
     <div>
@@ -2856,6 +2946,34 @@ function PageCover({
 }
 
 // ----- Status badge (top-right of card) -----
+/**
+ * Replaces StatusBadge while a background refine is in flight (or just
+ * finished) so the card communicates "your edit is still running" / "your
+ * edit landed". Auto-clears via the parent's setTimeout once done.
+ */
+function RefineStatusBadge({ state }: { state: "running" | "done" }) {
+  if (state === "running") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur bg-amber-500/20 border border-amber-500/40 text-amber-100"
+        title="Refine running in the background"
+      >
+        <Loader2 className="w-3 h-3 animate-spin" />
+        Refining…
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur bg-cyan-500/20 border border-cyan-500/40 text-cyan-100"
+      title="Refine just finished and the new image was applied"
+    >
+      <CheckCircle2 className="w-3 h-3" />
+      Refined
+    </span>
+  );
+}
+
 function StatusBadge({ status }: { status: PromptItem["status"] }) {
   const map: Record<PromptItem["status"], { cls: string; icon: React.ReactNode; label: string }> = {
     pending: {

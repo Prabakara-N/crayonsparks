@@ -1,18 +1,22 @@
 /**
  * OpenAI image generation — gpt-image-1 / gpt-image-1-mini / gpt-image-1.5.
  *
- * Two code paths:
- *   1. No reference image  → Vercel AI SDK (`generateImage` + `openai.image`).
- *      Gets us SDK retry handling, typed errors, and provider-option pass-through.
- *   2. With reference image (chain anchor for character consistency) →
- *      direct multipart POST to `/v1/images/edits`. The AI SDK as of v6 only
- *      exposes `/v1/images/generations` for OpenAI image models, so the edit
- *      endpoint has to be called by hand. Same `OPENAI_API_KEY` env var the
- *      SDK uses; same response shape (`b64_json`).
+ * All calls go through OpenAI's HTTP API directly via fetch. We tried the
+ * AI SDK's `generateImage` + `openai.image(...)` factory first, but the
+ * SDK pins a hard-coded model allowlist and rejects gpt-image-1.5 with an
+ * "unknown model" error — so the SDK only worked for some of our model
+ * options. Since the multi-image chain-reference flow needs raw fetch
+ * for the multipart `/v1/images/edits` endpoint anyway, we just route
+ * everything through fetch and keep the implementation simple +
+ * forward-compatible (a future model id we add to constants.ts works
+ * automatically without waiting on an SDK update).
+ *
+ *   no reference image  → POST /v1/images/generations  (JSON body)
+ *   with reference image → POST /v1/images/edits       (multipart form)
+ *
+ * Both endpoints use the same Bearer auth + return the same `b64_json`
+ * payload shape.
  */
-
-import { generateImage } from "ai";
-import { openai } from "@ai-sdk/openai";
 
 import { GPT_IMAGE_1_MINI } from "./constants";
 import type { OpenAiImageModel } from "./constants";
@@ -55,32 +59,75 @@ function defaultQuality(model: OpenAiImageModel): "low" | "medium" | "high" {
   return "medium";
 }
 
+function requireApiKey(): string {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "OPENAI_API_KEY is not configured — set it in .env.local before using gpt-image models.",
+    );
+  }
+  return apiKey;
+}
+
 function dataUrlPartsToBlob(part: { mimeType: string; data: string }): Blob {
   const bin = Buffer.from(part.data, "base64");
   return new Blob([bin], { type: part.mimeType || "image/png" });
 }
 
-interface OpenAiEditsResponse {
+interface OpenAiImageResponse {
   data?: Array<{ b64_json?: string }>;
   error?: { message?: string };
 }
 
-/**
- * Direct call to `/v1/images/edits` for the multi-image chain-reference
- * flow. Falls back to the same `OPENAI_API_KEY` env var the AI SDK reads.
- */
+function readImageOrThrow(
+  json: OpenAiImageResponse,
+  endpoint: string,
+): GenerateImageResult {
+  const first = json.data?.[0];
+  if (!first?.b64_json) {
+    throw new Error(
+      `OpenAI returned no image data from ${endpoint} (the model may have refused the prompt — try softer language).`,
+    );
+  }
+  return { mimeType: "image/png", data: first.b64_json };
+}
+
+async function callImagesGenerations(
+  prompt: string,
+  model: OpenAiImageModel,
+  size: string,
+): Promise<GenerateImageResult> {
+  const apiKey = requireApiKey();
+  const res = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      prompt,
+      size,
+      quality: defaultQuality(model),
+      n: 1,
+    }),
+  });
+  const json = (await res.json()) as OpenAiImageResponse;
+  if (!res.ok) {
+    throw new Error(
+      json.error?.message ?? `OpenAI image generation failed (${res.status})`,
+    );
+  }
+  return readImageOrThrow(json, "/v1/images/generations");
+}
+
 async function callImagesEdits(
   prompt: string,
   refs: Array<{ mimeType: string; data: string }>,
   model: OpenAiImageModel,
   size: string,
 ): Promise<GenerateImageResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "OPENAI_API_KEY is not configured — set it in .env.local before using gpt-image-1.",
-    );
-  }
+  const apiKey = requireApiKey();
   const form = new FormData();
   form.set("model", model);
   form.set("prompt", prompt);
@@ -95,26 +142,19 @@ async function callImagesEdits(
     headers: { Authorization: `Bearer ${apiKey}` },
     body: form,
   });
-  const json = (await res.json()) as OpenAiEditsResponse;
+  const json = (await res.json()) as OpenAiImageResponse;
   if (!res.ok) {
     throw new Error(
       json.error?.message ?? `OpenAI image edit failed (${res.status})`,
     );
   }
-  const first = json.data?.[0];
-  if (!first?.b64_json) {
-    throw new Error(
-      "OpenAI returned no image data on the edit endpoint (the model may have refused the prompt — try softer language).",
-    );
-  }
-  return { mimeType: "image/png", data: first.b64_json };
+  return readImageOrThrow(json, "/v1/images/edits");
 }
 
 /**
- * Generate an image with one of the gpt-image-* models. When reference
- * images are supplied (chain-anchor flow), we go through OpenAI's
- * `/v1/images/edits` endpoint via direct multipart fetch. Otherwise the
- * AI SDK handles the call.
+ * Generate an image with one of the gpt-image-* models. Routes to
+ * /v1/images/edits when reference images are present (chain-anchor flow)
+ * and /v1/images/generations otherwise.
  */
 export async function generateOpenAiImage(
   prompt: string,
@@ -132,17 +172,5 @@ export async function generateOpenAiImage(
   if (refs.length > 0) {
     return callImagesEdits(fullPrompt, refs, opts.model, size);
   }
-
-  const result = await generateImage({
-    model: openai.image(opts.model),
-    prompt: fullPrompt,
-    size: size as `${number}x${number}`,
-    providerOptions: {
-      openai: { quality: defaultQuality(opts.model) },
-    },
-  });
-  return {
-    mimeType: result.image.mediaType ?? "image/png",
-    data: result.image.base64,
-  };
+  return callImagesGenerations(fullPrompt, opts.model, size);
 }
