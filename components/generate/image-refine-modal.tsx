@@ -168,6 +168,15 @@ export interface ImageRefineModalProps {
    *   "idle"    → no background work
    */
   onBackgroundChange?: (state: "idle" | "running" | "done") => void;
+  /**
+   * Increments every time the parent calls "open the refine modal" (card
+   * click, cover refine button, etc.). Lets the modal detect a fresh
+   * open-request even when `open` was already true — necessary so the
+   * user can re-click a card whose refine is running in the background
+   * and have the modal re-appear with the live chat + in-flight fetch
+   * still attached.
+   */
+  openNonce?: number;
 }
 
 export function ImageRefineModal(props: ImageRefineModalProps) {
@@ -181,6 +190,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
     subtitle,
     onRefined,
     onBackgroundChange,
+    openNonce,
     downloadName = "image.png",
     quality,
     bookContext,
@@ -299,6 +309,23 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
     onBackgroundChange?.("done");
     onClose();
   }, [closingWhileBusy, busy, versions, onClose, onBackgroundChange]);
+
+  // Wake-up signal: the parent increments `openNonce` every time the user
+  // re-asks to open the modal (card click, cover refine button, etc.). If
+  // we were hidden because of a background close, clear that state so the
+  // modal becomes visible again — the in-flight fetch keeps running and
+  // the user lands inside the live chat with full transcript intact.
+  const lastNonceRef = useRef<number | undefined>(openNonce);
+  useEffect(() => {
+    if (openNonce === undefined) return;
+    if (openNonce === lastNonceRef.current) return;
+    lastNonceRef.current = openNonce;
+    if (closingWhileBusy) {
+      pendingOnRefinedRef.current = null;
+      setClosingWhileBusy(false);
+      onBackgroundChange?.("idle");
+    }
+  }, [openNonce, closingWhileBusy, onBackgroundChange]);
 
   // Reset everything whenever the modal is opened with a fresh source.
   useEffect(() => {

@@ -61,6 +61,12 @@ interface CoverPairProps {
    * (typically the Amazon mockup generator gated behind generated content).
    */
   rightExtras?: ReactNode;
+  /**
+   * Per-tile background-refine state. Lookup keys: "cover" / "back-cover" /
+   * "belongs-to". When a tile's key is in the map, that tile shows a
+   * "Refining…" / "Refined" pill in its corner.
+   */
+  refineStatus?: Record<string, "running" | "done">;
 }
 
 /**
@@ -97,6 +103,7 @@ export function CoverPair({
   frontLocked = false,
   frontLockedReason,
   rightExtras,
+  refineStatus,
 }: CoverPairProps) {
   // Default order: FRONT cover on LEFT, BACK cover on RIGHT.
   // (Previous default was back-left/front-right; user prefers front-first
@@ -119,6 +126,7 @@ export function CoverPair({
       }
       downloadName={`cover_${bookSlug}.png`}
       aspect={coverAspect}
+      refineState={refineStatus?.cover}
     />
   );
 
@@ -135,6 +143,7 @@ export function CoverPair({
       showBarcodeZone
       downloadName={`back_cover_${bookSlug}.png`}
       aspect={coverAspect}
+      refineState={refineStatus?.["back-cover"]}
     />
   );
 
@@ -264,6 +273,7 @@ export function CoverPair({
                   disabled={!frontCoverReady}
                   disabledReason="Generate the front cover first — belongs-to page uses the same characters."
                   downloadName={`belongs_to_${bookSlug}.png`}
+                  refineState={refineStatus?.["belongs-to"]}
                 />
               </div>
             </div>

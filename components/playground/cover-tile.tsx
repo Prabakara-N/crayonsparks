@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Loader2, RefreshCw, Download, MessageSquare, BookPlus, XCircle } from "lucide-react";
+import { CheckCircle2, Eye, Loader2, RefreshCw, Download, MessageSquare, BookPlus, XCircle } from "lucide-react";
 
 export interface CoverTileStatus {
   status: "pending" | "generating" | "done" | "error";
@@ -29,6 +29,12 @@ interface CoverTileProps {
   downloadName?: string;
   /** Tile aspect ratio CSS string, default "3/4". */
   aspect?: string;
+  /**
+   * Background-refine status. When set, overlays a "Refining…" or "Refined"
+   * pill in the tile's top-right corner. Driven by the parent's refine
+   * status map keyed by targetId ("cover" / "back-cover" / "belongs-to").
+   */
+  refineState?: "running" | "done";
 }
 
 /**
@@ -46,6 +52,7 @@ export function CoverTile({
   showBarcodeZone = false,
   downloadName,
   aspect = "3 / 4",
+  refineState,
 }: CoverTileProps) {
   // Click behaviour priority: refine when not disabled and onRefine is wired,
   // otherwise view-only (opens lightbox) so the user can still see the
@@ -118,6 +125,22 @@ export function CoverTile({
         <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-black/60 backdrop-blur text-white border border-white/15 z-10">
           {label}
         </div>
+        {/* Top-right refine-status pill: surfaces "Refining…" while a
+            background refine is in flight on this tile, then "Refined"
+            for a few seconds when the new image lands. Mirrors the
+            equivalent pill on interior page cards. */}
+        {refineState === "running" && (
+          <div className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500/30 backdrop-blur text-amber-100 border border-amber-400/50 z-10">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Refining
+          </div>
+        )}
+        {refineState === "done" && (
+          <div className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-cyan-500/30 backdrop-blur text-cyan-100 border border-cyan-400/50 z-10">
+            <CheckCircle2 className="w-3 h-3" />
+            Refined
+          </div>
+        )}
       </button>
 
       <div className="flex items-center gap-2">

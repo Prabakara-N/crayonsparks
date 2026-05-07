@@ -508,6 +508,28 @@ export function BookStudio({
   const [refineStatus, setRefineStatus] = useState<
     Record<string, "running" | "done">
   >({});
+  // Counter that increments every time the user "opens" a refine. Lets the
+  // modal detect a fresh open-request even when `open` was already true —
+  // user clicks page card while refine is running in background, modal
+  // wakes up with the live chat + in-flight fetch still attached.
+  const [refineOpenNonce, setRefineOpenNonce] = useState(0);
+  const openRefine = useCallback(
+    (next: {
+      context: "cover" | "back-cover" | "page";
+      targetId: string;
+      dataUrl?: string;
+      title?: string;
+      subtitle?: string;
+      downloadName?: string;
+      onRefined?: (dataUrl: string) => void;
+      quality?: QualityScore | null;
+      model?: ImageModel;
+    }) => {
+      setRefineOpenNonce((n) => n + 1);
+      setRefine({ ...next, open: true });
+    },
+    [],
+  );
 
   // Toggle: carousel grid vs inline page-flip book preview
   const [viewMode, setViewMode] = useState<"carousel" | "book">("carousel");
@@ -1518,14 +1540,24 @@ export function BookStudio({
     }
   }, [items, cover, backCover, belongsTo, belongsToStyle, plan, mode, dialog]);
 
+  // Progress counts INTERIOR pages only — front/back cover and the
+  // belongs-to nameplate live in their own tiles and have their own status
+  // pills. Mixing them into the page count produced "1/27 pages" while the
+  // carousel correctly reports "26 interior pages", which read as a bug.
   const progress = useMemo(() => {
-    const total = items.length + 1; // +1 for cover
-    const doneCount =
-      items.filter((i) => i.status === "done").length + (cover.status === "done" ? 1 : 0);
+    const total = items.length;
+    const doneCount = items.filter((i) => i.status === "done").length;
     return { doneCount, total };
-  }, [items, cover]);
+  }, [items]);
 
-  const allDone = progress.doneCount === progress.total && progress.total > 0;
+  // "Everything is ready" gate — used to enable book preview / download /
+  // the all-done summary card. Requires every interior page done AND both
+  // covers ready, since those are mandatory to assemble the KDP package.
+  const allDone =
+    progress.total > 0 &&
+    progress.doneCount === progress.total &&
+    cover.status === "done" &&
+    backCover.status === "done";
 
   if (phase === "idea" || phase === "planning") {
     return (
@@ -1671,6 +1703,38 @@ export function BookStudio({
                   ? "Story-book pages also receive locked characters, palette, dialogue, and narration at render time — those aren't shown here because they're produced per page when generation starts."
                   : undefined
               }
+              onSave={(next) => {
+                // Plan-level fields (title / cover / scene / description)
+                // flow back into plan state. Per-page name + subject are
+                // mirrored into items[] (the live working set the carousel
+                // and generation loop read from). Already-rendered pages
+                // keep their image — only future regenerations pick up
+                // the new prompts.
+                setPlan((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        title: next.title ?? prev.title,
+                        coverTitle: next.coverTitle ?? prev.coverTitle,
+                        description: next.description ?? prev.description,
+                        scene: next.scene ?? prev.scene,
+                        coverScene: next.coverScene ?? prev.coverScene,
+                        prompts: next.prompts.map((p, i) => ({
+                          ...prev.prompts[i],
+                          name: p.name,
+                          subject: p.subject,
+                        })),
+                      }
+                    : prev,
+                );
+                setItems((prev) =>
+                  prev.map((it, i) => {
+                    const np = next.prompts[i];
+                    if (!np) return it;
+                    return { ...it, name: np.name, subject: np.subject };
+                  }),
+                );
+              }}
             />
           </div>
         </div>
@@ -1689,6 +1753,7 @@ export function BookStudio({
           // full cover is visible — title at the top, tagline at the
           // bottom, no cropping.
           coverAspect={mode === "story" ? "2 / 3" : "3 / 4"}
+          refineStatus={refineStatus}
           rightExtras={
             <MockupGate
               frontCoverReady={!!cover.dataUrl}
@@ -1728,8 +1793,7 @@ export function BookStudio({
               openStoryPreview(dataUrl, "Front cover");
               return;
             }
-            setRefine({
-              open: true,
+            openRefine({
               context: "cover",
               targetId: "cover",
               dataUrl,
@@ -1753,8 +1817,7 @@ export function BookStudio({
               openStoryPreview(dataUrl, "Back cover");
               return;
             }
-            setRefine({
-              open: true,
+            openRefine({
               context: "back-cover",
               targetId: "back-cover",
               dataUrl,
@@ -1787,8 +1850,7 @@ export function BookStudio({
             mode === "story"
               ? undefined
               : (dataUrl) =>
-                setRefine({
-                  open: true,
+                openRefine({
                   context: "page",
                   targetId: "belongs-to",
                   dataUrl,
@@ -2011,8 +2073,7 @@ export function BookStudio({
                           ? backCover.model ?? coverModel
                           : (items.find((it) => it.id === payload.targetId)
                             ?.model ?? interiorModel);
-                    setRefine({
-                      open: true,
+                    openRefine({
                       context: kind,
                       ...payload,
                       model: sourceModel,
@@ -2066,6 +2127,7 @@ export function BookStudio({
         onRefined={refine.onRefined}
         quality={refine.quality}
         model={refine.model}
+        openNonce={refineOpenNonce}
         onBackgroundChange={(state) => {
           // Track per-target so cards can render a "refine in process" /
           // "refine done" pill. "done" entries clear themselves after a
