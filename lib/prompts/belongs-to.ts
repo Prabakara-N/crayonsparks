@@ -2,6 +2,7 @@ import { PRODUCT_NAME } from "@/lib/constants";
 import type { BelongsToStyle } from "./types";
 import {
   ANATOMY_GUARDRAIL,
+  ANATOMY_COUNT_RULE,
   ANTHRO_FACE_GUARDRAIL,
   NO_AI_BORDER_RULE,
 } from "./guardrails";
@@ -54,6 +55,7 @@ export const BELONGS_TO_PROMPT_TEMPLATE = (opts: {
     `6. Brand-mark safe-zone: leave the bottom 6% of the page empty. The ${PRODUCT_NAME} brand mark is overlaid by the PDF assembler — don't draw any text or logo there.`,
     "Don't include: any pre-filled name, any text other than 'This Book Belongs To:', page numbers, ANY rectangular page border / printer's frame / outline at the page edges, decorative perimeter frames, URLs, author signatures, the book title, speech bubbles, or patterns inside the banner. The page is BORDERLESS from the AI side — the printer's border is added later in post-processing.",
     ANATOMY_GUARDRAIL,
+    ANATOMY_COUNT_RULE,
     ANTHRO_FACE_GUARDRAIL,
     `(Context only — don't render: the book is "${opts.bookTitle}".)`,
     "Output: a clean printable bookplate page ready to be page 2 of a KDP coloring book.",

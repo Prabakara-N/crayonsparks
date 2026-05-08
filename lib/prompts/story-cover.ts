@@ -11,9 +11,15 @@
 
 import {
   ANATOMY_GUARDRAIL,
+  ANATOMY_COUNT_RULE,
   KID_SAFE_CONTENT_RULE,
   NO_REAL_BRAND_RULE,
 } from "./guardrails";
+import {
+  COVER_STYLE_DIRECTIVES,
+  COVER_BORDER_DIRECTIVES,
+} from "./cover";
+import type { CoverStyle, CoverBorder } from "./types";
 import type {
   StoryCharacter,
   StoryPalette,
@@ -47,16 +53,48 @@ export interface StoryCoverTemplateOptions {
   coverBadgeStyle?: string;
   /** Brand strapline rendered under the bottom strip. */
   brandStrapline?: string;
+  /**
+   * Render style for the cover. "flat" (default) keeps the current flat
+   * 2D cartoon look (vibrant flat colors, bold outlines, no gradients).
+   * "illustrated" swaps in the painterly Pixar/Disney-storybook directive
+   * shared with the coloring-book cover (soft directional lighting,
+   * gentle shading, depth between foreground and background).
+   * Story interior pages will adopt the same value via the chain
+   * reference + a matching directive on /api/generate-story-page.
+   */
+  coverStyle?: CoverStyle;
+  /**
+   * Cover border. "bleed" (default) renders full-bleed edge-to-edge.
+   * "framed" applies the decorative cream-beige speckled rounded-rectangle
+   * frame from the coloring-book cover. Interior pages stay full-bleed
+   * regardless — this option only affects the cover itself.
+   */
+  coverBorder?: CoverBorder;
 }
 
 const TODDLER_BAND_NOTE =
   "Audience: toddlers 3-6. Friendly rounded characters with big expressive eyes, big simple shapes, calm safe scene, no scary or stressful imagery.";
 
-const STYLE_RULE =
+// Two style variants. "flat" is the historical default (kept verbatim so
+// existing books stay visually consistent). "illustrated" swaps in the
+// painterly directive used by the coloring-book cover so users who like
+// that look can pick it. Each ends with the anchor clause so the cover
+// signals "this defines the look of every interior page".
+const STORY_STYLE_FLAT =
   "Style: flat 2D cartoon illustration, vibrant flat colors with bold black outlines, soft warm lighting feel, minimal shading (no realistic gradients, no painterly texture). Friendly rounded character forms with large expressive eyes, simple expressive mouths, gentle proportions. This cover defines the visual language of the entire book — every interior page will be illustrated to match it.";
+const STORY_STYLE_ILLUSTRATED = `${COVER_STYLE_DIRECTIVES.illustrated} This cover defines the visual language of the entire book — every interior page will be illustrated to match it.`;
+function styleDirective(style?: CoverStyle): string {
+  return style === "illustrated" ? STORY_STYLE_ILLUSTRATED : STORY_STYLE_FLAT;
+}
 
-const FULL_BLEED_RULE =
+// Two border variants. Default is full-bleed.
+const STORY_BORDER_BLEED =
   "Composition: full-bleed cover illustration that fills the entire 6x9 portrait canvas to all four edges. NO border, NO frame, NO outer rectangle, NO white margin. The background reaches every edge. Aspect ratio 2:3 (portrait).";
+function borderDirective(border?: CoverBorder): string {
+  return border === "framed"
+    ? `${COVER_BORDER_DIRECTIVES.framed} The cover canvas is still 6x9 portrait (aspect ratio 2:3); the decorative frame sits inside that canvas with the artwork inside the frame.`
+    : STORY_BORDER_BLEED;
+}
 
 const TITLE_TYPOGRAPHY_RULE =
   "Title typography — IMPORTANT: render the title at the top of the cover with PLENTY of breathing room. The title block occupies roughly the top 25-32% of the cover with comfortable padding all around. Style: chunky multi-color hand-drawn cartoon letters (mix of bright red, yellow, blue, pink), each letter has a subtle dark outline and slight playful bounce. Letters are clearly distinguishable, never overlapping. If the title has more than 4 words or 25 characters, BREAK IT onto 2 OR 3 LINES at natural word breaks. Each line is centered. Generous letter-spacing, never cramped. Spell every letter exactly as given — no typos, no extra letters, no missing letters, no rearranging.";
@@ -77,14 +115,16 @@ const NO_HAND_DRAWN_CLAIM_RULE =
 export const STORY_COVER_TODDLER_SYSTEM = [
   "You generate front-cover illustrations for premium Amazon KDP children's picture books in the toddler band (ages 3-6). Every cover must be print-ready 300 DPI quality and visually polished enough to win an Amazon thumbnail click.",
   TODDLER_BAND_NOTE,
-  STYLE_RULE,
-  FULL_BLEED_RULE,
+  // Style + border are now per-call (user can pick Flat / Illustrated +
+  // Bleed / Framed) and live in the user message instead of here so they
+  // can vary without invalidating the cached static system prefix.
   TITLE_TYPOGRAPHY_RULE,
   CHARACTER_FIDELITY_RULE,
   TEXT_POLICY_RULE,
   NO_REAL_BRAND_RULE,
   KID_SAFE_CONTENT_RULE,
   ANATOMY_GUARDRAIL,
+  ANATOMY_COUNT_RULE,
   NO_HAND_DRAWN_CLAIM_RULE,
   "Output: a single coherent full-color full-bleed picture-book front cover.",
 ].join(" ");
@@ -190,6 +230,8 @@ export const STORY_COVER_TODDLER_USER = (
 ): string => {
   const parts: string[] = [
     "Toddler picture-book front cover (ages 3-6).",
+    styleDirective(opts.coverStyle),
+    borderDirective(opts.coverBorder),
     `Title to render at the top of the cover: "${opts.title.trim()}".`,
     formatCharacterLock(opts.characters),
     formatPalette(opts.palette),

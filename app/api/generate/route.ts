@@ -13,6 +13,7 @@ import {
   COLOR_COVER_PROMPT_TEMPLATE,
   BACK_COVER_PROMPT_TEMPLATE,
   BELONGS_TO_PROMPT_TEMPLATE,
+  CONSISTENCY_ANCHOR_PROMPT,
   findCategory,
   type AgeRange,
   type Detail,
@@ -235,8 +236,8 @@ export async function POST(req: Request) {
   // characters × ~400 chars) + cover-as-anchor chain directive + border
   // verifier retry suffixes can run 12-16k chars on heavy retries.
   // 20000 keeps headroom while still rejecting pathological inputs.
-  if (text.length > 20000) {
-    return NextResponse.json({ error: "Prompt too long (max 20000 chars)." }, { status: 400 });
+  if (text.length > 35000) {
+    return NextResponse.json({ error: "Prompt too long (max 35000 chars)." }, { status: 400 });
   }
 
   // Two-step reference flow:
@@ -354,7 +355,7 @@ export async function POST(req: Request) {
         : chainHasCover
           ? "An image from THE SAME BOOK is attached as a visual reference (the COVER)"
           : "An image from THE SAME BOOK is attached as a visual reference (a previously generated INTERIOR PAGE)";
-    text = `Reference image guidance (load-bearing). ${refLabel}. The reference is for ONLY two things — character look and page frame. It is NOT a scene template and NEVER overrides the page subject.\n\n(A) Subject identity — HIGHEST PRIORITY: the page subject text below names exactly what to draw on this page. The subject text is law; the reference is decoration. Read the subject text below carefully, identify the exact species / object / character / fruit / vehicle / etc. it names, and draw THAT — not whatever similar-looking thing the reference image happens to show. If the subject names a different thing from the reference, the page draws the subject, not the reference's contents.\n\n(B) Recurring character(s): ONLY when the page subject explicitly names a character that also appears in the reference, match that character's look identically — same species, body proportions, head/face shape, fur/mane/tail style, markings, color. When the cover is attached, the cover is the ground truth for character design. If the page subject does NOT explicitly name any character from the reference, NO character from the reference appears on this page at all — the subject stands alone.\n\n(C) Page frame (only when an interior-page reference is attached): the new page's printable outline must sit at the same inset and thickness as the interior reference. Never draw two nested outlines. The cover doesn't have an interior page frame, so the cover's edge styling is not the source for the frame.\n\n(D) Style: line weight, character treatment, and illustration polish feel like a sibling page.\n\nWhat the reference is NOT for — STRICT: do NOT copy the reference's subject, the reference's background, scene composition, layout, sub-location, sky, ground, props, or any specific environmental element. The background of every interior page is freshly composed from THIS page's brief, and must visibly differ from the cover's background and from the previous page's background.\n\n${text}`;
+    text = `${CONSISTENCY_ANCHOR_PROMPT(refLabel)}\n\n${text}`;
   }
 
   try {

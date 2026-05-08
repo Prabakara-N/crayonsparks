@@ -66,6 +66,13 @@ export interface BookBrief {
   characters?: BookBriefCharacter[];
   /** Story mode only — locked color palette applied to every page. */
   palette?: BookBriefPalette;
+  /**
+   * Detail-level preset selected by the user (or auto-defaulted when they
+   * pick "Let AI decide"). Drives DETAIL_PRESETS in the page-render prompt
+   * — controls line-art density AND scene density together. Optional so
+   * legacy briefs without it still parse; consumers default to "simple".
+   */
+  detailLevel?: "simple" | "detailed" | "intricate";
 }
 
 export type BookChatView =
@@ -103,7 +110,8 @@ Ask 3-6 short questions to learn enough about the idea, then call \`finalize_bri
 
 RULES
 - Use \`ask_user\` to ask exactly ONE question per turn. Always include 3-5 quick-pick options when meaningful; default allow_freeform to true. Set allow_multi=true when the question is plural-by-nature (e.g. "which characters/themes/animals do you want?") so the user can pick several. Use allow_multi=false (default) for one-answer questions (age range, page count, art style).
-- Cover these dimensions across questions: target audience (toddlers 3-6 / kids 6-10 / tweens 10-14 — KIDS ONLY, never offer "adults" as an option, the brand is kid-focused), main theme, art vibe, page count, sub-themes.
+- Cover these dimensions across questions: target audience (toddlers 3-6 / kids 6-10 / tweens 10-14 — KIDS ONLY, never offer "adults" as an option, the brand is kid-focused), main theme, art vibe, page count, sub-themes, detail level.
+- Detail level question — ask once, late in the flow, with these options verbatim: "Low — character is the star, 1-2 background props", "Medium — balanced scene, 3-5 supporting elements", "High — richer scene with 7-10 supporting elements across foreground / mid-ground / far background, drawn from THIS book's specific subject world", "Let AI decide ✨". Map the choice into the brief's detailLevel: "Low" → simple, "Medium" → detailed, "High" → intricate. When the user picks "Let AI decide ✨", default to: toddlers → simple, kids → detailed, tweens → intricate. Pass the chosen value in the brief's detailLevel field — never pass null when a Q5 answer was given.
 - Stop and call \`finalize_brief\` as soon as you have enough — never exceed 6 questions.
 - Be warm but concise.
 
@@ -115,7 +123,7 @@ WHEN YOU CALL finalize_brief
 - bottomStripPhrases: EXACTLY 3 short ALL-CAPS phrases (12-22 chars each) tailored to THIS book's theme — one about content variety, one about a creative or developmental benefit, one about fun. Do NOT claim hand-drawn / hand-illustrated / handmade / original artwork. EXAMPLE format only (do not copy unless they truly fit): ["BIG SIMPLE DESIGNS","BOOSTS CREATIVITY","HOURS OF FUN"].
 - sidePlaqueLines: EXACTLY 3 short ALL-CAPS lines (6-22 chars each) reading top-to-bottom as a parent-facing benefit statement. Tailor to the chosen audience (TODDLERS / KIDS / TWEENS) and theme. Do NOT claim hand-drawn / handmade. EXAMPLE format only: ["BIG & EASY","PAGES","PERFECT FOR TODDLERS!"].
 - coverBadgeStyle: ONE sentence (max 200 chars) describing the design language of the cover's three overlay objects (page-count badge, side plaque, bottom ribbon) so they look like objects from THIS book's world rather than generic UI. ONE coherent system shared across all three overlays — material, shape, color motif. EXAMPLE format only (illustrative — derive from THIS book's actual subject): farm book → "rustic wooden plank signs with brown grain, painted cream lettering, rope or nail accents at the corners"; food book → "chalkboard menu boards with a warm wooden frame, white cursive chalk lettering, and small painted utensil motifs"; space book → "metallic brushed-steel control panels with rivets, glowing cyan indicator dots, and chrome edging".
-- prompts: 15-30 items. Each \`subject\` is 8-14 words describing ONE animal/object/character with a distinctive pose. Each \`name\` is a 1-3 word page label.
+- prompts: 5-50 items. Use the EXACT page count the user picked or typed (e.g. "5 pages" → exactly 5 prompts; "12 pages" → exactly 12 prompts). NEVER round up to a default like 15 or 20 just because that's a typical KDP size — honour what the user said, even if it's small. Each \`subject\` is 8-14 words describing ONE animal/object/character with a distinctive pose. Each \`name\` is a 1-3 word page label.
 - ${NO_REAL_BRAND_RULE}
 - Subjects must be recognizable, age-appropriate, printable as B&W line art.
 - No duplicates or near-duplicates.
@@ -160,9 +168,9 @@ Q2 — CHARACTERS & NAMES: ask who the story is about. Phrase it like "Who are t
 
 Q3 — AGE RANGE: standard "Toddlers 3-6 / Kids 6-10 / Tweens 10-14" (no AI-decide here — pick one).
 
-Q4 — SCENE COUNT: standard "8 / 12 / 16 / 20 pages" (offer the typical range; no AI-decide — pick one).
+Q4 — SCENE COUNT: offer "5 / 10 / 15 / 20 / 30 pages" with allow_freeform=true so users can type any number from 5-30. No AI-decide. CRITICAL: whichever number the user picks or types, that's EXACTLY how many prompts \`finalize_brief\` produces — do not silently round up to a "nicer" number.
 
-Then \`finalize_brief\`.
+Then \`finalize_brief\`. (Story books do NOT use the Detail-level knob — that's a coloring-book setting only. Pass detailLevel=null in the brief.)
 
 When the user picks "Let AI decide ✨" on Q1: choose a story type that fits the audience (default to "Friendship & teamwork" for toddlers, "Animal adventure" for kids, "Magical / fairy-tale" for tweens) and proceed to Q2 — DO NOT re-ask Q1.
 
@@ -245,7 +253,7 @@ WHEN YOU CALL finalize_brief
 - pageScene: shared page backdrop / world (e.g. "a sunny meadow path with rolling hills and scattered wildflowers"). 2-3 elements max, no smiling suns.
 - bottomStripPhrases: EXACTLY 3 short ALL-CAPS phrases (12-22 chars each) tailored to THIS story — one about the story content (a moral, a journey, characters), one about a kid benefit (creativity, focus, story-time), one about fun or engagement. Do NOT claim hand-drawn / hand-illustrated / handmade / original artwork. EXAMPLE format only (do not copy unless they truly fit): ["BIG SIMPLE DESIGNS","BOOSTS CREATIVITY","HOURS OF FUN"].
 - sidePlaqueLines: EXACTLY 3 short ALL-CAPS lines (6-22 chars each) reading top-to-bottom as a parent-facing benefit statement. Tailor to the chosen audience (TODDLERS / KIDS / TWEENS) and the story. Do NOT claim hand-drawn / handmade. EXAMPLE format only: ["BIG & EASY","PAGES","PERFECT FOR TODDLERS!"].
-- prompts: 8-20 items in STORY ORDER. Each \`name\` is a 1-3 word scene label ("Start Line", "Hare Naps", "Finish"). Each \`subject\` is 12-20 words describing the scene with the locked character descriptors inline. Each prompt MAY include up to 2 \`dialogue\` lines (speaker + text, hard cap 12 words per line) when the scene has natural speech — wordless action pages should omit dialogue entirely. Optional \`narration\` (max 14 words) for pages that need a sentence of narrator context. Optional \`composition\` for camera/framing hints.
+- prompts: 5-30 items in STORY ORDER. Use the EXACT scene count the user picked or typed (e.g. "5 pages" → exactly 5 prompts; "12 scenes" → exactly 12). NEVER round up to a default like 8 or 20 just because that's a typical picture-book size — honour the user's number, even if it's small. Each \`name\` is a 1-3 word scene label ("Start Line", "Hare Naps", "Finish"). Each \`subject\` is 12-20 words describing the scene with the locked character descriptors inline. Each prompt MAY include up to 2 \`dialogue\` lines (speaker + text, hard cap 12 words per line) when the scene has natural speech — wordless action pages should omit dialogue entirely. Optional \`narration\` (max 14 words) for pages that need a sentence of narrator context. Optional \`composition\` for camera/framing hints.
 - characters: 1-3 recurring characters that appear across multiple pages. Each entry is { name, descriptor } where descriptor restates the FOUR-trait lock from the CHARACTER CONSISTENCY section above (species, RELATIVE size compared to the others, 2+ visual features, clothing/tail/feet differentiator). Reuse the same name verbatim in every \`dialogue.speaker\` and inside each \`subject\` so the renderer can pin character identity across pages.
 - palette: 3-8 hex colors that lock the whole book to one consistent color world. Pick one dominant background tone, one or two character accents, and one warm neutral. The label (\`palette.name\`) is a short human description; the values (\`palette.hexes\`) are what the renderer enforces.
 - ${NO_REAL_BRAND_RULE} Public-domain folktales and fully original stories only.
@@ -312,6 +320,12 @@ const finalizeBriefSchema = z.object({
     .max(200)
     .describe(
       "ONE sentence (max 200 chars) describing the visual design language of the cover overlay objects (page-count badge, side plaque, bottom ribbon). Pick objects, materials, shapes, and color motifs that BELONG inside this book's world so overlays feel native to the scene. ONE coherent design system shared across all three overlays. EXAMPLE format only (illustrative — derive from THIS book's actual subject, do not copy): farm book → 'rustic wooden plank signs with brown grain, painted cream lettering, rope or nail accents at the corners'; food book → 'chalkboard menu boards with a warm wooden frame, white cursive chalk lettering, and small painted utensil motifs'; space book → 'metallic brushed-steel control panels with rivets, glowing cyan indicator dots, and chrome edging'.",
+    ),
+  detailLevel: z
+    .enum(["simple", "detailed", "intricate"])
+    .nullable()
+    .describe(
+      "Detail-level preset chosen by the user (or auto-defaulted). 'simple' = Low (character-only focus, sparse background), 'detailed' = Medium (balanced scene with 3-5 supporting elements), 'intricate' = High (richer 6-10 elements, never cluttered). When the user picks 'Let AI decide ✨', default to: toddlers → simple, kids → detailed, tweens → intricate. Pass null only if no Q5 was asked yet.",
     ),
   prompts: z
     .array(
@@ -520,6 +534,7 @@ function viewFromFinalize(args: FinalizeInput): BookChatView {
       coverBadgeStyle: args.coverBadgeStyle?.trim().slice(0, 200) || undefined,
       characters: characters && characters.length > 0 ? characters : undefined,
       palette: palette && palette.hexes.length >= 3 ? palette : undefined,
+      detailLevel: args.detailLevel ?? undefined,
     },
   };
 }

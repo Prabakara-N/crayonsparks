@@ -115,9 +115,9 @@ export async function POST(req: Request) {
     brandStrapline: body.brandStrapline,
   });
   const fullPrompt = `${STORY_BACK_COVER_TODDLER_SYSTEM} ${userText}`;
-  if (fullPrompt.length > 20000) {
+  if (fullPrompt.length > 35000) {
     return NextResponse.json(
-      { error: "Prompt too long (max 20000 chars)." },
+      { error: "Prompt too long (max 35000 chars)." },
       { status: 400 },
     );
   }

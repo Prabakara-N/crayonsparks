@@ -91,6 +91,7 @@ function briefToPlan(brief: BookBrief): Plan {
     coverBadgeStyle: brief.coverBadgeStyle,
     characters: brief.characters,
     palette: brief.palette,
+    detailLevel: brief.detailLevel,
   };
 }
 

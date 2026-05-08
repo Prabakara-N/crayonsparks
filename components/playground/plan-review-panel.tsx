@@ -18,6 +18,15 @@ import {
  * cover both review surfaces (bulk-book studio + chat handoff) with no
  * cross-package coupling.
  */
+export interface PlanReviewPagePrompt {
+  name: string;
+  subject: string;
+  /** Story-mode only — speech bubbles drawn on the page. */
+  dialogue?: Array<{ speaker: string; text: string }>;
+  /** Story-mode only — single-line caption above/below the art. */
+  narration?: string;
+}
+
 export interface PlanReviewData {
   /** Full KDP title — shown as the secondary line below cover title. */
   title?: string;
@@ -26,7 +35,13 @@ export interface PlanReviewData {
   description?: string;
   scene?: string;
   coverScene?: string;
-  prompts: Array<{ name: string; subject: string }>;
+  /**
+   * Story-mode locked characters. When present, modal shows a "Main
+   * characters" section listing each name + descriptor (e.g. "Eli — shy
+   * baby elephant").
+   */
+  characters?: Array<{ name: string; descriptor: string }>;
+  prompts: PlanReviewPagePrompt[];
 }
 
 interface PlanReviewButtonProps {
@@ -314,6 +329,23 @@ export function PlanReviewModal({
                 placeholder="World/setting that every interior page lives in."
               />
 
+              {draft.characters && draft.characters.length > 0 && (
+                <PlanSection label={`Main characters (${draft.characters.length})`}>
+                  <ul className="rounded-xl bg-black/40 border border-white/5 divide-y divide-white/5 overflow-hidden">
+                    {draft.characters.map((c, i) => (
+                      <li key={i} className="px-4 py-2.5">
+                        <p className="text-white font-semibold text-[13px]">
+                          {c.name}
+                        </p>
+                        <p className="text-neutral-400 text-[12px] leading-relaxed mt-0.5">
+                          {c.descriptor}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </PlanSection>
+              )}
+
               {modeNotice && (
                 <div className="inline-flex items-start gap-2 rounded-lg bg-violet-500/10 border border-violet-500/20 px-3 py-2 text-[12px] text-violet-200">
                   <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" />
@@ -359,6 +391,28 @@ export function PlanReviewModal({
                             <p className="text-neutral-400 text-[12px] leading-relaxed">
                               {p.subject}
                             </p>
+                            {p.dialogue && p.dialogue.length > 0 && (
+                              <div className="mt-1 space-y-0.5">
+                                {p.dialogue.map((line, j) => (
+                                  <p
+                                    key={j}
+                                    className="text-[11px] text-cyan-200/90 leading-snug"
+                                  >
+                                    <span className="font-semibold">
+                                      {line.speaker}:
+                                    </span>{" "}
+                                    <span className="italic">
+                                      &ldquo;{line.text}&rdquo;
+                                    </span>
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                            {p.narration?.trim() && (
+                              <p className="mt-1 text-[11px] text-violet-200/80 italic leading-snug">
+                                Narration: {p.narration.trim()}
+                              </p>
+                            )}
                           </>
                         )}
                       </div>

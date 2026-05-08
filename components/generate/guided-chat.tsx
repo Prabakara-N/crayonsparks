@@ -622,6 +622,7 @@ export function GuidedChat({
             brief={pendingBrief}
             onConfirm={confirmBrief}
             onTweak={tweakBrief}
+            onUpdate={(next) => setPendingBrief(next)}
           />
         )}
 
@@ -743,10 +744,13 @@ function BriefPreview({
   brief,
   onConfirm,
   onTweak,
+  onUpdate,
 }: {
   brief: BookBrief;
   onConfirm: () => void;
   onTweak: (feedback: string) => void;
+  /** Apply manual edits the user made inside the Plan-review modal. */
+  onUpdate: (next: BookBrief) => void;
 }) {
   const [tweakOpen, setTweakOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -801,13 +805,39 @@ function BriefPreview({
               coverTitle: brief.name,
               coverScene: brief.coverScene,
               scene: brief.pageScene,
-              prompts: brief.prompts,
+              characters: brief.characters?.map((c) => ({
+                name: c.name,
+                descriptor: c.descriptor,
+              })),
+              prompts: brief.prompts.map((p) => ({
+                name: p.name,
+                subject: p.subject,
+                dialogue: p.dialogue,
+                narration: p.narration,
+              })),
             }}
             modeNotice={
               brief.characters?.length || brief.palette
-                ? "Story-book pages also receive locked characters, palette, dialogue, and narration at render time — those aren't shown here because they're produced per page when generation starts."
+                ? "Story-book pages render with locked characters + palette + the dialogue / narration shown per page below."
                 : undefined
             }
+            onSave={(next) => {
+              // Apply edits made inside the modal back to the in-flight
+              // brief. The chat keeps the brief pending until the user
+              // clicks "Looks good — save it"; that means edits land here
+              // first, then get carried over by `confirmBrief`.
+              onUpdate({
+                ...brief,
+                name: next.coverTitle?.trim() || next.title?.trim() || brief.name,
+                coverScene: next.coverScene ?? brief.coverScene,
+                pageScene: next.scene ?? brief.pageScene,
+                prompts: next.prompts.map((p, i) => ({
+                  ...brief.prompts[i],
+                  name: p.name,
+                  subject: p.subject,
+                })),
+              });
+            }}
           />
           <div className="flex flex-wrap gap-2">
             <button

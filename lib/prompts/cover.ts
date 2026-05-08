@@ -1,5 +1,9 @@
 import type { CoverStyle, CoverBorder } from "./types";
-import { KID_SAFE_CONTENT_RULE } from "./guardrails";
+import {
+  ANATOMY_GUARDRAIL,
+  ANATOMY_COUNT_RULE,
+  KID_SAFE_CONTENT_RULE,
+} from "./guardrails";
 
 /**
  * Back-cover prompt — kept INTENTIONALLY SIMPLE.
@@ -60,13 +64,15 @@ export const BACK_COVER_PROMPT_TEMPLATE = (opts: {
   ].join(" ");
 };
 
-const COVER_STYLE_DIRECTIVES: Record<CoverStyle, string> = {
+/** Re-exported so story-cover + story-page can share the same style language. */
+export const COVER_STYLE_DIRECTIVES: Record<CoverStyle, string> = {
   flat: "Style: flat 2D cartoon, thick clean black outlines on every element, vibrant flat color fills using a bold primary palette (sky blue, sunshine yellow, grass green, brick red, soft pink). Every shape filled with one solid color — no gradients, no realistic shading, no airbrushing. Cheerful and whimsical, friendly happy facial expressions on every character.",
   illustrated:
     "Style: premium illustrated children's picture-book art, semi-3D rendered cartoon with soft directional lighting, gentle painterly shading, subtle highlights and shadows, depth between foreground and background. Modern Pixar/Disney-storybook aesthetic. Outlines are subtle (not thick black cartoon strokes — soft tonal edges). Vibrant saturated palette with smooth color gradients. Characters have rounded forms, friendly happy facial expressions, large expressive eyes. Polished commercial book-cover quality.",
 };
 
-const COVER_BORDER_DIRECTIVES: Record<CoverBorder, string> = {
+/** Re-exported so the story cover can offer the same Framed / Bleed switch. */
+export const COVER_BORDER_DIRECTIVES: Record<CoverBorder, string> = {
   framed:
     "Border: a decorative cream beige speckled rounded-rectangle border frame around the entire cover, slightly hand-drawn. The artwork sits inside this frame.",
   bleed:
@@ -155,6 +161,8 @@ export const COLOR_COVER_PROMPT_TEMPLATE = (opts: {
     `4) BOTTOM STRIP — at the very bottom of the cover, a slightly taller full-width horizontal ribbon / band styled per the overlay design language above (height ~9-12% of cover height) so it can hold TWO stacked lines of text with comfortable padding. The strip contains exactly these two lines, top to bottom: (a) one bold ALL-CAPS line of selling phrases, separated by small filled accent shapes (stars, dots, or a motif that fits the design language): "${bottomStripText}". (b) directly under it, a smaller mixed-case brand strapline in a clean italic or rounded script with a small four-point sparkle shape between the brand name and the next word: "${brandStrapline}". The strapline reads as a soft brand signature, NOT another marketing shout — about half the type-size of line (a), elegant, calmer color (cream / off-white / soft accent) so parents notice it without it competing with the main strip. Both lines are centered. Render the brand name "CrayonSparks" exactly as written, one word, capital C and capital S, no space.`,
     `Permitted text on this cover (and only this text): the title; the subtitle pill copy; the page-count badge copy; the side-plaque copy; the bottom-strip top line; the bottom-strip brand strapline. No other text anywhere — no author name, publisher, ISBN, barcode, URL, social handle, watermark, claim of being hand-drawn or handmade, or any extra marketing line beyond what is listed above.`,
     KID_SAFE_CONTENT_RULE,
+    ANATOMY_GUARDRAIL,
+    ANATOMY_COUNT_RULE,
     "Crisp printable quality at 300 DPI.",
   ].join(" ");
 };

@@ -21,6 +21,12 @@ Specifically:
 
 When refactoring an existing large file, split it in this order: (1) data types into a co-located `types.ts` next to the consumer, (2) pure utility functions into `lib/<feature>-utils.ts`, (3) leaf components first (badges, status pills) into `components/<route>/`, (4) then larger composite components.
 
+# Comments
+
+**ONE LINE MAX. NEVER MID-CODE.** Default to no comments — well-named identifiers usually carry the meaning.
+
+If a comment is genuinely needed, write ONE short line ABOVE the block (function, JSX element, type, prompt-builder constant). Never insert a comment between JSX props, between fields of a type, or between sections of a function body — those are mid-code locations and are disallowed. Multi-line comments and `/** ... */` doc blocks are also disallowed; if a single line can't explain the WHY, remove the comment and let the code speak for itself.
+
 # Prompts
 
 These rules apply to every string sent to an LLM (Gemini image gen, OpenAI text, Perplexity research, etc.).

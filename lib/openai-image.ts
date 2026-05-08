@@ -1,22 +1,19 @@
 /**
  * OpenAI image generation — gpt-image-1 / gpt-image-1-mini / gpt-image-1.5.
  *
- * All calls go through OpenAI's HTTP API directly via fetch. We tried the
- * AI SDK's `generateImage` + `openai.image(...)` factory first, but the
- * SDK pins a hard-coded model allowlist and rejects gpt-image-1.5 with an
- * "unknown model" error — so the SDK only worked for some of our model
- * options. Since the multi-image chain-reference flow needs raw fetch
- * for the multipart `/v1/images/edits` endpoint anyway, we just route
- * everything through fetch and keep the implementation simple +
- * forward-compatible (a future model id we add to constants.ts works
- * automatically without waiting on an SDK update).
+ * Routed through the official `openai` SDK (typed, retries, file upload
+ * helper). Two paths:
  *
- *   no reference image  → POST /v1/images/generations  (JSON body)
- *   with reference image → POST /v1/images/edits       (multipart form)
+ *   no reference image  → `client.images.generate(...)` → /v1/images/generations
+ *   with reference image → `client.images.edit(...)`     → /v1/images/edits
  *
- * Both endpoints use the same Bearer auth + return the same `b64_json`
- * payload shape.
+ * The SDK accepts `model` as a plain string, so any future gpt-image-X
+ * id we add to `lib/constants.ts` works automatically — no SDK upgrade
+ * required (the AI SDK's hard-coded model allowlist was the reason we
+ * originally went raw-fetch; the OpenAI SDK doesn't have that limitation).
  */
+
+import OpenAI, { toFile } from "openai";
 
 import { GPT_IMAGE_1_MINI } from "./constants";
 import type { OpenAiImageModel } from "./constants";
@@ -26,14 +23,29 @@ import type {
   GenerateOptions,
 } from "./gemini";
 
+let cachedClient: OpenAI | null = null;
+function getClient(): OpenAI {
+  if (cachedClient) return cachedClient;
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "OPENAI_API_KEY is not configured — set it in .env.local before using gpt-image models.",
+    );
+  }
+  cachedClient = new OpenAI({ apiKey });
+  return cachedClient;
+}
+
+type OpenAiSize = "1024x1024" | "1024x1536" | "1536x1024" | "auto";
+
 /**
  * Map our internal aspect-ratio strings to the closest OpenAI-supported
  * size. gpt-image-1 only accepts 1024x1024, 1024x1536, 1536x1024 (plus
  * "auto"). For non-matching ratios we round to the nearest supported
- * orientation — the caller still gets a well-formed image; per-page
- * letterbox layout in pdf-lib + the FILL_CANVAS_RULE handle the rest.
+ * orientation — the caller still gets a well-formed image; pdf-lib's
+ * `object-contain` letterbox + the FILL_CANVAS_RULE handle the rest.
  */
-function aspectToSize(aspect: AspectRatio | undefined): string {
+function aspectToSize(aspect: AspectRatio | undefined): OpenAiSize {
   switch (aspect) {
     case "3:4":
     case "2:3":
@@ -50,116 +62,51 @@ function aspectToSize(aspect: AspectRatio | undefined): string {
 }
 
 /**
- * gpt-image-1 supports a `quality` parameter (low/medium/high). We default
- * to medium — a reasonable balance for kids' coloring books and the bulk
- * cost stays predictable. The mini variant only honours low/medium.
+ * gpt-image-1 supports a `quality` parameter (low/medium/high). Default
+ * to medium — a reasonable balance for kids' coloring books with
+ * predictable bulk cost. The mini variant only honours low/medium.
  */
 function defaultQuality(model: OpenAiImageModel): "low" | "medium" | "high" {
   if (model === GPT_IMAGE_1_MINI) return "low";
   return "medium";
 }
 
-function requireApiKey(): string {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "OPENAI_API_KEY is not configured — set it in .env.local before using gpt-image models.",
-    );
-  }
-  return apiKey;
-}
-
-function dataUrlPartsToBlob(part: { mimeType: string; data: string }): Blob {
-  const bin = Buffer.from(part.data, "base64");
-  return new Blob([bin], { type: part.mimeType || "image/png" });
-}
-
-interface OpenAiImageResponse {
-  data?: Array<{ b64_json?: string }>;
-  error?: { message?: string };
+async function refsToFiles(
+  refs: ReadonlyArray<{ mimeType: string; data: string }>,
+) {
+  return Promise.all(
+    refs.map((ref, i) =>
+      toFile(Buffer.from(ref.data, "base64"), `ref_${i}.png`, {
+        type: ref.mimeType || "image/png",
+      }),
+    ),
+  );
 }
 
 function readImageOrThrow(
-  json: OpenAiImageResponse,
+  result: { data?: Array<{ b64_json?: string | null }> | null },
   endpoint: string,
 ): GenerateImageResult {
-  const first = json.data?.[0];
-  if (!first?.b64_json) {
+  const first = result.data?.[0];
+  const b64 = first?.b64_json;
+  if (!b64) {
     throw new Error(
       `OpenAI returned no image data from ${endpoint} (the model may have refused the prompt — try softer language).`,
     );
   }
-  return { mimeType: "image/png", data: first.b64_json };
-}
-
-async function callImagesGenerations(
-  prompt: string,
-  model: OpenAiImageModel,
-  size: string,
-): Promise<GenerateImageResult> {
-  const apiKey = requireApiKey();
-  const res = await fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      prompt,
-      size,
-      quality: defaultQuality(model),
-      n: 1,
-    }),
-  });
-  const json = (await res.json()) as OpenAiImageResponse;
-  if (!res.ok) {
-    throw new Error(
-      json.error?.message ?? `OpenAI image generation failed (${res.status})`,
-    );
-  }
-  return readImageOrThrow(json, "/v1/images/generations");
-}
-
-async function callImagesEdits(
-  prompt: string,
-  refs: Array<{ mimeType: string; data: string }>,
-  model: OpenAiImageModel,
-  size: string,
-): Promise<GenerateImageResult> {
-  const apiKey = requireApiKey();
-  const form = new FormData();
-  form.set("model", model);
-  form.set("prompt", prompt);
-  form.set("size", size);
-  form.set("quality", defaultQuality(model));
-  form.set("n", "1");
-  refs.forEach((ref, i) => {
-    form.append("image[]", dataUrlPartsToBlob(ref), `ref_${i}.png`);
-  });
-  const res = await fetch("https://api.openai.com/v1/images/edits", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}` },
-    body: form,
-  });
-  const json = (await res.json()) as OpenAiImageResponse;
-  if (!res.ok) {
-    throw new Error(
-      json.error?.message ?? `OpenAI image edit failed (${res.status})`,
-    );
-  }
-  return readImageOrThrow(json, "/v1/images/edits");
+  return { mimeType: "image/png", data: b64 };
 }
 
 /**
  * Generate an image with one of the gpt-image-* models. Routes to
- * /v1/images/edits when reference images are present (chain-anchor flow)
- * and /v1/images/generations otherwise.
+ * `images.edit` when reference images are present (chain-anchor flow)
+ * and `images.generate` otherwise.
  */
 export async function generateOpenAiImage(
   prompt: string,
   opts: GenerateOptions & { model: OpenAiImageModel },
 ): Promise<GenerateImageResult> {
+  const client = getClient();
   const size = aspectToSize(opts.aspectRatio);
   const refs: Array<{ mimeType: string; data: string }> = [];
   if (opts.sourceImage) refs.push(opts.sourceImage);
@@ -170,7 +117,24 @@ export async function generateOpenAiImage(
     : prompt;
 
   if (refs.length > 0) {
-    return callImagesEdits(fullPrompt, refs, opts.model, size);
+    const images = await refsToFiles(refs);
+    const result = await client.images.edit({
+      model: opts.model,
+      prompt: fullPrompt,
+      image: images,
+      size,
+      quality: defaultQuality(opts.model),
+      n: 1,
+    });
+    return readImageOrThrow(result, "images.edit");
   }
-  return callImagesGenerations(fullPrompt, opts.model, size);
+
+  const result = await client.images.generate({
+    model: opts.model,
+    prompt: fullPrompt,
+    size,
+    quality: defaultQuality(opts.model),
+    n: 1,
+  });
+  return readImageOrThrow(result, "images.generate");
 }

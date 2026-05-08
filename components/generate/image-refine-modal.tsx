@@ -31,7 +31,14 @@ function useStateMounted(): [boolean, (v: boolean) => void] {
   return [mounted, setMounted];
 }
 
-export type RefineContext = "cover" | "back-cover" | "page" | "custom";
+export type RefineContext =
+  | "cover"
+  | "back-cover"
+  | "page"
+  | "story-cover"
+  | "story-back-cover"
+  | "story-page"
+  | "custom";
 
 type AspectRatio = "1:1" | "3:4" | "4:3" | "2:3" | "3:2" | "9:16" | "16:9";
 
@@ -75,10 +82,18 @@ const FALLBACK_SUGGESTIONS_PAGE = [
   "Thicken the outlines",
   "Add a butterfly in the corner",
 ];
+const FALLBACK_SUGGESTIONS_STORY_PAGE = [
+  "Change the character's pose to match the action",
+  "Make the background a different time of day",
+  "Move the speech bubble closer to the speaker",
+];
 
 function fallbackSuggestions(context: RefineContext): string[] {
-  if (context === "back-cover") return FALLBACK_SUGGESTIONS_BACK_COVER;
-  if (context === "cover") return FALLBACK_SUGGESTIONS_COVER;
+  if (context === "back-cover" || context === "story-back-cover")
+    return FALLBACK_SUGGESTIONS_BACK_COVER;
+  if (context === "cover" || context === "story-cover")
+    return FALLBACK_SUGGESTIONS_COVER;
+  if (context === "story-page") return FALLBACK_SUGGESTIONS_STORY_PAGE;
   return FALLBACK_SUGGESTIONS_PAGE;
 }
 

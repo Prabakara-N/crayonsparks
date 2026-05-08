@@ -13,7 +13,14 @@ import { NO_AI_BORDER_RULE } from "@/lib/prompts";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-type RefineContext = "page" | "cover" | "back-cover" | "custom";
+type RefineContext =
+  | "page"
+  | "cover"
+  | "back-cover"
+  | "story-page"
+  | "story-cover"
+  | "story-back-cover"
+  | "custom";
 
 interface Body {
   instruction?: string;
@@ -60,6 +67,12 @@ const CONTEXT_GUARDRAILS: Record<RefineContext, string> = {
     "🎨 FRONT COVER RULES (must remain): Keep the existing book TITLE text exactly as it appears (do not change spelling, font, or color). Keep the overall composition and the main characters. Do NOT add page numbers, bar codes, version indicators, or any text other than what's already on the cover. Keep colors vibrant.",
   "back-cover":
     "🎨 BACK COVER RULES (must remain): This is a MINIMAL back cover. The composition is just two things: (1) a soft colored background that runs edge-to-edge across the entire cover, every corner included; (2) ONE elegant tagline floating freely as plain typography. The colored field is uninterrupted — every pixel of the canvas is the same colored paint, including the bottom-right corner. Keep the existing layout, color, and tagline. The tagline text is dark warm grey or near-black for readability. STRICT — do not add: illustrations, characters, animals, objects, scenes, landscapes, decorative motifs, patterns, page numbers, extra paragraphs, or new headlines.",
+  "story-page":
+    "🎨 STORY-BOOK INTERIOR PAGE RULES (must remain): Full-color picture-book illustration, full-bleed (the artwork reaches all four edges of the canvas). Keep the OVERALL ART STYLE of the source — same line weight, same color saturation, same lighting feel — so the edited page still looks like a sibling spread of the rest of the book. Keep all RECURRING CHARACTERS recognizable (same species, body proportions, head/face shape, color/markings, accessories) — do NOT redesign them. Speech bubbles and narration captions in the source must remain readable; if you adjust the layout, keep each bubble's tail attached to the correct speaker. NO outer border, NO frame, NO page-edge rectangle, NO page numbers, NO author/publisher text. Anatomy must stay correct (no extra limbs, no duplicate tails / wings / ears). Output a full new image, not a diff.",
+  "story-cover":
+    "🎨 STORY-BOOK FRONT COVER RULES (must remain): Keep the existing book TITLE text exactly as it appears (spelling, font, color, position). Keep the OVERALL ART STYLE of the source — same line weight, color saturation, lighting. Keep all RECURRING CHARACTERS recognizable. Keep selling-point overlays (subtitle pill, page-count badge, side plaque, bottom strip) intact unless the user explicitly asks to change one. Full-bleed colored background unless the user explicitly asks for a framed border. Anatomy stays correct (no extra limbs, no duplicate tails / wings). Do NOT add page numbers, barcode, ISBN, URL, social handle, watermark, or 'hand-drawn' claims. Output a full new image, not a diff.",
+  "story-back-cover":
+    "🎨 STORY-BOOK BACK COVER RULES (must remain): MINIMAL layout — soft colored background that runs edge-to-edge plus ONE centered italic tagline. NO illustrations, NO characters, NO scenes, NO patterns. Keep the existing color family and the existing tagline text unless the user explicitly asks to change them. The colored field is uninterrupted — every pixel of the canvas is the same color, including bottom-right corner. NO author name, NO publisher, NO ISBN, NO barcode, NO URL.",
   custom:
     "Keep the original art style and composition consistent. Output as a full new image, not a diff.",
 };

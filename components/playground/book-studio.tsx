@@ -29,6 +29,7 @@ import { ReferenceImageField } from "@/components/ui/reference-image-field";
 import {
   ImageRefineModal,
   type RefineBookContextProp,
+  type RefineContext,
 } from "@/components/generate/image-refine-modal";
 import type { PageMeta, PageStatus } from "@/lib/refine-chat";
 import { MockupGenerator } from "@/components/ui/mockup-generator";
@@ -48,6 +49,7 @@ import { CoverPair } from "@/components/playground/cover-pair";
 import { RegenerateCardButton } from "@/components/playground/regenerate-card-button";
 import { IdeaSuggestionsPanel } from "@/components/playground/idea-suggestions-panel";
 import { ModelPicker } from "@/components/playground/model-picker";
+import { SelectField } from "@/components/playground/select-field";
 import { PlanReviewButton } from "@/components/playground/plan-review-panel";
 import { AspectRatioPicker } from "@/components/playground/aspect-ratio-picker";
 import type { KdpMetadata } from "@/lib/kdp-metadata";
@@ -64,6 +66,22 @@ import {
 
 type Aspect = "1:1" | "3:4" | "4:3" | "2:3" | "3:2" | "9:16" | "16:9";
 type AgeRange = "toddlers" | "kids" | "tweens";
+// Detail level — three values map to API's `simple | detailed | intricate`.
+// User-facing labels are Low / Medium / High.
+type DetailLevel = "simple" | "detailed" | "intricate";
+const DETAIL_LABELS: Record<DetailLevel, string> = {
+  simple: "Low",
+  detailed: "Medium",
+  intricate: "High",
+};
+const DETAIL_DESCRIPTIONS: Record<DetailLevel, string> = {
+  simple:
+    "Character is the star · 1-2 background props · sparse on purpose",
+  detailed:
+    "Character + 3-5 supporting elements · balanced · plenty of breathing room",
+  intricate:
+    "Richer scene · 6-10 distinct supporting elements · never cluttered or repetitive",
+};
 type CoverStyle = "flat" | "illustrated";
 type CoverBorder = "framed" | "bleed";
 
@@ -154,6 +172,8 @@ export interface Plan {
   characters?: StoryCharacter[];
   /** Story mode only — locked color palette. */
   palette?: StoryPalette;
+  /** Detail-level preset chosen during planning (Sparky AI Q5 or IdeaForm). */
+  detailLevel?: DetailLevel;
   /**
    * Story mode only — clean parent-facing tagline rendered VERBATIM on
    * the back cover. The planner emits this directly so we don't have to
@@ -246,7 +266,7 @@ function buildRefineBookContext(args: {
   backCover: { status: "pending" | "generating" | "done" | "error"; dataUrl?: string };
   age: AgeRange;
   target: {
-    context: "cover" | "back-cover" | "page";
+    context: RefineContext;
     id: string;
     title?: string;
   };
@@ -337,8 +357,13 @@ export function BookStudio({
     }),
   );
   const [idea, setIdea] = useState("");
-  const [pageCount, setPageCount] = useState(20);
+  const [pageCount, setPageCount] = useState(initialPlan?.prompts.length ?? 20);
   const [age, setAge] = useState<AgeRange>(initialAge ?? "toddlers");
+  // Default to Low ("simple") — character + a few balanced supporting
+  // elements is the most common ask. Low / High are explicit user choices.
+  const [detailLevel, setDetailLevel] = useState<DetailLevel>(
+    initialPlan?.detailLevel ?? "simple",
+  );
   const [aspectRatio, setAspectRatio] = useState<Aspect>("3:4");
   const [reference, setReference] = useState<string | null>(
     initialReference ?? null,
@@ -483,7 +508,7 @@ export function BookStudio({
   // refine modal
   const [refine, setRefine] = useState<{
     open: boolean;
-    context: "cover" | "back-cover" | "page";
+    context: RefineContext;
     /** Stable id of the thing being refined — "cover" / "back-cover" / item.id. */
     targetId: string;
     dataUrl?: string;
@@ -515,7 +540,7 @@ export function BookStudio({
   const [refineOpenNonce, setRefineOpenNonce] = useState(0);
   const openRefine = useCallback(
     (next: {
-      context: "cover" | "back-cover" | "page";
+      context: RefineContext;
       targetId: string;
       dataUrl?: string;
       title?: string;
@@ -620,12 +645,12 @@ export function BookStudio({
         : "/api/plan-book";
       const body = isStoryPlan
         ? {
-            idea: trimmed,
-            pageCount,
-            age,
-            storyType: storyType ?? undefined,
-            characterNames: storyCharacterNames.trim() || undefined,
-          }
+          idea: trimmed,
+          pageCount,
+          age,
+          storyType: storyType ?? undefined,
+          characterNames: storyCharacterNames.trim() || undefined,
+        }
         : { idea: trimmed, pageCount, age };
       const res = await fetch(endpoint, {
         method: "POST",
@@ -708,11 +733,13 @@ export function BookStudio({
             characters: plan.characters,
             palette: plan.palette,
             audienceLabel: AGE_LABELS[age],
-            pageCount,
+            pageCount: items.length,
             bottomStripPhrases: plan.bottomStripPhrases,
             sidePlaqueLines: plan.sidePlaqueLines,
             coverBadgeStyle: coverBadgeStyle.trim() || plan.coverBadgeStyle,
             model: coverModel,
+            coverStyle,
+            coverBorder,
           }),
         });
         const json = (await res.json()) as { dataUrl?: string; error?: string };
@@ -737,7 +764,7 @@ export function BookStudio({
           coverScene: plan.coverScene,
           coverStyle,
           coverBorder,
-          pageCount,
+          pageCount: items.length,
           bottomStripPhrases: plan.bottomStripPhrases,
           sidePlaqueLines: plan.sidePlaqueLines,
           coverBadgeStyle: coverBadgeStyle.trim() || plan.coverBadgeStyle,
@@ -774,7 +801,7 @@ export function BookStudio({
     coverStyle,
     coverBorder,
     coverBadgeStyle,
-    pageCount,
+    items.length,
     qualityCheck,
     coverModel,
   ]);
@@ -1026,6 +1053,9 @@ export function BookStudio({
                   : undefined,
               chainReferenceDataUrl,
               model: interiorModel,
+              // Match the cover's chosen style so interior pages render
+              // in the same visual language (flat 2D vs painterly).
+              coverStyle,
             }),
           });
           const json = (await res.json()) as {
@@ -1051,7 +1081,7 @@ export function BookStudio({
             mode: "subject",
             subject: item.subject + flawSuffix,
             age,
-            detail: "simple",
+            detail: detailLevel,
             background: "scene",
             aspectRatio,
             scene: plan.scene,
@@ -1070,8 +1100,8 @@ export function BookStudio({
             // together.
             coverReferenceDataUrl:
               cover.dataUrl &&
-              cover.dataUrl !== chainReferenceDataUrl &&
-              shareKeyNoun(plan.coverScene ?? "", item.subject)
+                cover.dataUrl !== chainReferenceDataUrl &&
+                shareKeyNoun(plan.coverScene ?? "", item.subject)
                 ? cover.dataUrl
                 : undefined,
             characterLock: characterLock.block,
@@ -1122,6 +1152,7 @@ export function BookStudio({
       cover.status,
       cover.dataUrl,
       dialog,
+      detailLevel,
     ]
   );
 
@@ -1334,37 +1365,163 @@ export function BookStudio({
     }
     setPdfBuilding(true);
     try {
-      // Story-book path: ONE full-color picture-book PDF (6×9 trim, no
-      // alternating blanks, no KDP cover-wrap math). Story books also skip
-      // the "this book belongs to" page — that's a coloring-book ritual.
       if (mode === "story") {
-        const res = await fetch("/api/assemble-story-book-pdf", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: plan?.coverTitle ?? plan?.title,
-            cover: { dataUrl: cover.dataUrl },
-            backCover: { dataUrl: backCover.dataUrl },
-            pages: done.map((d) => ({
-              id: d.id,
-              name: d.name,
-              dataUrl: d.dataUrl,
-            })),
-          }),
-        });
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j.error || "Story-book PDF failed");
-        }
-        const blob = await res.blob();
         const safeName = (plan?.coverTitle ?? "story-book").replace(
           /[^a-z0-9]+/gi,
           "_",
         );
-        const url = URL.createObjectURL(blob);
+        const storyPages = done.map((d) => ({
+          id: d.id,
+          name: d.name,
+          dataUrl: d.dataUrl,
+        }));
+        const storyBaseBody = {
+          title: plan?.coverTitle ?? plan?.title,
+          cover: { dataUrl: cover.dataUrl },
+          backCover: { dataUrl: backCover.dataUrl },
+          pages: storyPages,
+        };
+        const [coverRes, interiorRes, etsyLetterRes, etsyA4Res] =
+          await Promise.all([
+            fetch("/api/assemble-pdf", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                category: plan?.coverTitle ?? "story-book",
+                cover: { dataUrl: cover.dataUrl },
+                backCover: { dataUrl: backCover.dataUrl },
+                mode: "cover-wrap",
+                paper: "standardColor",
+                interiorPageCount: storyPages.length,
+                trimWidthInches: 6,
+                trimHeightInches: 9,
+              }),
+            }),
+            fetch("/api/assemble-story-book-pdf", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: plan?.coverTitle ?? plan?.title,
+                pages: storyPages,
+                trimWidthInches: 6,
+                trimHeightInches: 9,
+              }),
+            }),
+            fetch("/api/assemble-story-book-pdf", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...storyBaseBody,
+                trimWidthInches: 8.5,
+                trimHeightInches: 11,
+              }),
+            }),
+            fetch("/api/assemble-story-book-pdf", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...storyBaseBody,
+                trimWidthInches: 8.27,
+                trimHeightInches: 11.69,
+              }),
+            }),
+          ]);
+
+        if (!coverRes.ok) {
+          const j = await coverRes.json().catch(() => ({}));
+          throw new Error(j.error || "Story cover-wrap PDF failed");
+        }
+        if (!interiorRes.ok) {
+          const j = await interiorRes.json().catch(() => ({}));
+          throw new Error(j.error || "Story interior PDF failed");
+        }
+        if (!etsyLetterRes.ok) {
+          const j = await etsyLetterRes.json().catch(() => ({}));
+          throw new Error(j.error || "Story Etsy Letter PDF failed");
+        }
+        if (!etsyA4Res.ok) {
+          const j = await etsyA4Res.json().catch(() => ({}));
+          throw new Error(j.error || "Story Etsy A4 PDF failed");
+        }
+
+        const [coverBlob, interiorBlob, etsyLetterBlob, etsyA4Blob] =
+          await Promise.all([
+            coverRes.blob(),
+            interiorRes.blob(),
+            etsyLetterRes.blob(),
+            etsyA4Res.blob(),
+          ]);
+
+        const { default: JSZip } = await import("jszip");
+        const zip = new JSZip();
+        zip.file(
+          `${safeName}_cover_KDP.pdf`,
+          await coverBlob.arrayBuffer(),
+        );
+        zip.file(
+          `${safeName}_interior_KDP.pdf`,
+          await interiorBlob.arrayBuffer(),
+        );
+        zip.file(
+          `${safeName}_etsy_letter.pdf`,
+          await etsyLetterBlob.arrayBuffer(),
+        );
+        zip.file(
+          `${safeName}_etsy_a4.pdf`,
+          await etsyA4Blob.arrayBuffer(),
+        );
+        zip.file(
+          "README.txt",
+          [
+            "CrayonSparks → Story-book print package",
+            "",
+            `Title:  ${plan?.coverTitle ?? plan?.title ?? "Story book"}`,
+            `Pages:  ${storyPages.length} interior scenes`,
+            `Trim:   6 × 9 inches (KDP color paperback standard)`,
+            "",
+            "This zip contains 4 PDFs — pick the ones that match where",
+            "you're publishing.",
+            "",
+            "── AMAZON KDP (color paperback) ──────────────────────────────",
+            `  1. ${safeName}_cover_KDP.pdf`,
+            "     Upload to the COVER section of KDP. Sized to KDP's exact",
+            `     cover-wrap dimensions (back + spine + front + 0.125" bleed)`,
+            "     for color paper at this interior page count.",
+            "",
+            `  2. ${safeName}_interior_KDP.pdf`,
+            "     Upload to the INTERIOR / MANUSCRIPT section. Story scenes",
+            "     in narrative order, full-bleed, no blank pages between",
+            "     (story books print both sides full-color, unlike coloring",
+            "     books which need alternating blanks).",
+            "",
+            "  Help: https://kdp.amazon.com/en_US/help/topic/G201834260",
+            "",
+            "── ETSY / GUMROAD (digital download) ─────────────────────────",
+            "  Single PDFs in this order:",
+            "    • Page 1     — Front cover (full color)",
+            "    • Pages 2..N — Story scenes back-to-back (no blanks)",
+            "    • Last page  — Back cover",
+            "  Upload BOTH files to your listing so buyers worldwide can print:",
+            "",
+            `  3. ${safeName}_etsy_letter.pdf  — US Letter (8.5×11")`,
+            "     For US, Canada, Mexico, Philippines.",
+            "",
+            `  4. ${safeName}_etsy_a4.pdf      — A4 (210×297 mm)`,
+            "     For UK, EU, India, Australia, NZ, Asia, and the rest.",
+            "",
+            "  Listing tip: mention 'Includes US Letter AND A4 versions' in",
+            "  your description — international buyers actively search for it.",
+          ].join("\n"),
+        );
+
+        const zipBytes = await zip.generateAsync({
+          type: "blob",
+          compression: "STORE",
+        });
+        const url = URL.createObjectURL(zipBytes);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${safeName}.pdf`;
+        a.download = `${safeName}_print_package.zip`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1568,6 +1725,8 @@ export function BookStudio({
         setPageCount={setPageCount}
         age={age}
         setAge={setAge}
+        detailLevel={detailLevel}
+        setDetailLevel={setDetailLevel}
         aspectRatio={aspectRatio}
         setAspectRatio={setAspectRatio}
         reference={reference}
@@ -1668,8 +1827,11 @@ export function BookStudio({
       )}
 
       {/* Image-model selectors — sit just above the cover/back-cover/belongs-to
-          cards so the user can swap models per side without hunting in the header. */}
-      {plan && phase === "review" && (
+          cards so the user can swap models per side without hunting in the header.
+          Visible across review / generating / paused / done so the user can
+          re-open the plan review (or swap a model for retries) at any time.
+          (The idea/planning phases short-circuit earlier with IdeaForm.) */}
+      {plan && (
         <div className="flex flex-wrap items-center gap-2 px-1">
           <span className="text-[11px] uppercase tracking-wider font-semibold text-neutral-500">
             Image models
@@ -1696,11 +1858,18 @@ export function BookStudio({
                 description: plan.description,
                 scene: plan.scene,
                 coverScene: plan.coverScene,
-                prompts: plan.prompts,
+                characters:
+                  mode === "story" ? plan.characters : undefined,
+                prompts: plan.prompts.map((p) => ({
+                  name: p.name,
+                  subject: p.subject,
+                  dialogue: p.dialogue,
+                  narration: p.narration,
+                })),
               }}
               modeNotice={
                 mode === "story"
-                  ? "Story-book pages also receive locked characters, palette, dialogue, and narration at render time — those aren't shown here because they're produced per page when generation starts."
+                  ? "Story-book pages render with locked characters + palette + the dialogue / narration shown per page below."
                   : undefined
               }
               onSave={(next) => {
@@ -1713,18 +1882,18 @@ export function BookStudio({
                 setPlan((prev) =>
                   prev
                     ? {
-                        ...prev,
-                        title: next.title ?? prev.title,
-                        coverTitle: next.coverTitle ?? prev.coverTitle,
-                        description: next.description ?? prev.description,
-                        scene: next.scene ?? prev.scene,
-                        coverScene: next.coverScene ?? prev.coverScene,
-                        prompts: next.prompts.map((p, i) => ({
-                          ...prev.prompts[i],
-                          name: p.name,
-                          subject: p.subject,
-                        })),
-                      }
+                      ...prev,
+                      title: next.title ?? prev.title,
+                      coverTitle: next.coverTitle ?? prev.coverTitle,
+                      description: next.description ?? prev.description,
+                      scene: next.scene ?? prev.scene,
+                      coverScene: next.coverScene ?? prev.coverScene,
+                      prompts: next.prompts.map((p, i) => ({
+                        ...prev.prompts[i],
+                        name: p.name,
+                        subject: p.subject,
+                      })),
+                    }
                     : prev,
                 );
                 setItems((prev) =>
@@ -1789,17 +1958,18 @@ export function BookStudio({
               : "Front cover is locked — interior pages already reference it. Click Start new book to begin a new project."
           }
           onRefineFront={(dataUrl) => {
-            if (mode === "story") {
-              openStoryPreview(dataUrl, "Front cover");
-              return;
-            }
             openRefine({
-              context: "cover",
+              // Story mode uses the story-cover refine context so the
+              // route injects full-color / character-preserving guardrails
+              // instead of the coloring-book cover rules.
+              context: mode === "story" ? "story-cover" : "cover",
               targetId: "cover",
               dataUrl,
               title: "Cover",
               subtitle:
-                "Describe changes. Gemini edits while preserving layout.",
+                mode === "story"
+                  ? "Describe changes. Sparky edits the painterly cover while preserving title, characters, and overlays."
+                  : "Describe changes. Gemini edits while preserving layout.",
               downloadName: "cover.png",
               // Refine inherits the model that produced the cover. Fall
               // back to the live dropdown for pre-tagging sessions.
@@ -1813,17 +1983,15 @@ export function BookStudio({
             });
           }}
           onRefineBack={(dataUrl) => {
-            if (mode === "story") {
-              openStoryPreview(dataUrl, "Back cover");
-              return;
-            }
             openRefine({
-              context: "back-cover",
+              context: mode === "story" ? "story-back-cover" : "back-cover",
               targetId: "back-cover",
               dataUrl,
               title: "Back cover",
               subtitle:
-                "Describe changes. Gemini edits while preserving the tagline box and barcode safe-zone.",
+                mode === "story"
+                  ? "Describe changes. The minimal tagline-only back cover stays minimal — no illustrations added."
+                  : "Describe changes. Gemini edits while preserving the tagline box and barcode safe-zone.",
               downloadName: "back-cover.png",
               model: backCover.model ?? coverModel,
               onRefined: (d) =>
@@ -1942,8 +2110,8 @@ export function BookStudio({
                 aria-selected={viewMode === "carousel"}
                 onClick={() => setViewMode("carousel")}
                 className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${viewMode === "carousel"
-                    ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow"
-                    : "text-neutral-300 hover:text-white"
+                  ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow"
+                  : "text-neutral-300 hover:text-white"
                   }`}
               >
                 <GalleryHorizontal className="w-4 h-4" />
@@ -1954,8 +2122,8 @@ export function BookStudio({
                 aria-selected={viewMode === "book"}
                 onClick={() => setViewMode("book")}
                 className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${viewMode === "book"
-                    ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow"
-                    : "text-neutral-300 hover:text-white"
+                  ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow"
+                  : "text-neutral-300 hover:text-white"
                   }`}
               >
                 <BookOpen className="w-4 h-4" />
@@ -2052,16 +2220,6 @@ export function BookStudio({
                   onRegenerateCover={generateCover}
                   onRegenerateBackCover={generateBackCover}
                   onOpenRefine={(kind, payload) => {
-                    if (mode === "story") {
-                      const label =
-                        kind === "cover"
-                          ? "Front cover"
-                          : kind === "back-cover"
-                            ? "Back cover"
-                            : payload.title ?? "Page";
-                      openStoryPreview(payload.dataUrl ?? "", label);
-                      return;
-                    }
                     // Resolve which model produced the source so the modal
                     // can inherit it. Looks at the right state slice based
                     // on the surface kind; falls back to the live dropdown
@@ -2073,8 +2231,19 @@ export function BookStudio({
                           ? backCover.model ?? coverModel
                           : (items.find((it) => it.id === payload.targetId)
                             ?.model ?? interiorModel);
+                    // Story mode uses story-* refine contexts so the route
+                    // injects full-color / character-preserving guardrails
+                    // (vs the coloring-book B&W rules).
+                    const refineCtx =
+                      mode === "story"
+                        ? kind === "cover"
+                          ? "story-cover"
+                          : kind === "back-cover"
+                            ? "story-back-cover"
+                            : "story-page"
+                        : kind;
                     openRefine({
-                      context: kind,
+                      context: refineCtx,
                       ...payload,
                       model: sourceModel,
                     });
@@ -2230,6 +2399,8 @@ function IdeaForm({
   setPageCount,
   age,
   setAge,
+  detailLevel,
+  setDetailLevel,
   aspectRatio,
   setAspectRatio,
   reference,
@@ -2251,6 +2422,8 @@ function IdeaForm({
   setPageCount: (v: number) => void;
   age: AgeRange;
   setAge: (v: AgeRange) => void;
+  detailLevel: DetailLevel;
+  setDetailLevel: (v: DetailLevel) => void;
   aspectRatio: Aspect;
   setAspectRatio: (v: Aspect) => void;
   reference: string | null;
@@ -2510,26 +2683,57 @@ function IdeaForm({
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-semibold text-neutral-200 mb-2">Aspect ratio</label>
-        <AspectRatioPicker
-          value={aspectRatio}
-          onChange={setAspectRatio}
-          options={ASPECTS.map((a) => ({
-            value: a,
-            label:
-              a === "1:1"
-                ? "Square"
-                : a === "3:4"
-                  ? "KDP"
-                  : a === "2:3"
-                    ? "Tall"
-                    : a === "4:3"
-                      ? "Landscape"
-                      : "Wide",
-          }))}
-          disabled={planning}
-        />
+      <div className="grid md:grid-cols-2 gap-4 md:gap-10 lg:gap-14">
+        {!isStory && (
+          <div>
+            <label className="block text-sm font-semibold text-neutral-200 mb-2">
+              Detail level{" "}
+              <span className="font-normal text-[11px] text-neutral-400">
+                — controls how much background fits around the main subject
+              </span>
+            </label>
+            <SelectField<DetailLevel>
+              value={detailLevel}
+              onChange={setDetailLevel}
+              disabled={planning}
+              ariaLabel="Detail level"
+              options={(Object.keys(DETAIL_LABELS) as DetailLevel[]).map(
+                (v) => ({
+                  value: v,
+                  label: DETAIL_LABELS[v],
+                  hint: DETAIL_DESCRIPTIONS[v],
+                }),
+              )}
+            />
+            <p className="text-[11px] text-neutral-500 mt-1.5 leading-relaxed">
+              {DETAIL_DESCRIPTIONS[detailLevel]}
+            </p>
+          </div>
+        )}
+
+        <div className={isStory ? "md:col-span-2" : undefined}>
+          <label className="block text-sm font-semibold text-neutral-200 mb-2">
+            Aspect ratio
+          </label>
+          <AspectRatioPicker
+            value={aspectRatio}
+            onChange={setAspectRatio}
+            options={ASPECTS.map((a) => ({
+              value: a,
+              label:
+                a === "1:1"
+                  ? "Square"
+                  : a === "3:4"
+                    ? "KDP"
+                    : a === "2:3"
+                      ? "Tall"
+                      : a === "4:3"
+                        ? "Landscape"
+                        : "Wide",
+            }))}
+            disabled={planning}
+          />
+        </div>
       </div>
 
       <ReferenceImageField

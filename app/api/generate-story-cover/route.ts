@@ -46,6 +46,10 @@ interface Body {
   sidePlaqueLines?: string[];
   coverBadgeStyle?: string;
   brandStrapline?: string;
+  /** "flat" (default) or "illustrated" — drives the cover render style. */
+  coverStyle?: "flat" | "illustrated";
+  /** "bleed" (default) or "framed" — adds the decorative cream frame. */
+  coverBorder?: "bleed" | "framed";
 }
 
 function isStoryCharacter(value: unknown): value is StoryCharacter {
@@ -119,12 +123,14 @@ export async function POST(req: Request) {
     sidePlaqueLines: body.sidePlaqueLines,
     coverBadgeStyle: body.coverBadgeStyle,
     brandStrapline: body.brandStrapline,
+    coverStyle: body.coverStyle,
+    coverBorder: body.coverBorder,
   });
 
   const fullPrompt = `${STORY_COVER_TODDLER_SYSTEM} ${userText}`;
-  if (fullPrompt.length > 20000) {
+  if (fullPrompt.length > 35000) {
     return NextResponse.json(
-      { error: "Prompt too long (max 20000 chars)." },
+      { error: "Prompt too long (max 35000 chars)." },
       { status: 400 },
     );
   }

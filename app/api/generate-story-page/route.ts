@@ -47,6 +47,11 @@ interface Body {
   ageBand?: "toddlers";
   model?: ImageModel;
   /**
+   * "flat" (default) or "illustrated" — must match the cover's coverStyle
+   * so interior pages render in the same visual language as the cover.
+   */
+  coverStyle?: "flat" | "illustrated";
+  /**
    * Cover image of the same book — passed to Gemini as image 1. Anchors
    * the locked-character look and the book's overall visual language;
    * the cover is the ground truth for character design across every
@@ -85,7 +90,7 @@ function buildConsistencyAnchorPreamble(
       : hasCover
         ? "An image from THE SAME BOOK is attached as a visual reference — the FRONT COVER"
         : "An image from THE SAME BOOK is attached as a visual reference — a previously generated INTERIOR PAGE";
-  return `Reference image guidance (load-bearing). ${refLabel}. The references are the ground truth for character look and the book's visual style — match them exactly. (A) Recurring characters that appear on the new page MUST be drawn identical to how they appear in the references — same species, body proportions, head/face shape, fur/feather/skin color, accessories, distinguishing features. The cover (when attached) is the ground truth for character design. (B) Style: line weight, character rendering polish, color saturation, lighting feel — sibling-of-the-references. (C) DO NOT copy the references' specific scene, background, props, or character poses. The new page is a fresh scene composed from the page's own brief below; only the LOOK of recurring characters and the OVERALL style carries over. (D) Speech-bubble layout style stays consistent with prior pages — same bubble shape, same lettering style.`;
+  return `🚨 REFERENCE IMAGE USAGE — STRICT — ${refLabel}. The references serve ONE purpose: to lock the LOOK of the recurring characters across the book. NOTHING ELSE.\n\n✅ COPY from the references (these and ONLY these):\n• Each character's species, body proportions, head/face shape, fur / feather / skin color, eye style, markings, distinguishing accessories.\n• Overall illustrative style: line weight, color saturation, lighting feel, rendering polish.\n• Speech-bubble shape and lettering style (when bubbles already appeared on a prior page).\n\n❌ DO NOT COPY from the references (this list is load-bearing — copying any of these is the most common quality killer):\n• Character POSES — the cover shows characters standing in some specific way; the new page must show them in a DIFFERENT pose driven by THIS PAGE'S scene description below. Walking, sitting, climbing, lying, reaching, hugging, hiding, dancing — pick the pose from this page's brief, NOT from what they were doing on the cover.\n• Character POSITIONS / framing on the canvas — the cover's left-of-center elephant + right-of-center monkey arrangement does NOT carry over; this page composes fresh.\n• CAMERA angle and framing distance — alternate close-up / mid-shot / wide-shot across pages instead of cloning the cover's angle.\n• SCENE / setting / location — the cover is one scene; this page's scene is a DIFFERENT moment in the story (read the brief below for where this page takes place).\n• BACKGROUND elements — trees, foliage, sky, mountains, props, vines, bridge details from the cover do NOT appear on this page unless this page's brief explicitly calls for them. Compose the background from this page's scene description, not from the reference.\n• COMPOSITION / layout — character placement, depth layering, foreground/midground/background arrangement. All fresh per page.\n\nRULE OF THUMB: take the characters out of the reference and put them in a COMPLETELY DIFFERENT picture this time, doing whatever this page's scene says they're doing. Compose from scratch from the brief below; the reference is a CHARACTER MUGSHOT, not a scene template. If the new page would look like a near-duplicate of the reference with characters slightly rearranged, you are DOING IT WRONG.`;
 }
 
 function isStoryCharacter(value: unknown): value is StoryCharacter {
@@ -224,15 +229,16 @@ export async function POST(req: Request) {
     dialogue,
     narration,
     composition: body.composition?.trim(),
+    coverStyle: body.coverStyle,
   });
   const anchor = buildConsistencyAnchorPreamble(hasCover, hasChain);
   const fullPrompt = anchor
     ? `${STORY_PAGE_TODDLER_SYSTEM} ${anchor} ${userText}`
     : `${STORY_PAGE_TODDLER_SYSTEM} ${userText}`;
 
-  if (fullPrompt.length > 20000) {
+  if (fullPrompt.length > 35000) {
     return NextResponse.json(
-      { error: "Prompt too long (max 20000 chars)." },
+      { error: "Prompt too long (max 35000 chars)." },
       { status: 400 },
     );
   }

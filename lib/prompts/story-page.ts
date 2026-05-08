@@ -13,9 +13,12 @@
 
 import {
   ANATOMY_GUARDRAIL,
+  ANATOMY_COUNT_RULE,
   KID_SAFE_CONTENT_RULE,
   NO_REAL_BRAND_RULE,
 } from "./guardrails";
+import { COVER_STYLE_DIRECTIVES } from "./cover";
+import type { CoverStyle } from "./types";
 
 export interface StoryCharacter {
   /** Short name as it appears in dialogue and scene text (e.g. "Pip"). */
@@ -69,13 +72,33 @@ export interface StoryPageTemplateOptions {
    * visible left of center"). Read as a soft suggestion.
    */
   composition?: string;
+  /**
+   * Render style — must match the cover the user picked. "flat" (default)
+   * keeps the historical flat-2D look; "illustrated" swaps in the
+   * painterly Pixar/Disney-storybook directive so the interior pages
+   * follow whatever the cover set as the visual language. Border /
+   * full-bleed is hardcoded — interior story pages are always full bleed
+   * regardless of the cover's framed/bleed choice.
+   */
+  coverStyle?: CoverStyle;
 }
 
 const TODDLER_BAND_NOTE =
   "Audience: toddlers 3-6. Friendly rounded characters with big expressive eyes, big simple shapes, calm safe scenes, no scary or stressful imagery.";
 
-const STYLE_RULE =
+// Two interior style variants — must mirror the cover's coverStyle so the
+// book reads as one coherent visual world. "flat" is the historical
+// default; "illustrated" pulls the painterly directive shared with the
+// coloring-book cover so interior pages match the picture-book Pixar look
+// when the user picks Illustrated on the cover toggle.
+const STORY_PAGE_STYLE_FLAT =
   "Style: flat 2D cartoon illustration, vibrant flat colors with bold black outlines, soft warm lighting feel, minimal shading (no realistic gradients, no painterly texture). Friendly rounded character forms with large expressive eyes, simple expressive mouths, gentle proportions. Modern picture-book aesthetic in the family of contemporary indie children's books.";
+const STORY_PAGE_STYLE_ILLUSTRATED = `${COVER_STYLE_DIRECTIVES.illustrated} Same look as the cover — every interior page must feel like a sibling spread from the same picture book.`;
+function pageStyleDirective(style?: CoverStyle): string {
+  return style === "illustrated"
+    ? STORY_PAGE_STYLE_ILLUSTRATED
+    : STORY_PAGE_STYLE_FLAT;
+}
 
 const FULL_BLEED_RULE =
   "Composition: full-bleed illustration that fills the entire 6x9 portrait canvas to all four edges. NO border, NO frame, NO outer rectangle, NO white margin around the artwork. The background reaches every edge of the page. Aspect ratio 2:3 (portrait).";
@@ -95,9 +118,6 @@ const RELATIVE_SCALE_RULE =
 const CHARACTER_FIDELITY_RULE =
   "Character fidelity (load-bearing): redraw each character so they match the locked descriptors above EXACTLY — same species, body proportions, head shape, color, accessories, and distinguishing features. Do not invent new clothing, new accessories, new species traits, or new colors. Each character appears at most ONCE per page; never duplicate the same character. Only characters explicitly named in the scene description are drawn — no extra animals, no random side characters, no human onlookers unless the scene names them.";
 
-const ANATOMY_COUNT_RULE =
-  "Anatomy count — STRICT: render each species with the EXACT body-part count of a real animal of that species — never more, never fewer, never duplicated. Mammals (rabbit, hare, bear, fox, dog, cat, lion, panda, mouse, etc.): exactly 4 legs OR 2 arms + 2 legs when standing upright like a toddler, 2 ears, 2 eyes, 1 mouth, 1 tail. Birds: exactly 2 legs, 2 wings. Reptiles (tortoise, turtle, lizard, snake, etc.): exactly 4 legs (snakes 0), 2 eyes, 1 tail. Insects: exactly 6 legs, 2 antennae. Hares and rabbits have EXACTLY 2 ears — never 3 or 4. Tortoises and turtles have EXACTLY 4 legs poking out from under the shell — never 5 or 6. Before finalizing, count limbs and ears on every animal in the page; if any count is wrong, fix it before drawing. Do NOT add extra paws, extra ears, extra wings, or duplicate legs sticking out at odd angles.";
-
 // The MOST COMMON anatomy bug in story-book pages is an extra ARM
 // appearing when a character interacts with an object — stacking blocks,
 // pointing at something, holding a toy while waving. The model sometimes
@@ -113,6 +133,14 @@ const ACCESSORY_LOCK_RULE =
 const NO_HAND_DRAWN_CLAIM_RULE =
   "Do not include any claim or watermark suggesting the art is hand-drawn, hand-painted, hand-illustrated, handmade, or original artwork. The art style is illustrated, not artisanal.";
 
+// Pose independence — the recurring failure mode is that ~70% of interior
+// pages reuse the cover's character pose (e.g. elephant + monkey standing
+// together on the cover → most interior pages also show elephant + monkey
+// standing together). The fix: a strict per-page rule that the pose comes
+// FROM THE PAGE'S OWN SCENE BRIEF, never from the cover or prior pages.
+const POSE_INDEPENDENCE_RULE =
+  "🚨 Pose independence — STRICT, applies to every interior page. The pose, action, and on-canvas position of every character are determined by THIS PAGE'S OWN SCENE BRIEF below — NOT by the cover, NOT by any previously generated page. Read the scene description carefully; identify the verb (sleeping, hiding, climbing, hugging, walking, splashing, reaching, pointing, dancing, sitting, lying, peeking, etc.); render the character DOING that verb. ❌ Do NOT default to the cover's stance just because the cover is attached as a character reference. ❌ Do NOT re-use the same pose across multiple pages — every page in the book must show a DIFFERENT pose driven by that page's specific moment in the story. ❌ Do NOT render characters in a generic 'group portrait' pose (all standing facing forward) unless the brief explicitly calls for that. Camera angle and framing distance also vary per page — alternate close-up / mid-shot / wide-shot, alternate front / 3/4 / profile. Test before submitting: cover the brief with your hand and look at the rendered pose — could a child guess the verb from the body language alone? If the pose is generic 'standing and smiling', the answer is no — re-pose to match the actual action.";
+
 /**
  * Stable system rules for the toddler band — sent via Gemini's
  * `systemInstruction` channel so the long prefix benefits from implicit
@@ -121,9 +149,14 @@ const NO_HAND_DRAWN_CLAIM_RULE =
 export const STORY_PAGE_TODDLER_SYSTEM = [
   "You generate single-page full-color illustrations for premium Amazon KDP children's picture books in the toddler band (ages 3-6). Every page must be print-ready 300 DPI quality with consistent character design across the whole book.",
   TODDLER_BAND_NOTE,
-  STYLE_RULE,
+  // Style is injected per-call via the user message (see
+  // STORY_PAGE_TODDLER_USER + pageStyleDirective) because the user picks
+  // Flat vs Illustrated on the cover and every page must follow that
+  // choice. Keeping it out of the static system keeps the prefix cacheable
+  // across runs that pick different styles.
   FULL_BLEED_RULE,
   CHARACTER_FIDELITY_RULE,
+  POSE_INDEPENDENCE_RULE,
   ACCESSORY_LOCK_RULE,
   RELATIVE_SCALE_RULE,
   SPEECH_BUBBLE_RULE,
@@ -194,6 +227,7 @@ export const STORY_PAGE_TODDLER_USER = (
 ): string => {
   const parts: string[] = [
     "Toddler picture-book page (ages 3-6).",
+    pageStyleDirective(opts.coverStyle),
     formatCharacterLock(opts.characters),
     formatPalette(opts.palette),
     `Scene description: ${opts.scene.trim()}`,

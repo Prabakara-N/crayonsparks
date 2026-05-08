@@ -2,6 +2,7 @@ import type { AgeRange } from "./types";
 import { AGE_PRESETS } from "./master-page";
 import {
   ANATOMY_GUARDRAIL,
+  ANATOMY_COUNT_RULE,
   ANTHRO_FACE_GUARDRAIL,
   ARTIFACT_GUARDRAIL,
   KID_SAFE_CONTENT_RULE,
@@ -39,6 +40,7 @@ export const REFERENCE_LED_PROMPT_TEMPLATE = (
     `Thematic fit (strict): every background element belongs to ${subject}'s environment. If the reference shows elements that don't fit, ignore them.`,
     `Subject placement: ${subject} fills 50-65% of the page; the rest is filled with the subject-appropriate background.`,
     ANATOMY_GUARDRAIL,
+    ANATOMY_COUNT_RULE,
     ANTHRO_FACE_GUARDRAIL,
     KID_SAFE_CONTENT_RULE,
     "Output is pure black-and-white line art (the reference may be colored — the output is not). Clean closed continuous strokes a child can color inside.",

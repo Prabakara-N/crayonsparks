@@ -103,7 +103,14 @@ export function isImageModel(v: unknown): v is ImageModel {
  * Surface tag used by the refine modal to pick which model options to
  * expose. Mirrors the values of `RefineContext` in image-refine-modal.tsx.
  */
-export type RefineSurface = "cover" | "back-cover" | "page" | "custom";
+export type RefineSurface =
+  | "cover"
+  | "back-cover"
+  | "page"
+  | "story-cover"
+  | "story-back-cover"
+  | "story-page"
+  | "custom";
 
 /**
  * Models the user is allowed to pick from inside the refine modal,
@@ -114,14 +121,19 @@ export type RefineSurface = "cover" | "back-cover" | "page" | "custom";
 export function refineModelOptionsFor(
   surface: RefineSurface,
 ): readonly ImageModel[] {
-  return surface === "cover" ? ALL_IMAGE_MODELS : INTERIOR_MODEL_OPTIONS;
+  // Front-cover surfaces (coloring + story) get the full lineup including
+  // Pro — Amazon thumbnails benefit from photorealism + good text rendering.
+  if (surface === "cover" || surface === "story-cover") return ALL_IMAGE_MODELS;
+  return INTERIOR_MODEL_OPTIONS;
 }
 
 /** Default model when the inherited source model is unknown or invalid. */
 export function defaultRefineModelFor(
   surface: RefineSurface,
 ): ImageModel {
-  return surface === "cover" ? DEFAULT_COVER_MODEL : DEFAULT_INTERIOR_MODEL;
+  if (surface === "cover" || surface === "story-cover")
+    return DEFAULT_COVER_MODEL;
+  return DEFAULT_INTERIOR_MODEL;
 }
 
 // ---------------------------------------------------------------------------

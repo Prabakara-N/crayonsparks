@@ -1,6 +1,7 @@
 import type { AgeRange, Detail, PromptOptions } from "./types";
 import {
   ANATOMY_GUARDRAIL,
+  ANATOMY_COUNT_RULE,
   ANCHOR,
   ANTHRO_FACE_GUARDRAIL,
   ARTIFACT_GUARDRAIL,
@@ -88,13 +89,18 @@ export const AGE_PRESETS: Record<AgeRange, { label: string; note: string }> = {
   },
 };
 
+// User-facing "Detail level" knob — Low / Medium / High. Each preset
+// covers BOTH the line-art density (how detailed the strokes are) AND
+// the scene density (how many supporting background elements appear).
+// At every level the main character stays the visual focal point; the
+// background never crowds, repeats, or upstages them.
 export const DETAIL_PRESETS: Record<Detail, string> = {
   simple:
-    "Thick clean black outlines only, minimal internal detail, easy to color inside.",
+    "DETAIL LEVEL — LOW. Line work: thick clean black outlines, minimal internal detail, easy to color inside. Scene density: the main character is the star and occupies AT LEAST 60% of the page area; render only 1-2 small supporting background elements just enough to anchor the scene (a single tree, a patch of grass, a cloud, one piece of furniture, one prop on the ground). Background is intentionally sparse — let the character breathe. NO repetitive props. NO crowded clusters of small items.",
   detailed:
-    "Medium-weight clean black outlines, moderate internal detail (texture, pattern hints), still clearly colorable.",
+    "DETAIL LEVEL — MEDIUM. Line work: medium-weight clean black outlines, moderate internal detail (gentle texture, simple pattern hints), still clearly colorable. Scene density: a balanced scene around the character — 3-5 supporting background elements that genuinely belong to the subject's environment, well-spaced so each reads cleanly. The character clearly dominates the composition (occupies 50-60% of the page area). NO repetitive props (don't repeat the same item 3+ times). Each background element serves a purpose; remove anything that isn't earning its place.",
   intricate:
-    "Fine clean black line work with intricate interior patterns, ornamental detail, mandala-style density.",
+    "🚨 DETAIL LEVEL — HIGH. This is a RICH, DEPTH-FILLED page — visibly more elements than the Low or Medium variants. STRICT: render AT LEAST 7 distinct supporting background elements (count them after sketching — if fewer than 7, ADD more before submitting). Target 7-10 elements arranged in THREE depth layers: (a) FOREGROUND props near the character (objects on the ground or near the character's feet); (b) MID-GROUND scenery on the same plane as the character (structures, supporting flora/fauna, props at character height); (c) FAR BACKGROUND silhouettes (distant landscape, far elements, sky features). 🚨 EVERY element MUST be drawn from THIS BOOK's specific subject world — read the page subject and the book scene description carefully and pick elements that genuinely belong to that habitat. Examples (illustrative, do NOT literally copy unless they truly fit): a SPACE book → planets / asteroids / star clusters / spaceships / craters / launch pad / antenna; an UNDERWATER book → coral / kelp / anemones / sea-shells / bubbles / fish / seaweed / sandy ridges; a FARM book → barn / haystacks / fence rails / pumpkin / wheelbarrow / chicken coop / silo; a JUNGLE book → vines / palm leaves / tropical flowers / monkeys / parrots / bamboo; a CITY book → buildings / streetlights / mailbox / crosswalk / windows / awnings. NEVER default to grass / clouds / distant hills unless the book is explicitly outdoors-on-a-plain. Each element is distinct — vary species, size, and position; never repeat the same element identically (no rows of identical flowers, no copy-paste clouds, no grid of identical items). Line work: fine clean black line work with detailed interior textures (texture appropriate to each element — fur tufts, leaf veins, bark grain, brick pattern, tile pattern, fabric folds, scale pattern — still kid-colorable, no solid black fills). The character occupies 40-50% of the page area; the remaining 50-60% is the rich scene. Character stays the visual focal point (centered or rule-of-thirds, drawn at the largest scale). Forbidden: merging elements into a wall of texture; obscuring the character's face; generic 'forest with grass and clouds' background regardless of the book's actual subject. The page should clearly LOOK richer and more visually busy than the Medium preset would produce — if it looks sparse or balanced, you have NOT rendered High; add more book-appropriate elements until the scene feels populated.",
 };
 
 /**
@@ -117,6 +123,7 @@ export const MASTER_PROMPT_SYSTEM = [
   COMMON_ELEMENT_STYLE,
   KID_SAFE_CONTENT_RULE,
   ANATOMY_GUARDRAIL,
+  ANATOMY_COUNT_RULE,
   ANTHRO_FACE_GUARDRAIL,
   KDP_QUALITY_GUARDRAIL,
   STYLE_CONSISTENCY,
