@@ -14,8 +14,14 @@
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
-import { OPENAI_TEXT_MODEL } from "@/lib/constants";
-import { NO_REAL_BRAND_RULE } from "@/lib/prompts";
+import { OPENAI_PLANNER_MODEL } from "@/lib/constants";
+import {
+  NO_REAL_BRAND_RULE,
+  STORY_PLANNER_QUALITY_RULES,
+  DIALOGUE_STYLE_TARGET,
+  DEFAULT_DIALOGUE_STYLE,
+  type DialogueStyle,
+} from "@/lib/prompts";
 
 export type StoryType =
   | "moral"
@@ -45,8 +51,8 @@ export interface StoryBookPlanInput {
   pageCount: number;
   age?: "toddlers" | "kids" | "tweens";
   storyType?: StoryType;
-  /** Comma-separated free-form names (e.g. "Pip, Daisy, Miss Honey"). Optional. */
   characterNames?: string;
+  dialogueStyle?: DialogueStyle;
 }
 
 const dialogueSchema = z.object({
@@ -148,7 +154,7 @@ export interface StoryBookPlan {
   description: string;
   scene: string;
   coverScene: string;
-  /** Clean parent-facing tagline rendered verbatim on the back cover. */
+  dialogueStyle: DialogueStyle;
   backCoverTagline: string;
   bottomStripPhrases: string[];
   sidePlaqueLines: string[];
@@ -218,12 +224,23 @@ function buildUserPrompt(input: StoryBookPlanInput): string {
   const namesInstruction = namesSeed
     ? `The user requested these character names: ${namesSeed}. Reuse these names verbatim in the locked \`characters\` list and inside every \`prompts[].subject\` and \`dialogue.speaker\`. You may add up to ONE more character if the story really needs it; otherwise stay with the names provided.`
     : `The user did not specify character names. Invent 1-3 short, friendly, kid-safe names that fit the story (e.g. "Pip", "Daisy", "Miss Honey"). For a known fable, use the canonical character names if the fable has them (Aesop's "Tortoise" and "Hare", Grimm's named protagonists, etc.). Avoid copyrighted character names.`;
+  const dialogueStyle = input.dialogueStyle ?? DEFAULT_DIALOGUE_STYLE;
+  const dialogueStyleGuidance = `DIALOGUE STYLE — user picked "${dialogueStyle}". ${DIALOGUE_STYLE_TARGET[dialogueStyle]}`;
 
   return `${headline}
 
 USER'S STORY IDEA: "${input.idea}"
 
 ${typeGuidance}
+
+${dialogueStyleGuidance}
+
+MARKETABILITY LENS
+When several story directions could work, choose the one that gives parents a clear emotional reason to buy while staying visually cute for kids. Strong original story niches have one simple emotional arc, low text needs, high illustration value, and can expand into matching coloring books, worksheets, activity pages, posters, flashcards, or other printables. Prefer parent-useful hooks such as confidence, kindness, sharing, bedtime calm, first-day courage, patience, independence, friendship, and gentle problem-solving when they fit the user's idea.
+Low-competition story formula: Emotion + Animal + Learning. Pair one child-friendly emotion or value with one cute animal protagonist and one learnable behavior arc; prefer this for original stories when the user's idea is open-ended. EXAMPLE illustrative only, do not literally use these elements unless they match this book: elephant learns confidence, turtle learns patience, lion learns kindness.
+Priority KDP story niches: alphabet adventure stories, bedtime calm stories, feelings/emotions stories, social-skills stories, and gentle interactive adventure stories. For alphabet stories, keep the core plan as a cute character/object mini-story per letter and avoid relying on tiny tracing text unless the user explicitly requests workbook pages. For interactive adventures, create a simple choose-a-path feeling while keeping the final plan linear enough for the current picture-book renderer.
+
+${STORY_PLANNER_QUALITY_RULES}
 
 CHARACTERS
 ${namesInstruction}
@@ -303,7 +320,7 @@ export async function planStoryBook(
     throw new Error("OPENAI_API_KEY is not set.");
   }
   const result = await generateObject({
-    model: openai(OPENAI_TEXT_MODEL),
+    model: openai(OPENAI_PLANNER_MODEL),
     system: buildSystemPrompt(),
     prompt: buildUserPrompt(input),
     schema: PLAN_SCHEMA,
@@ -324,6 +341,7 @@ export async function planStoryBook(
     description: raw.description,
     scene: raw.scene,
     coverScene: raw.coverScene,
+    dialogueStyle: input.dialogueStyle ?? DEFAULT_DIALOGUE_STYLE,
     backCoverTagline: raw.backCoverTagline,
     bottomStripPhrases: raw.bottomStripPhrases,
     sidePlaqueLines: raw.sidePlaqueLines,

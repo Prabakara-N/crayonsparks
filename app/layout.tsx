@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, Space_Grotesk, JetBrains_Mono, Geist } from "next/font/google";
 import "./globals.css";
 import { buildOrganization, buildWebSite } from "@/lib/seo-schema";
 import { DialogProvider } from "@/components/ui/confirm-dialog";
+import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
@@ -67,7 +64,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${jakarta.variable} ${spaceGrotesk.variable} ${jetbrains.variable} h-full antialiased`}
+      className={cn("dark", "h-full", "antialiased", spaceGrotesk.variable, jetbrains.variable, "font-sans", geist.variable)}
       style={{ colorScheme: "dark" }}
     >
       <body className="min-h-full flex flex-col bg-black text-white font-sans">
@@ -84,6 +81,7 @@ export default function RootLayout({
           }}
         />
         <DialogProvider>{children}</DialogProvider>
+        <Toaster position="bottom-right" richColors closeButton />
       </body>
     </html>
   );

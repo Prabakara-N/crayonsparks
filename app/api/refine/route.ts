@@ -7,7 +7,6 @@ import {
   isImageModel,
   type ImageModel,
 } from "@/lib/constants";
-import { userInput, USER_INPUT_FENCING_NOTE } from "@/lib/prompts/sanitize";
 import { NO_AI_BORDER_RULE } from "@/lib/prompts";
 
 export const runtime = "nodejs";
@@ -26,27 +25,8 @@ interface Body {
   instruction?: string;
   sourceDataUrl?: string;
   aspectRatio?: AspectRatio;
-  /**
-   * What kind of image is being refined. Drives which guardrails are
-   * injected into the edit prompt so Gemini doesn't violate the original
-   * design rules (e.g. drawing illustrations on a back cover that should be
-   * minimal, or adding gray to a B&W coloring page).
-   */
   context?: RefineContext;
-  /**
-   * Optional ADDITIONAL images sent alongside the source for cross-page
-   * style/character consistency. Used by the Refine chat when the user
-   * (or Sparky) asks "match the bear from page 3" — page 3's dataUrl is
-   * resolved client-side and forwarded here. Order matters: first entry
-   * is given highest weight in the consistency directive.
-   */
   extraReferenceDataUrls?: string[];
-  /**
-   * Optional image-model override. When omitted, the server picks the
-   * default for the surface (cover/back-cover → DEFAULT_COVER_MODEL,
-   * page/custom → DEFAULT_INTERIOR_MODEL). Refine modals in the bulk-book
-   * UI forward whatever model that book is currently configured to use.
-   */
   model?: ImageModel;
 }
 
@@ -62,17 +42,17 @@ function parseDataUrl(url: string): { mimeType: string; data: string } | null {
 }
 
 const CONTEXT_GUARDRAILS: Record<RefineContext, string> = {
-  page: `🎨 PAGE RULES (must remain): Pure 100% black-and-white line art, no color, no shading, no gray. All shapes enclosed by clean continuous outlines. NO text, NO numbers, NO page indicators (e.g. 1/2 or 2/3 — never add these), NO watermarks. ${NO_AI_BORDER_RULE} ⚠️ IF THE SOURCE IMAGE HAS A BORDER, A DECORATIVE FRAME, OR DOUBLE PARALLEL LINES ALONG THE EDGE — REMOVE THEM ENTIRELY in the output. Do NOT carry the source's border into the new image. The output is BORDERLESS line art, edge-to-edge. Keep anatomy correct.`,
+  page: `PAGE RULES (must remain): Pure 100% black-and-white line art, no color, no shading, no gray. All shapes enclosed by clean continuous outlines. NO text, NO numbers, NO page indicators (e.g. 1/2 or 2/3 — never add these), NO watermarks. ${NO_AI_BORDER_RULE} IF THE SOURCE IMAGE HAS A BORDER, A DECORATIVE FRAME, OR DOUBLE PARALLEL LINES ALONG THE EDGE — REMOVE THEM ENTIRELY in the output. Do NOT carry the source's border into the new image. The output is BORDERLESS line art, edge-to-edge. Keep anatomy correct.`,
   cover:
-    "🎨 FRONT COVER RULES (must remain): Keep the existing book TITLE text exactly as it appears (do not change spelling, font, or color). Keep the overall composition and the main characters. Do NOT add page numbers, bar codes, version indicators, or any text other than what's already on the cover. Keep colors vibrant.",
+    "FRONT COVER RULES (must remain): Keep the existing book TITLE text exactly as it appears (do not change spelling, font, or color). Keep the overall composition and the main characters. Do NOT add page numbers, bar codes, version indicators, or any text other than what's already on the cover. Keep colors vibrant.",
   "back-cover":
-    "🎨 BACK COVER RULES (must remain): This is a MINIMAL back cover. The composition is just two things: (1) a soft colored background that runs edge-to-edge across the entire cover, every corner included; (2) ONE elegant tagline floating freely as plain typography. The colored field is uninterrupted — every pixel of the canvas is the same colored paint, including the bottom-right corner. Keep the existing layout, color, and tagline. The tagline text is dark warm grey or near-black for readability. STRICT — do not add: illustrations, characters, animals, objects, scenes, landscapes, decorative motifs, patterns, page numbers, extra paragraphs, or new headlines.",
+    "BACK COVER RULES (must remain): This is a MINIMAL back cover. The composition is just two things: (1) a soft colored background that runs edge-to-edge across the entire cover, every corner included; (2) ONE elegant tagline floating freely as plain typography. The colored field is uninterrupted — every pixel of the canvas is the same colored paint, including the bottom-right corner. Keep the existing layout, color, and tagline. The tagline text is dark warm grey or near-black for readability. STRICT — do not add: illustrations, characters, animals, objects, scenes, landscapes, decorative motifs, patterns, page numbers, extra paragraphs, or new headlines.",
   "story-page":
-    "🎨 STORY-BOOK INTERIOR PAGE RULES (must remain): Full-color picture-book illustration, full-bleed (the artwork reaches all four edges of the canvas). Keep the OVERALL ART STYLE of the source — same line weight, same color saturation, same lighting feel — so the edited page still looks like a sibling spread of the rest of the book. Keep all RECURRING CHARACTERS recognizable (same species, body proportions, head/face shape, color/markings, accessories) — do NOT redesign them. Speech bubbles and narration captions in the source must remain readable; if you adjust the layout, keep each bubble's tail attached to the correct speaker. NO outer border, NO frame, NO page-edge rectangle, NO page numbers, NO author/publisher text. Anatomy must stay correct (no extra limbs, no duplicate tails / wings / ears). Output a full new image, not a diff.",
+    "STORY-BOOK INTERIOR PAGE RULES (must remain): Full-color picture-book illustration, full-bleed (the artwork reaches all four edges of the canvas). Keep the OVERALL ART STYLE of the source — same line weight, same color saturation, same lighting feel — so the edited page still looks like a sibling spread of the rest of the book. Keep all RECURRING CHARACTERS recognizable (same species, body proportions, head/face shape, color/markings, accessories) — do NOT redesign them. Speech bubbles and narration captions in the source must remain readable; if you adjust the layout, keep each bubble's tail attached to the correct speaker. NO outer border, NO frame, NO page-edge rectangle, NO page numbers, NO author/publisher text. Anatomy must stay correct (no extra limbs, no duplicate tails / wings / ears). Output a full new image, not a diff.",
   "story-cover":
-    "🎨 STORY-BOOK FRONT COVER RULES (must remain): Keep the existing book TITLE text exactly as it appears (spelling, font, color, position). Keep the OVERALL ART STYLE of the source — same line weight, color saturation, lighting. Keep all RECURRING CHARACTERS recognizable. Keep selling-point overlays (subtitle pill, page-count badge, side plaque, bottom strip) intact unless the user explicitly asks to change one. Full-bleed colored background unless the user explicitly asks for a framed border. Anatomy stays correct (no extra limbs, no duplicate tails / wings). Do NOT add page numbers, barcode, ISBN, URL, social handle, watermark, or 'hand-drawn' claims. Output a full new image, not a diff.",
+    "STORY-BOOK FRONT COVER RULES (must remain): Keep the existing book TITLE text exactly as it appears (spelling, font, color, position). Keep the OVERALL ART STYLE of the source — same line weight, color saturation, lighting. Keep all RECURRING CHARACTERS recognizable. Keep selling-point overlays (subtitle pill, page-count badge, side plaque, bottom strip) intact unless the user explicitly asks to change one. Full-bleed colored background unless the user explicitly asks for a framed border. Anatomy stays correct (no extra limbs, no duplicate tails / wings). Do NOT add page numbers, barcode, ISBN, URL, social handle, watermark, or 'hand-drawn' claims. Output a full new image, not a diff.",
   "story-back-cover":
-    "🎨 STORY-BOOK BACK COVER RULES (must remain): MINIMAL layout — soft colored background that runs edge-to-edge plus ONE centered italic tagline. NO illustrations, NO characters, NO scenes, NO patterns. Keep the existing color family and the existing tagline text unless the user explicitly asks to change them. The colored field is uninterrupted — every pixel of the canvas is the same color, including bottom-right corner. NO author name, NO publisher, NO ISBN, NO barcode, NO URL.",
+    "STORY-BOOK BACK COVER RULES (must remain): MINIMAL layout — soft colored background that runs edge-to-edge plus ONE centered italic tagline. NO illustrations, NO characters, NO scenes, NO patterns. Keep the existing color family and the existing tagline text unless the user explicitly asks to change them. The colored field is uninterrupted — every pixel of the canvas is the same color, including bottom-right corner. NO author name, NO publisher, NO ISBN, NO barcode, NO URL.",
   custom:
     "Keep the original art style and composition consistent. Output as a full new image, not a diff.",
 };
@@ -130,7 +110,7 @@ export async function POST(req: Request) {
 
   const consistencyDirective =
     extraImages.length > 0
-      ? `\n\n🔗 CROSS-PAGE REFERENCE — additional image(s) attached after the source image. The user's instruction (above) names WHICH ASPECT to match — read it carefully:\n  • If the instruction mentions characters / animals / a specific creature → match recurring character designs (same species, body proportions, head shape, color/markings, distinguishing features) from the reference.\n  • If the instruction mentions BORDER / FRAME / EDGE → IGNORE that aspect of the request. This book's borders are NOT drawn by the model; they are added in PDF post-processing as a single deterministic vector layer. Whatever border the user perceives in the reference is from that post-processing layer, not from the line art. The output stays BORDERLESS.\n  • If the instruction mentions PAGE NUMBER / NUMBERING → IGNORE that aspect — page numbers are not drawn on the line art.\n  • If the instruction mentions LAYOUT / COMPOSITION / POSITION / FRAMING → match where the subject sits on the canvas (left/center/right, top/bottom), the camera angle, and the proportion of subject vs. background.\n  • If the instruction mentions COLOR PALETTE / LIGHTING / MOOD → match the reference's hue family, saturation, and lighting direction (B&W pages are exempt — those stay pure black ink on white).\n  • If the instruction mentions STYLE / LINE WEIGHT / DETAIL DENSITY → match how lines, shading, and ornamental detail are drawn.\nIN ALL CASES: do NOT copy the reference's specific subject or scene. Generate the NEW edit described below; the reference is ONLY for the specific aspect the user named.`
+      ? `\n\nCROSS-PAGE REFERENCE — additional image(s) attached after the source image. The user's instruction (above) names WHICH ASPECT to match — read it carefully:\n  • If the instruction mentions characters / animals / a specific creature → match recurring character designs (same species, body proportions, head shape, color/markings, distinguishing features) from the reference.\n  • If the instruction mentions BORDER / FRAME / EDGE → IGNORE that aspect of the request. This book's borders are NOT drawn by the model; they are added in PDF post-processing as a single deterministic vector layer. Whatever border the user perceives in the reference is from that post-processing layer, not from the line art. The output stays BORDERLESS.\n  • If the instruction mentions PAGE NUMBER / NUMBERING → IGNORE that aspect — page numbers are not drawn on the line art.\n  • If the instruction mentions LAYOUT / COMPOSITION / POSITION / FRAMING → match where the subject sits on the canvas (left/center/right, top/bottom), the camera angle, and the proportion of subject vs. background.\n  • If the instruction mentions COLOR PALETTE / LIGHTING / MOOD → match the reference's hue family, saturation, and lighting direction (B&W pages are exempt — those stay pure black ink on white).\n  • If the instruction mentions STYLE / LINE WEIGHT / DETAIL DENSITY → match how lines, shading, and ornamental detail are drawn.\nIN ALL CASES: do NOT copy the reference's specific subject or scene. Generate the NEW edit described below; the reference is ONLY for the specific aspect the user named.`
       : "";
 
   const editPrompt = `Edit the provided image as follows: ${instruction}.

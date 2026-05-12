@@ -27,6 +27,8 @@ When refactoring an existing large file, split it in this order: (1) data types 
 
 If a comment is genuinely needed, write ONE short line ABOVE the block (function, JSX element, type, prompt-builder constant). Never insert a comment between JSX props, between fields of a type, or between sections of a function body — those are mid-code locations and are disallowed. Multi-line comments and `/** ... */` doc blocks are also disallowed; if a single line can't explain the WHY, remove the comment and let the code speak for itself.
 
+**No JSDoc on type / interface fields.** Do not annotate each field of an `interface` or `type` with a `/** ... */` comment describing what it holds. A well-named field (`speaker: string`, `hexes: string[]`) already carries the meaning. If a field genuinely needs a note, rename the field or add ONE short line above the whole type — never one comment per field. The interface itself can have a single one-line `//` comment above it explaining the WHY, nothing more.
+
 # Prompts
 
 These rules apply to every string sent to an LLM (Gemini image gen, OpenAI text, Perplexity research, etc.).

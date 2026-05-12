@@ -13,27 +13,19 @@ interface CoverTileProps {
   state: CoverTileStatus;
   onRegenerate: () => void;
   onRefine?: (dataUrl: string) => void;
-  /**
-   * Optional view-only handler — opens the image in a lightbox/preview
-   * modal without going through the refine flow. Used when the tile is
-   * disabled (e.g. cover locked after interior pages started) so the
-   * user can still SEE the cover at full size, just not edit it.
-   */
   onView?: (dataUrl: string) => void;
-  /** Disabled when prerequisite not met (e.g. back cover before front is generated). */
+  // Fully disabled — both Regenerate and Refine off. Used when a
+  // prerequisite is missing (e.g. back cover before front exists).
   disabled?: boolean;
   disabledReason?: string;
-  /** Show the amber dashed barcode safe-zone overlay (back cover only). */
+  // Softer lock — blocks Regenerate only; Refine stays available so the
+  // user can still make small tweaks to the existing image. Used for the
+  // front cover after interior pages have started referencing it.
+  regenerateOnlyLocked?: boolean;
+  regenerateOnlyLockedReason?: string;
   showBarcodeZone?: boolean;
-  /** PNG download filename. */
   downloadName?: string;
-  /** Tile aspect ratio CSS string, default "3/4". */
   aspect?: string;
-  /**
-   * Background-refine status. When set, overlays a "Refining…" or "Refined"
-   * pill in the tile's top-right corner. Driven by the parent's refine
-   * status map keyed by targetId ("cover" / "back-cover" / "belongs-to").
-   */
   refineState?: "running" | "done";
 }
 
@@ -49,6 +41,8 @@ export function CoverTile({
   onView,
   disabled = false,
   disabledReason,
+  regenerateOnlyLocked = false,
+  regenerateOnlyLockedReason,
   showBarcodeZone = false,
   downloadName,
   aspect = "3 / 4",
@@ -147,8 +141,16 @@ export function CoverTile({
         <button
           type="button"
           onClick={onRegenerate}
-          disabled={state.status === "generating" || disabled}
-          title={disabled ? disabledReason : undefined}
+          disabled={
+            state.status === "generating" || disabled || regenerateOnlyLocked
+          }
+          title={
+            disabled
+              ? disabledReason
+              : regenerateOnlyLocked
+                ? regenerateOnlyLockedReason
+                : undefined
+          }
           className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-linear-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {state.status === "generating" ? (
@@ -172,6 +174,11 @@ export function CoverTile({
       {disabled && disabledReason && !state.dataUrl && (
         <p className="text-[10px] text-violet-300/80 italic leading-snug">
           🔒 {disabledReason}
+        </p>
+      )}
+      {regenerateOnlyLocked && regenerateOnlyLockedReason && state.dataUrl && (
+        <p className="text-[10px] text-violet-300/80 italic leading-snug">
+          🔒 {regenerateOnlyLockedReason}
         </p>
       )}
     </div>

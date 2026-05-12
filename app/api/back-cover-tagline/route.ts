@@ -3,7 +3,7 @@
  * the refine modal and we render it onto the back cover via Gemini.
  *
  * Returns 4-5 short taglines (≤8 words each) tailored to the book's
- * title + theme. Cheap (gpt-5-mini, single text turn), runs only when the
+ * title + theme. Cheap helper-model call, runs only when the
  * user opens the back-cover refine panel or clicks "Suggest more".
  */
 

@@ -1,19 +1,5 @@
-/**
- * Story-book front-cover generation endpoint (Phase 1 — toddler band).
- *
- * Body:
- *   {
- *     title: string,
- *     characters: [{ name, descriptor }, ...],   // 1-3 locked characters
- *     palette: { name, hexes: [...] },
- *     coverScene: string,                        // 12-30 word cover description
- *     coverComposition?: string,                 // optional camera/framing hint
- *     ageBand?: "toddlers",                      // reserved for future bands
- *     model?: ImageModel,                  // optional override
- *   }
- *
- * Returns: { dataUrl, model, elapsedMs }
- */
+// Story-book front-cover generation endpoint.
+// Returns: { dataUrl, model, elapsedMs }
 
 import { NextResponse } from "next/server";
 import { generateImageByModel } from "@/lib/image-providers";
@@ -23,8 +9,9 @@ import {
   type ImageModel,
 } from "@/lib/constants";
 import {
-  STORY_COVER_TODDLER_SYSTEM,
-  STORY_COVER_TODDLER_USER,
+  buildStoryCoverSystem,
+  buildStoryCoverUser,
+  type AgeBand,
   type StoryCharacter,
   type StoryPalette,
 } from "@/lib/prompts";
@@ -38,7 +25,7 @@ interface Body {
   palette?: StoryPalette;
   coverScene?: string;
   coverComposition?: string;
-  ageBand?: "toddlers";
+  ageBand?: AgeBand;
   model?: ImageModel;
   audienceLabel?: string;
   pageCount?: number;
@@ -46,10 +33,16 @@ interface Body {
   sidePlaqueLines?: string[];
   coverBadgeStyle?: string;
   brandStrapline?: string;
-  /** "flat" (default) or "illustrated" — drives the cover render style. */
   coverStyle?: "flat" | "illustrated";
-  /** "bleed" (default) or "framed" — adds the decorative cream frame. */
   coverBorder?: "bleed" | "framed";
+}
+
+const VALID_AGE_BANDS: readonly AgeBand[] = ["toddlers", "kids", "tweens"];
+
+function normalizeAgeBand(value: unknown): AgeBand {
+  return typeof value === "string" && (VALID_AGE_BANDS as readonly string[]).includes(value)
+    ? (value as AgeBand)
+    : "toddlers";
 }
 
 function isStoryCharacter(value: unknown): value is StoryCharacter {
@@ -111,7 +104,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const userText = STORY_COVER_TODDLER_USER({
+  const band = normalizeAgeBand(body.ageBand);
+  const systemInstruction = buildStoryCoverSystem(band);
+  const userText = buildStoryCoverUser({
+    ageBand: band,
     title,
     characters,
     palette,
@@ -127,7 +123,7 @@ export async function POST(req: Request) {
     coverBorder: body.coverBorder,
   });
 
-  const fullPrompt = `${STORY_COVER_TODDLER_SYSTEM} ${userText}`;
+  const fullPrompt = `${systemInstruction} ${userText}`;
   if (fullPrompt.length > 35000) {
     return NextResponse.json(
       { error: "Prompt too long (max 35000 chars)." },
@@ -144,7 +140,7 @@ export async function POST(req: Request) {
     const image = await generateImageByModel(fullPrompt, {
       aspectRatio: "2:3",
       model: resolvedModel,
-      systemInstruction: STORY_COVER_TODDLER_SYSTEM,
+      systemInstruction,
     });
     const dataUrl = `data:${image.mimeType};base64,${image.data}`;
     return NextResponse.json({

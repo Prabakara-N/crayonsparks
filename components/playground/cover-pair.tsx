@@ -119,10 +119,10 @@ export function CoverPair({
       onRegenerate={onRegenerateFront}
       onRefine={onRefineFront}
       onView={onViewFront}
-      disabled={frontLocked}
-      disabledReason={
+      regenerateOnlyLocked={frontLocked}
+      regenerateOnlyLockedReason={
         frontLockedReason ??
-        "Front cover is locked — interior pages reference it. Reset the book to start over."
+        "Front cover regenerate is locked — interior pages reference it. Refine still works for small tweaks."
       }
       downloadName={`cover_${bookSlug}.png`}
       aspect={coverAspect}

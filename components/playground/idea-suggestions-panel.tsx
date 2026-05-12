@@ -6,6 +6,7 @@ import { Sparkles, RefreshCw, Loader2, X } from "lucide-react";
 import type {
   IdeaAudience,
   IdeaKind,
+  IdeaStoryType,
   IdeaSuggestion,
 } from "@/lib/idea-suggestions";
 
@@ -18,33 +19,33 @@ const AUDIENCES: Array<{ slug: IdeaAudience; label: string }> = [
 
 const COLORING_FALLBACK_IDEAS: IdeaSuggestion[] = [
   {
-    text: "20 ocean sea creatures with expressive faces and bubbles for toddlers ages 3-6",
+    text: "20 cute ocean animal coloring pages with big simple shapes ages 3-6",
     category: "Animals",
     icon: "🐠",
   },
   {
-    text: "Mighty dinosaurs in prehistoric jungle scenes for kids 6-10",
-    category: "Animals",
+    text: "Friendly construction vehicle coloring pages with bold outlines for little builders",
+    category: "Vehicles",
     icon: "🦖",
   },
   {
-    text: "Magical unicorns in enchanted forests with rainbows and stars",
-    category: "Fantasy",
+    text: "Cute baby farm animal coloring pages with simple scenes for toddlers",
+    category: "Animals",
     icon: "🦄",
   },
   {
-    text: "Construction vehicles for little builders — trucks, cranes, bulldozers, mixers",
-    category: "Vehicles",
+    text: "Magical unicorn coloring pages with castles, rainbows, and gentle fantasy details",
+    category: "Fantasy",
     icon: "🚜",
   },
   {
-    text: "Cute baby farm animals — calves, lambs, piglets, ducklings — in a sunny meadow",
+    text: "Big friendly dinosaur coloring pages with playful prehistoric scenes ages 4-7",
     category: "Animals",
     icon: "🐮",
   },
   {
-    text: "Halloween scenes with friendly ghosts, pumpkins, and trick-or-treaters",
-    category: "Holiday",
+    text: "Simple fruit and vegetable character coloring pages for preschool practice",
+    category: "Food",
     icon: "🎃",
   },
 ];
@@ -71,26 +72,137 @@ const STORY_FALLBACK_IDEAS: IdeaSuggestion[] = [
     icon: "🐻",
   },
   {
-    text: "A tiny dragon learning to fly with help from forest friends, ages 4-7 (10 scenes)",
+    text: "A shy elephant learns confidence with gentle friends, ages 3-6 (10 scenes)",
     category: "Original",
     icon: "🐉",
   },
   {
-    text: "A panda's first day at school for toddlers ages 3-6 (8 scenes)",
+    text: "A tiny turtle learns patience while waiting his turn, ages 3-6 (8 scenes)",
     category: "Original",
     icon: "🐼",
   },
   {
-    text: "A bedtime journey through the stars for toddlers 3-5 (12 scenes)",
-    category: "Bedtime",
+    text: "A little lion learns kindness after helping a smaller friend, ages 4-7 (10 scenes)",
+    category: "Original",
     icon: "🌙",
   },
   {
-    text: "A clever fox solves a forest mystery for kids ages 5-8 (10 scenes)",
-    category: "Mystery",
+    text: "An alphabet adventure with one tiny mission per letter, ages 3-6 (12 scenes)",
+    category: "Original",
     icon: "🦊",
   },
 ];
+
+const STORY_TYPE_FALLBACK_IDEAS: Partial<Record<IdeaStoryType, IdeaSuggestion[]>> = {
+  bedtime: [
+    {
+      text: "A sleepy moon rabbit learns a calming bedtime routine, ages 3-6 (10 scenes)",
+      category: "Bedtime",
+      icon: "🌙",
+    },
+    {
+      text: "A tiny bear says goodnight to the forest one friend at a time (8 scenes)",
+      category: "Bedtime",
+      icon: "🐻",
+    },
+  ],
+  mystery: [
+    {
+      text: "Milo Mouse follows tiny pawprints to find the missing picnic bell (10 scenes)",
+      category: "Mystery",
+      icon: "🔎",
+    },
+    {
+      text: "A classroom hamster solves who moved the rainbow crayons, ages 4-7 (8 scenes)",
+      category: "Mystery",
+      icon: "🧩",
+    },
+  ],
+  moral: [
+    {
+      text: "The Lion and the Mouse retold as a kindness lesson, ages 4-7 (8 scenes)",
+      category: "Fable",
+      icon: "🦁",
+    },
+    {
+      text: "A proud peacock learns sharing makes the garden brighter, ages 3-6 (10 scenes)",
+      category: "Fable",
+      icon: "🦚",
+    },
+  ],
+  fairytale: [
+    {
+      text: "A tiny baker helps a lost fairy find the starlight gate (12 scenes)",
+      category: "Fairytale",
+      icon: "🧚",
+    },
+    {
+      text: "Goldilocks learns gentle manners with three friendly bears, ages 3-6 (10 scenes)",
+      category: "Fairytale",
+      icon: "🐻",
+    },
+  ],
+  adventure: [
+    {
+      text: "A brave turtle carries a map across the rainbow river, ages 4-7 (12 scenes)",
+      category: "Adventure",
+      icon: "🗺️",
+    },
+    {
+      text: "Two fox friends search the meadow for a lost kite, ages 3-6 (10 scenes)",
+      category: "Adventure",
+      icon: "🪁",
+    },
+  ],
+  fantasy: [
+    {
+      text: "A tiny dragon learns to fly using one gentle magic feather (12 scenes)",
+      category: "Fantasy",
+      icon: "🐉",
+    },
+    {
+      text: "A cloud kitten discovers a door to the rainbow library, ages 4-7 (10 scenes)",
+      category: "Fantasy",
+      icon: "🌈",
+    },
+  ],
+  comic: [
+    {
+      text: "A clumsy dinosaur tries to bake one very wobbly cake (10 scenes)",
+      category: "Comic",
+      icon: "🍰",
+    },
+    {
+      text: "Three ducklings start a silly marching band in the park (8 scenes)",
+      category: "Comic",
+      icon: "🥁",
+    },
+  ],
+  fiction: [
+    {
+      text: "A shy kitten makes one new friend on the first day of school (10 scenes)",
+      category: "Original",
+      icon: "🐱",
+    },
+    {
+      text: "A little koala learns to ask for help at art class (8 scenes)",
+      category: "Original",
+      icon: "🐨",
+    },
+  ],
+  "non-fiction": [
+    {
+      text: "A curious bee tours how flowers become fruit, ages 4-7 (10 scenes)",
+      category: "Educational",
+      icon: "🐝",
+    },
+    {
+      text: "A raindrop shows the water cycle through a gentle journey (10 scenes)",
+      category: "Educational",
+      icon: "💧",
+    },
+  ],
+};
 
 interface IdeaSuggestionsPanelProps {
   open: boolean;
@@ -103,6 +215,8 @@ interface IdeaSuggestionsPanelProps {
    * titles + original premises with scene counts).
    */
   kind?: IdeaKind;
+  /** Optional Bulk Book story-type selection used to shape story ideas. */
+  storyType?: IdeaStoryType | null;
 }
 
 export function IdeaSuggestionsPanel({
@@ -110,6 +224,7 @@ export function IdeaSuggestionsPanel({
   onClose,
   onPick,
   kind = "coloring",
+  storyType = null,
 }: IdeaSuggestionsPanelProps) {
   const [audience, setAudience] = useState<IdeaAudience>("any");
   const [ideas, setIdeas] = useState<IdeaSuggestion[]>([]);
@@ -118,7 +233,7 @@ export function IdeaSuggestionsPanel({
   const [usingFallback, setUsingFallback] = useState(false);
 
   const fetchIdeas = useCallback(
-    async (aud: IdeaAudience, k: IdeaKind) => {
+    async (aud: IdeaAudience, k: IdeaKind, selectedStoryType: IdeaStoryType | null) => {
       setLoading(true);
       setError(null);
       setUsingFallback(false);
@@ -126,7 +241,11 @@ export function IdeaSuggestionsPanel({
         const res = await fetch("/api/idea-suggestions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ audience: aud, kind: k }),
+          body: JSON.stringify({
+            audience: aud,
+            kind: k,
+            storyType: k === "story" ? selectedStoryType : null,
+          }),
         });
         const json = (await res.json()) as {
           ideas?: IdeaSuggestion[];
@@ -140,7 +259,14 @@ export function IdeaSuggestionsPanel({
         // Soft-fail: show static fallback so the UX still works.
         setError(e instanceof Error ? e.message : "Couldn't fetch ideas.");
         setIdeas(
-          k === "story" ? STORY_FALLBACK_IDEAS : COLORING_FALLBACK_IDEAS,
+          k === "story"
+            ? [
+                ...(selectedStoryType
+                  ? STORY_TYPE_FALLBACK_IDEAS[selectedStoryType] ?? []
+                  : []),
+                ...STORY_FALLBACK_IDEAS,
+              ].slice(0, 8)
+            : COLORING_FALLBACK_IDEAS,
         );
         setUsingFallback(true);
       } finally {
@@ -153,8 +279,11 @@ export function IdeaSuggestionsPanel({
   // Initial fetch when first opened; re-fetch when audience OR kind changes.
   useEffect(() => {
     if (!open) return;
-    void fetchIdeas(audience, kind);
-  }, [open, audience, kind, fetchIdeas]);
+    const id = window.setTimeout(() => {
+      void fetchIdeas(audience, kind, storyType);
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [open, audience, kind, storyType, fetchIdeas]);
 
   if (!open) return null;
 
@@ -207,7 +336,7 @@ export function IdeaSuggestionsPanel({
           })}
           <button
             type="button"
-            onClick={() => void fetchIdeas(audience, kind)}
+            onClick={() => void fetchIdeas(audience, kind, storyType)}
             disabled={loading}
             className="ml-auto inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-neutral-300 hover:border-violet-500/40 hover:text-white disabled:opacity-50"
             aria-label="Refresh ideas"

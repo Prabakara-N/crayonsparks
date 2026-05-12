@@ -6,7 +6,7 @@
  * Flow:
  *   1. Perplexity (sonar) — query live Amazon to get real category paths
  *      and high-volume buyer keywords for the book's niche.
- *   2. OpenAI (gpt-4o-mini) — generate SEO-optimized title, subtitle,
+ *   2. OpenAI copy model — generate SEO-optimized title, subtitle,
  *      HTML description using the verified keywords as input.
  *   3. Combine into KdpMetadata.
  *

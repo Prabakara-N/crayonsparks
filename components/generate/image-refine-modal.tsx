@@ -342,9 +342,22 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
     }
   }, [openNonce, closingWhileBusy, onBackgroundChange]);
 
-  // Reset everything whenever the modal is opened with a fresh source.
+  const targetKey = `${context}::${bookContext?.targetId ?? sourceDataUrl ?? ""}`;
+  const lastTargetKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!open || !sourceDataUrl) return;
+    if (lastTargetKeyRef.current === targetKey) {
+      setVersions((prev) => {
+        if (prev.length === 0) return [{ dataUrl: sourceDataUrl }];
+        const tail = prev[prev.length - 1];
+        if (tail.dataUrl === sourceDataUrl) return prev;
+        const next = [...prev, { dataUrl: sourceDataUrl }];
+        setCurrentIndex(next.length - 1);
+        return next;
+      });
+      return;
+    }
+    lastTargetKeyRef.current = targetKey;
     setVersions([{ dataUrl: sourceDataUrl }]);
     setCurrentIndex(0);
     setTurns([]);
@@ -354,7 +367,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
     const cacheKey = `${context}::${sourceDataUrl}`;
     const cached = suggestionsCacheRef.current.get(cacheKey);
     setDynamicSuggestions(cached ?? null);
-  }, [open, sourceDataUrl, context]);
+  }, [open, sourceDataUrl, context, targetKey]);
 
   // Pull AI suggestions tailored to the currently-displayed image.
   // Cached per (context + dataUrl) so re-opening the modal or flipping

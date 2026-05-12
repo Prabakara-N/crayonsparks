@@ -1,49 +1,26 @@
-/**
- * Story-book back-cover prompt (Phase 1 — toddler band 3-6).
- *
- * Mirrors the coloring book's `BACK_COVER_PROMPT_TEMPLATE` pattern: keep
- * it INTENTIONALLY SIMPLE. No upper illustration, no character portrait,
- * no barcode area — just a soft colored background that matches the front
- * cover plus one centered tagline. Optional brand strapline below the
- * tagline. Calm, spacious, lots of breathing room.
- *
- * The front cover is passed as a visual reference (attached image) so the
- * back cover automatically matches its dominant color family.
- */
+// Story-book back-cover prompt — picture-book back covers across all
+// three age bands. Mirrors the coloring book's BACK_COVER_PROMPT_TEMPLATE
+// pattern: INTENTIONALLY SIMPLE. The front cover is passed as a visual
+// reference so the back automatically matches its dominant color family.
 
 import {
   KID_SAFE_CONTENT_RULE,
   NO_REAL_BRAND_RULE,
+  AGE_BAND_BACK_NOTE,
+  AGE_BAND_LABEL_SINGULAR,
+  AGE_BAND_RANGE,
+  type AgeBand,
 } from "./guardrails";
+import { STORY_RENDER_TEXT_ACCURACY_RULE } from "./story-quality";
 import type { StoryPalette } from "./story-page";
 
 export interface StoryBackCoverTemplateOptions {
-  /** Book title — context only, NOT printed on the back cover. */
+  ageBand?: AgeBand;
   title: string;
-  /**
-   * Locked palette — same as the front cover and interior. Used to nudge
-   * the model toward an on-palette body color. The attached front-cover
-   * image is the primary signal for color matching.
-   */
   palette: StoryPalette;
-  /**
-   * Tagline rendered verbatim, centered in the middle of the back cover.
-   * Hard cap 22 words for toddlers (one or two short sentences).
-   */
   tagline: string;
-  /**
-   * When set, the back cover MUST use this named color hue (e.g.
-   * "soft pastel pink", "warm tan", "deep teal") for its body color.
-   * Overrides the "match the front cover" instruction. Used by a refine
-   * panel after the user picks a swatch from the palette.
-   */
   forceColor?: string;
-  /** Optional brand strapline rendered as a small italic line below the tagline. */
-  brandStrapline?: string;
 }
-
-const TODDLER_BAND_NOTE =
-  "Audience: toddlers 3-6. Calm, spacious, lots of breathing room — the visual mood matches the gentle picture-book feel of the front cover.";
 
 const COMPOSITION_RULE =
   "Composition: just two things — a soft textured colored background covering the canvas edge-to-edge, and one elegant tagline floating in the middle. No characters, no scene, no upper illustration zone, no barcode rectangle. Calm, spacious, lots of breathing room — Penguin-Classics back cover energy applied to a kids' picture book.";
@@ -61,30 +38,31 @@ const FLOURISHES_RULE =
   "Optional flourishes (subtle, NOT mandatory — pick at most one of each): a tiny ornament (single flower, star, or 3-dot mark, 4-6% of cover width, same dark warm grey as the tagline) ~5% above the tagline; a short thin horizontal divider line ~3% below the tagline (15-20% of cover width). Both flourishes share the tagline's color so they read as one elegant text-block, not separate decorations.";
 
 const TEXT_POLICY_RULE =
-  "Text policy: the only printed text on this entire cover is the tagline (centered) and, when provided, a small brand strapline below it. No author name, no publisher imprint, no ISBN block, no barcode, no rating, no website, no social handle, no email, no marketing blurb, no watermark, no URL, no page count, no age label, no random letters in the background.";
+  "Text policy: the only printed text on this entire cover is the tagline, centered in the middle. No brand strapline, no CrayonSparks text, no author name, no publisher imprint, no ISBN block, no barcode, no rating, no website, no social handle, no email, no marketing blurb, no watermark, no URL, no page count, no age label, no random letters in the background.";
 
 const NO_HAND_DRAWN_CLAIM_RULE =
   "Do not include any claim or watermark suggesting the art is hand-drawn, hand-painted, hand-illustrated, handmade, or original artwork.";
 
-const DEFAULT_BRAND_STRAPLINE = "Made by CrayonSparks for your child";
-
-/**
- * Stable system rules for the toddler-band story-book back cover.
- */
-export const STORY_BACK_COVER_TODDLER_SYSTEM = [
-  "You generate back-cover illustrations for premium Amazon KDP children's picture books in the toddler band (ages 3-6). Every back cover must be print-ready 300 DPI quality and match the front cover's color family. Keep the layout minimal — colored background plus a single centered tagline, with an optional small brand strapline below.",
-  TODDLER_BAND_NOTE,
-  COMPOSITION_RULE,
-  BACKGROUND_LAYER_RULE,
-  FULL_BLEED_RULE,
-  TAGLINE_PLACEMENT_RULE,
-  FLOURISHES_RULE,
-  TEXT_POLICY_RULE,
-  NO_REAL_BRAND_RULE,
-  KID_SAFE_CONTENT_RULE,
-  NO_HAND_DRAWN_CLAIM_RULE,
-  "Output: a single coherent full-bleed picture-book back cover — soft textured colored background plus centered tagline.",
-].join(" ");
+// Stable system rules for a band-specific story-book back cover.
+export function buildStoryBackCoverSystem(band: AgeBand = "toddlers"): string {
+  const range = AGE_BAND_RANGE[band];
+  const label = AGE_BAND_LABEL_SINGULAR[band];
+  return [
+    `You generate back-cover illustrations for premium Amazon KDP children's picture books in the ${label} band (ages ${range}). Every back cover must be print-ready 300 DPI quality and match the front cover's color family. Keep the layout minimal — colored background plus one centered tagline only.`,
+    AGE_BAND_BACK_NOTE[band],
+    COMPOSITION_RULE,
+    BACKGROUND_LAYER_RULE,
+    FULL_BLEED_RULE,
+    TAGLINE_PLACEMENT_RULE,
+    STORY_RENDER_TEXT_ACCURACY_RULE,
+    FLOURISHES_RULE,
+    TEXT_POLICY_RULE,
+    NO_REAL_BRAND_RULE,
+    KID_SAFE_CONTENT_RULE,
+    NO_HAND_DRAWN_CLAIM_RULE,
+    "Output: a single coherent full-bleed picture-book back cover — soft textured colored background plus one centered tagline and no other text.",
+  ].join(" ");
+}
 
 function formatPalette(palette: StoryPalette): string {
   const cleanHexes = palette.hexes
@@ -105,28 +83,21 @@ function formatColorSource(opts: StoryBackCoverTemplateOptions): string {
   return "Background color: a reference image of the front cover is attached. Identify its single largest-area background color and use that color family on the back (front pink to back pink, front mint to back mint, etc.). Apply it as a soft pastel of the front-cover hue — slightly lighter so the dark tagline reads cleanly against it.";
 }
 
-/**
- * Per-cover dynamic content. Pair with {@link STORY_BACK_COVER_TODDLER_SYSTEM}.
- */
-export const STORY_BACK_COVER_TODDLER_USER = (
+// Per-cover dynamic content. Pair with buildStoryBackCoverSystem(band).
+export function buildStoryBackCoverUser(
   opts: StoryBackCoverTemplateOptions,
-): string => {
-  const brandStrapline =
-    opts.brandStrapline?.trim().slice(0, 60) || DEFAULT_BRAND_STRAPLINE;
+): string {
+  const band = opts.ageBand ?? "toddlers";
+  const range = AGE_BAND_RANGE[band];
+  const label = AGE_BAND_LABEL_SINGULAR[band];
   const tagline = opts.tagline.trim().replace(/\s+/g, " ");
   const parts: string[] = [
-    "Toddler picture-book back cover (ages 3-6).",
+    `${label.charAt(0).toUpperCase() + label.slice(1)} picture-book back cover (ages ${range}).`,
     `Book title (for context only — the title is NOT printed on the back cover): "${opts.title.trim()}".`,
     formatPalette(opts.palette),
     formatColorSource(opts),
     `Tagline (render this exact text — verbatim, centered in the middle of the cover): "${tagline}"`,
-    `Brand strapline (small italic line ~3% below the tagline, centered, mixed-case italic / rounded script with a small four-point sparkle shape between the brand name and the next word, brand name "CrayonSparks" exactly as written, one word, capital C and capital S, no space): "${brandStrapline}"`,
+    "Do not render any other printed text besides the tagline.",
   ];
   return parts.join(" ");
-};
-
-export const STORY_BACK_COVER_TODDLER_TEMPLATE = (
-  opts: StoryBackCoverTemplateOptions,
-): string => {
-  return `${STORY_BACK_COVER_TODDLER_SYSTEM} ${STORY_BACK_COVER_TODDLER_USER(opts)}`;
-};
+}

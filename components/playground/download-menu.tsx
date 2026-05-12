@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Download, FileText, Package, Loader2, ChevronDown } from "lucide-react";
+import {
+  useFakeProgress,
+  ProgressFill,
+} from "@/components/playground/progress-status";
 
 interface DownloadMenuProps {
   onPdf: () => void;
@@ -79,28 +83,13 @@ export function DownloadMenu({
 
   return (
     <>
-      <button
+      <DownloadTrigger
         ref={buttonRef}
-        type="button"
         onClick={() => !disabled && !pdfBuilding && setOpen((v) => !v)}
         disabled={disabled || pdfBuilding}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-busy={pdfBuilding}
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-zinc-700 text-white border border-white/10 hover:bg-zinc-600 hover:border-white/20 disabled:opacity-60 disabled:cursor-not-allowed shadow-md transition-colors"
-      >
-        {pdfBuilding ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Download className="w-4 h-4" />
-        )}
-        {pdfBuilding ? "Downloading…" : "Download"}
-        {!pdfBuilding && (
-          <ChevronDown
-            className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`}
-          />
-        )}
-      </button>
+        pdfBuilding={!!pdfBuilding}
+        open={open}
+      />
 
       {mounted &&
         createPortal(
@@ -134,7 +123,7 @@ export function DownloadMenu({
                       Download print package
                     </div>
                     <div className="text-[11px] text-neutral-400 mt-0.5">
-                      4 PDFs in one zip — KDP cover, KDP interior, Etsy Letter + A4
+                      3 PDFs in one zip — KDP cover, KDP interior, Etsy A4
                     </div>
                   </div>
                 </button>
@@ -165,3 +154,52 @@ export function DownloadMenu({
     </>
   );
 }
+
+const DownloadTrigger = forwardRef<
+  HTMLButtonElement,
+  {
+    onClick: () => void;
+    disabled: boolean;
+    pdfBuilding: boolean;
+    open: boolean;
+  }
+>(function DownloadTrigger({ onClick, disabled, pdfBuilding, open }, ref) {
+  const pct = useFakeProgress(pdfBuilding, 20000);
+  const percentLabel = `${Math.round(pct * 100)}%`;
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-expanded={open}
+      aria-haspopup="menu"
+      aria-busy={pdfBuilding}
+      className="relative overflow-hidden inline-flex items-center gap-2 px-4 py-2.5 min-w-[190px] rounded-full text-sm font-semibold bg-zinc-700 text-white border border-white/10 hover:bg-zinc-600 hover:border-white/20 disabled:opacity-60 disabled:cursor-not-allowed shadow-md transition-colors justify-center"
+    >
+      {pdfBuilding && <ProgressFill pct={pct} />}
+      <span className="relative inline-flex items-center gap-2 tabular-nums">
+        {pdfBuilding ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Download className="w-4 h-4" />
+        )}
+        {pdfBuilding ? (
+          <span className="inline-flex items-baseline gap-1">
+            <span>Downloading…</span>
+            <span className="inline-block w-[2.6ch] text-right">
+              {percentLabel}
+            </span>
+          </span>
+        ) : (
+          <span>Download</span>
+        )}
+        {!pdfBuilding && (
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        )}
+      </span>
+    </button>
+  );
+});

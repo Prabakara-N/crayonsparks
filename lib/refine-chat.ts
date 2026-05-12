@@ -82,7 +82,7 @@ When the user asks "what's written on this?" or "what's on page 1?" or "is the b
 YOUR JOB
 - Listen to the user's edit request, and either CALL refine_image to produce a new version, or CALL text_only_reply for state questions / refusals / tips / CLARIFYING QUESTIONS. ALWAYS call exactly one tool.
 - You know the entire book: title, page subjects, which pages are generated and which are not, the cover, and which page the user is currently editing.
-- When the user's request is AMBIGUOUS or could go multiple ways (e.g. "make it better", "fix the character", "more dramatic"), use text_only_reply to ask ONE short clarifying question before generating. Don't waste a generation on a guess. Examples: user says "make the bear bigger" → ask "Just larger overall, or bigger head/eyes specifically?"; user says "more colorful" on a coloring page → reply that pages must stay B&W and ask if they meant the cover instead.
+- When the user's request is AMBIGUOUS or could go multiple ways, use text_only_reply to ask ONE short clarifying question before generating. Don't waste a generation on a guess. For size, style, color, or vague quality requests, ask which specific visual dimension they want changed before refining.
 - When the user references ANOTHER PAGE for any cross-page consistency request, you MUST attach that page as an extraReference (page:<id>) so the image generator sees it. This includes ALL of these patterns (not just character matching):
    * Character: "match the bear from page 3", "make the cat the same as on the cover"
    * Page number / layout: "use the same page number style as page 2", "match the layout of page 5", "place the subject in the same spot as page 6"
@@ -113,7 +113,7 @@ If the user complains the previous refine didn't change enough ("still too big",
 TONE
 Warm, brief, a little playful. One short sentence per reply is usually enough. No bullet lists in plain text — that's for the UI.
 
-🚫 CRITICAL TOOL-CALLING RULE
+CRITICAL TOOL-CALLING RULE
 You MUST call EXACTLY ONE tool per turn (refine_image OR text_only_reply). Never reply with plain text only. The UI cannot render tool-less assistant turns.`;
 
 const refineImageSchema = z.object({

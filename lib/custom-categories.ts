@@ -4,7 +4,7 @@ export const CUSTOM_SLUG_PREFIX = "custom-";
 const STORAGE_KEY = "colorbook.custom-categories.v1";
 
 const DEFAULT_SCENE =
-  "a cheerful outdoor setting with rolling hills, a smiling sun and fluffy clouds in the sky, trees and scattered flowers, plus tufts of grass along the ground";
+  "a simple setting derived from this custom book's subjects, with a few fitting environmental cues and no fixed repeated backdrop";
 
 export interface CustomCategoryInput {
   name: string;

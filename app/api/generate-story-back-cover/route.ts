@@ -1,19 +1,5 @@
-/**
- * Story-book back-cover generation endpoint (Phase 1 — toddler band).
- *
- * Body:
- *   {
- *     title: string,
- *     palette: { name, hexes: [...] },
- *     tagline: string,                          // hard cap 22 words for toddlers
- *     coverReferenceDataUrl?: string,           // front cover image (color anchor)
- *     brandStrapline?: string,
- *     forceColor?: string,
- *     model?: ImageModel,
- *   }
- *
- * Returns: { dataUrl, model, elapsedMs }
- */
+// Story-book back-cover generation endpoint.
+// Returns: { dataUrl, model, elapsedMs }
 
 import { NextResponse } from "next/server";
 import { generateImageByModel } from "@/lib/image-providers";
@@ -23,8 +9,10 @@ import {
   type ImageModel,
 } from "@/lib/constants";
 import {
-  STORY_BACK_COVER_TODDLER_SYSTEM,
-  STORY_BACK_COVER_TODDLER_USER,
+  buildStoryBackCoverSystem,
+  buildStoryBackCoverUser,
+  TAGLINE_MAX_WORDS,
+  type AgeBand,
   type StoryPalette,
 } from "@/lib/prompts";
 
@@ -36,9 +24,17 @@ interface Body {
   palette?: StoryPalette;
   tagline?: string;
   coverReferenceDataUrl?: string;
-  brandStrapline?: string;
   forceColor?: string;
+  ageBand?: AgeBand;
   model?: ImageModel;
+}
+
+const VALID_AGE_BANDS: readonly AgeBand[] = ["toddlers", "kids", "tweens"];
+
+function normalizeAgeBand(value: unknown): AgeBand {
+  return typeof value === "string" && (VALID_AGE_BANDS as readonly string[]).includes(value)
+    ? (value as AgeBand)
+    : "toddlers";
 }
 
 function isPalette(value: unknown): value is StoryPalette {
@@ -69,8 +65,6 @@ function countWords(text: string): number {
     .filter((w) => w.length > 0).length;
 }
 
-const MAX_TAGLINE_WORDS_TODDLER = 22;
-
 export async function POST(req: Request) {
   let body: Body;
   try {
@@ -78,6 +72,9 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
+
+  const band = normalizeAgeBand(body.ageBand);
+  const taglineMax = TAGLINE_MAX_WORDS[band];
 
   const title = body.title?.trim();
   const tagline = body.tagline?.trim();
@@ -92,10 +89,10 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  if (countWords(tagline) > MAX_TAGLINE_WORDS_TODDLER) {
+  if (countWords(tagline) > taglineMax) {
     return NextResponse.json(
       {
-        error: `Tagline exceeds the toddler-band limit of ${MAX_TAGLINE_WORDS_TODDLER} words.`,
+        error: `Tagline exceeds the ${band}-band limit of ${taglineMax} words.`,
       },
       { status: 400 },
     );
@@ -107,14 +104,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const userText = STORY_BACK_COVER_TODDLER_USER({
+  const systemInstruction = buildStoryBackCoverSystem(band);
+  const userText = buildStoryBackCoverUser({
+    ageBand: band,
     title,
     palette,
     tagline,
     forceColor: body.forceColor?.trim() || undefined,
-    brandStrapline: body.brandStrapline,
   });
-  const fullPrompt = `${STORY_BACK_COVER_TODDLER_SYSTEM} ${userText}`;
+  const fullPrompt = `${systemInstruction} ${userText}`;
   if (fullPrompt.length > 35000) {
     return NextResponse.json(
       { error: "Prompt too long (max 35000 chars)." },
@@ -137,7 +135,7 @@ export async function POST(req: Request) {
     const image = await generateImageByModel(fullPrompt, {
       aspectRatio: "2:3",
       model: resolvedModel,
-      systemInstruction: STORY_BACK_COVER_TODDLER_SYSTEM,
+      systemInstruction,
       extraImages: extraImages.length ? extraImages : undefined,
     });
     return NextResponse.json({

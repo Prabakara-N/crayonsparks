@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import {
-  Loader2,
   ArrowLeft,
   MessageCircle,
   BookOpen,
@@ -10,7 +9,6 @@ import {
   ImagePlus,
   X,
   Eraser,
-  Square,
 } from "lucide-react";
 import type { BookBrief } from "@/lib/book-chat";
 import {
@@ -21,6 +19,7 @@ import { UserBubble } from "@/components/generate/chat-bubble";
 import { ImagePreviewDialog } from "@/components/ui/image-preview-dialog";
 import { MultiSelectChips } from "@/components/generate/multi-select-chips";
 import { SparkyThinkingBubble } from "@/components/generate/sparky-thinking-bubble";
+import { BriefQualityCard } from "@/components/generate/brief-quality-card";
 import { useDialog } from "@/components/ui/confirm-dialog";
 import { PlanReviewButton } from "@/components/playground/plan-review-panel";
 
@@ -177,7 +176,6 @@ const TYPE_ANSWER_PLACEHOLDERS = [
 
 export function GuidedChat({
   onBrief,
-  onBack,
   seedMode,
   seedIdea,
   onSeedConsumed,
@@ -262,17 +260,18 @@ export function GuidedChat({
     if (seedConsumedRef.current) return;
     if (!seedMode) return;
     seedConsumedRef.current = true;
-    setMode(seedMode);
-    setBubbles([{ role: "assistant", text: MODE_INTROS[seedMode].greeting }]);
-    setMessages([]);
-    setView(null);
-    setPendingBrief(null);
-    setError(null);
-    if (seedIdea && seedIdea.trim().length > 0) {
-      // Defer to after first render so the input handle is mounted.
-      setTimeout(() => inputHandleRef.current?.setText(seedIdea.trim()), 0);
-    }
-    onSeedConsumed?.();
+    queueMicrotask(() => {
+      setMode(seedMode);
+      setBubbles([{ role: "assistant", text: MODE_INTROS[seedMode].greeting }]);
+      setMessages([]);
+      setView(null);
+      setPendingBrief(null);
+      setError(null);
+      if (seedIdea && seedIdea.trim().length > 0) {
+        setTimeout(() => inputHandleRef.current?.setText(seedIdea.trim()), 0);
+      }
+      onSeedConsumed?.();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seedMode, seedIdea]);
 
@@ -799,6 +798,7 @@ function BriefPreview({
         </div>
       ) : (
         <div className="space-y-2">
+          <BriefQualityCard quality={brief.quality} />
           <PlanReviewButton
             data={{
               title: brief.name,

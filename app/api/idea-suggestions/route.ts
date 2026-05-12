@@ -3,6 +3,7 @@ import {
   generateIdeaSuggestions,
   type IdeaAudience,
   type IdeaKind,
+  type IdeaStoryType,
 } from "@/lib/idea-suggestions";
 
 export const runtime = "nodejs";
@@ -10,11 +11,23 @@ export const maxDuration = 30;
 
 const VALID_AUDIENCES: IdeaAudience[] = ["any", "toddlers", "kids", "tweens"];
 const VALID_KINDS: IdeaKind[] = ["coloring", "story"];
+const VALID_STORY_TYPES: IdeaStoryType[] = [
+  "moral",
+  "fiction",
+  "non-fiction",
+  "mystery",
+  "fantasy",
+  "comic",
+  "fairytale",
+  "adventure",
+  "bedtime",
+];
 
 interface Body {
   audience?: IdeaAudience;
   /** "coloring" (default) or "story" — picks the per-product idea bank. */
   kind?: IdeaKind;
+  storyType?: IdeaStoryType | null;
 }
 
 export async function POST(req: Request) {
@@ -30,9 +43,13 @@ export async function POST(req: Request) {
       : "any";
   const kind: IdeaKind =
     body.kind && VALID_KINDS.includes(body.kind) ? body.kind : "coloring";
+  const storyType =
+    kind === "story" && body.storyType && VALID_STORY_TYPES.includes(body.storyType)
+      ? body.storyType
+      : null;
 
   try {
-    const ideas = await generateIdeaSuggestions(audience, kind);
+    const ideas = await generateIdeaSuggestions(audience, kind, storyType);
     return NextResponse.json({ ideas });
   } catch (e) {
     const message =

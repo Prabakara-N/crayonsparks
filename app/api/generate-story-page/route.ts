@@ -1,23 +1,6 @@
-/**
- * Story-book page generation endpoint (Phase 1 — toddler band only).
- *
- * Distinct from /api/generate which serves the coloring-book product. This
- * route uses the toddler story-page prompt: full color, full bleed, speech
- * bubbles allowed. Output is a single 6x9 portrait illustration as a PNG
- * data URL.
- *
- * Body:
- *   {
- *     characters: [{ name, descriptor }, ...],   // 1-3 locked characters
- *     palette:    { name, hexes: [...] },
- *     scene:      string,                        // 12-30 word scene desc
- *     dialogue?:  [{ speaker, text }, ...],      // up to 2 bubbles, ≤12 words each
- *     narration?: string,                        // optional 1-line caption
- *     composition?: string,                      // optional camera/framing hint
- *     ageBand?:   "toddlers",                    // reserved for future bands
- *     model?:     ImageModel,              // optional override
- *   }
- */
+// Story-book page generation endpoint. Distinct from /api/generate which
+// serves the coloring-book product. Output is a single 6x9 portrait
+// illustration as a PNG data URL.
 
 import { NextResponse } from "next/server";
 import { generateImageByModel } from "@/lib/image-providers";
@@ -27,8 +10,10 @@ import {
   type ImageModel,
 } from "@/lib/constants";
 import {
-  STORY_PAGE_TODDLER_SYSTEM,
-  STORY_PAGE_TODDLER_USER,
+  buildStoryPageSystem,
+  buildStoryPageUser,
+  DIALOGUE_MAX_WORDS,
+  type AgeBand,
   type StoryCharacter,
   type StoryDialogueLine,
   type StoryPalette,
@@ -44,27 +29,48 @@ interface Body {
   dialogue?: StoryDialogueLine[];
   narration?: string;
   composition?: string;
-  ageBand?: "toddlers";
+  ageBand?: AgeBand;
   model?: ImageModel;
-  /**
-   * "flat" (default) or "illustrated" — must match the cover's coverStyle
-   * so interior pages render in the same visual language as the cover.
-   */
   coverStyle?: "flat" | "illustrated";
-  /**
-   * Cover image of the same book — passed to Gemini as image 1. Anchors
-   * the locked-character look and the book's overall visual language;
-   * the cover is the ground truth for character design across every
-   * interior page.
-   */
   coverReferenceDataUrl?: string;
-  /**
-   * Previously generated interior page from this book — passed as image
-   * 2 alongside the cover. Helps the new page match line weight, page
-   * composition flow, and character pose continuity. Typically the page
-   * immediately preceding this one.
-   */
   chainReferenceDataUrl?: string;
+}
+
+const VALID_AGE_BANDS: readonly AgeBand[] = ["toddlers", "kids", "tweens"];
+
+function normalizeAgeBand(value: unknown): AgeBand {
+  return typeof value === "string" && (VALID_AGE_BANDS as readonly string[]).includes(value)
+    ? (value as AgeBand)
+    : "toddlers";
+}
+
+// Strip duplicate / near-duplicate bubbles so the image model isn't asked
+// to render the same line twice — root cause of the Goldilocks "Oh! I am
+// surprised." duplicate-bubble bug.
+function dedupeDialogue(dialogue: StoryDialogueLine[]): StoryDialogueLine[] {
+  const seen = new Set<string>();
+  const out: StoryDialogueLine[] = [];
+  for (const line of dialogue) {
+    const text = line.text?.trim().replace(/\s+/g, " ");
+    if (!text) continue;
+    const key = text.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      speaker: line.speaker?.trim() ?? "",
+      text: ensureTerminalPunctuation(text),
+    });
+  }
+  return out;
+}
+
+// Auto-append a period to any string that doesn't already end with a
+// terminal punctuation mark — fixes the Pippa book bug where the planner
+// emitted narration like "They made a new map together" with no period.
+function ensureTerminalPunctuation(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return trimmed;
+  return /[.!?…]['")\]]?$/.test(trimmed) ? trimmed : `${trimmed}.`;
 }
 
 function parseDataUrl(
@@ -90,7 +96,7 @@ function buildConsistencyAnchorPreamble(
       : hasCover
         ? "An image from THE SAME BOOK is attached as a visual reference — the FRONT COVER"
         : "An image from THE SAME BOOK is attached as a visual reference — a previously generated INTERIOR PAGE";
-  return `🚨 REFERENCE IMAGE USAGE — STRICT — ${refLabel}. The references serve ONE purpose: to lock the LOOK of the recurring characters across the book. NOTHING ELSE.\n\n✅ COPY from the references (these and ONLY these):\n• Each character's species, body proportions, head/face shape, fur / feather / skin color, eye style, markings, distinguishing accessories.\n• Overall illustrative style: line weight, color saturation, lighting feel, rendering polish.\n• Speech-bubble shape and lettering style (when bubbles already appeared on a prior page).\n\n❌ DO NOT COPY from the references (this list is load-bearing — copying any of these is the most common quality killer):\n• Character POSES — the cover shows characters standing in some specific way; the new page must show them in a DIFFERENT pose driven by THIS PAGE'S scene description below. Walking, sitting, climbing, lying, reaching, hugging, hiding, dancing — pick the pose from this page's brief, NOT from what they were doing on the cover.\n• Character POSITIONS / framing on the canvas — the cover's left-of-center elephant + right-of-center monkey arrangement does NOT carry over; this page composes fresh.\n• CAMERA angle and framing distance — alternate close-up / mid-shot / wide-shot across pages instead of cloning the cover's angle.\n• SCENE / setting / location — the cover is one scene; this page's scene is a DIFFERENT moment in the story (read the brief below for where this page takes place).\n• BACKGROUND elements — trees, foliage, sky, mountains, props, vines, bridge details from the cover do NOT appear on this page unless this page's brief explicitly calls for them. Compose the background from this page's scene description, not from the reference.\n• COMPOSITION / layout — character placement, depth layering, foreground/midground/background arrangement. All fresh per page.\n\nRULE OF THUMB: take the characters out of the reference and put them in a COMPLETELY DIFFERENT picture this time, doing whatever this page's scene says they're doing. Compose from scratch from the brief below; the reference is a CHARACTER MUGSHOT, not a scene template. If the new page would look like a near-duplicate of the reference with characters slightly rearranged, you are DOING IT WRONG.`;
+  return `REFERENCE IMAGE USAGE — STRICT — ${refLabel}. The references serve ONE purpose: to lock the LOOK of the recurring characters across the book. NOTHING ELSE.\n\nCOPY from the references (these and ONLY these):\n• Each character's species, body proportions, head/face shape, fur / feather / skin color, eye style, markings, distinguishing accessories, AND locked outfit / garment (a red bow at the neck stays a red bow at the neck; a red backpack on the back stays a red backpack — never swap one for the other across pages).\n• Overall illustrative style: line weight, color saturation, lighting feel, rendering polish.\n• Speech-bubble shape and lettering style (when bubbles already appeared on a prior page).\n\nDO NOT COPY from the references (this list is load-bearing — copying any of these is the most common quality killer):\n• TITLE TEXT / COVER OVERLAYS — the book title, subtitle pill, page-count badge, side plaque, bottom strip phrases, brand strapline, and any other rendered text on the cover MUST NOT appear on this interior page. Interior pages contain ONLY the narration caption and/or speech bubbles supplied in the brief below — never the book title, never a marketing badge, never a side plaque, never the brand strapline. If you see text on the cover reference, IGNORE that text entirely.\n• Character POSES — the new page must show a DIFFERENT pose driven by THIS PAGE'S scene description below. Pick the pose from this page's brief, NOT from what they were doing on the cover.\n• Character POSITIONS / framing on the canvas — this page composes fresh.\n• CAMERA angle and framing distance — vary close-up / mid-shot / wide-shot across pages instead of cloning the cover's angle. Across any 3 consecutive pages, framing distance MUST vary — include at least one close-up (one character occupies 50%+ of the frame), one mid-shot, and one wide. Never render 3+ consecutive pages as the same group lineup at eye-level.\n• SCENE / setting / location — the cover is one scene; this page's scene is a DIFFERENT moment in the story.\n• BACKGROUND elements — details from the cover do NOT appear on this page unless this page's brief explicitly calls for them. Compose the background from this page's scene description, not from the reference.\n• SIGNATURE FLORA / FAUNA from the cover (bluebells, daisies, ferns, mushrooms, butterflies, etc.) — if the cover features a signature element, it does NOT automatically appear on this page. Add it ONLY when this page's brief explicitly names it. At least 30% of interior pages should have no signature element from the cover at all.\n• COMPOSITION / layout — character placement, depth layering, foreground/midground/background arrangement. All fresh per page.\n\nRULE OF THUMB: take the characters out of the reference and put them in a COMPLETELY DIFFERENT picture this time, doing whatever this page's scene says they're doing. Compose from scratch from the brief below; the reference is a CHARACTER MUGSHOT, not a scene template. If the new page would look like a near-duplicate of the reference with characters slightly rearranged, you are doing it wrong.`;
 }
 
 function isStoryCharacter(value: unknown): value is StoryCharacter {
@@ -131,8 +137,11 @@ function countWords(text: string): number {
     .filter((w) => w.length > 0).length;
 }
 
-const MAX_BUBBLE_WORDS = 12;
-const MAX_NARRATION_WORDS = 14;
+const NARRATION_MAX_WORDS: Record<AgeBand, number> = {
+  toddlers: 14,
+  kids: 22,
+  tweens: 30,
+};
 const MAX_DIALOGUE_LINES = 2;
 const MAX_CHARACTERS = 3;
 
@@ -143,6 +152,10 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
+
+  const band = normalizeAgeBand(body.ageBand);
+  const bubbleMax = DIALOGUE_MAX_WORDS[band];
+  const narrationMax = NARRATION_MAX_WORDS[band];
 
   const characters = Array.isArray(body.characters)
     ? body.characters.filter(isStoryCharacter).slice(0, MAX_CHARACTERS)
@@ -168,15 +181,16 @@ export async function POST(req: Request) {
     );
   }
 
-  const dialogue = Array.isArray(body.dialogue)
-    ? body.dialogue.filter(isDialogueLine).slice(0, MAX_DIALOGUE_LINES)
+  const rawDialogue = Array.isArray(body.dialogue)
+    ? body.dialogue.filter(isDialogueLine)
     : [];
+  const dialogue = dedupeDialogue(rawDialogue).slice(0, MAX_DIALOGUE_LINES);
   const validSpeakers = new Set(characters.map((c) => c.name.trim()));
   for (const line of dialogue) {
-    if (countWords(line.text) > MAX_BUBBLE_WORDS) {
+    if (countWords(line.text) > bubbleMax) {
       return NextResponse.json(
         {
-          error: `Dialogue line "${line.text}" exceeds the toddler-band limit of ${MAX_BUBBLE_WORDS} words.`,
+          error: `Dialogue line "${line.text}" exceeds the ${band}-band limit of ${bubbleMax} words.`,
         },
         { status: 400 },
       );
@@ -191,15 +205,18 @@ export async function POST(req: Request) {
     }
   }
 
-  const narration = body.narration?.trim();
-  if (narration && countWords(narration) > MAX_NARRATION_WORDS) {
+  const narrationRaw = body.narration?.trim();
+  if (narrationRaw && countWords(narrationRaw) > narrationMax) {
     return NextResponse.json(
       {
-        error: `Narration exceeds the toddler-band limit of ${MAX_NARRATION_WORDS} words.`,
+        error: `Narration exceeds the ${band}-band limit of ${narrationMax} words.`,
       },
       { status: 400 },
     );
   }
+  const narration = narrationRaw
+    ? ensureTerminalPunctuation(narrationRaw)
+    : undefined;
 
   const extraImages: Array<{ mimeType: string; data: string }> = [];
   let hasCover = false;
@@ -222,7 +239,9 @@ export async function POST(req: Request) {
     }
   }
 
-  const userText = STORY_PAGE_TODDLER_USER({
+  const systemInstruction = buildStoryPageSystem(band);
+  const userText = buildStoryPageUser({
+    ageBand: band,
     characters,
     palette,
     scene,
@@ -232,11 +251,9 @@ export async function POST(req: Request) {
     coverStyle: body.coverStyle,
   });
   const anchor = buildConsistencyAnchorPreamble(hasCover, hasChain);
-  const fullPrompt = anchor
-    ? `${STORY_PAGE_TODDLER_SYSTEM} ${anchor} ${userText}`
-    : `${STORY_PAGE_TODDLER_SYSTEM} ${userText}`;
+  const fullPrompt = anchor ? `${anchor} ${userText}` : userText;
 
-  if (fullPrompt.length > 35000) {
+  if (`${systemInstruction} ${fullPrompt}`.length > 35000) {
     return NextResponse.json(
       { error: "Prompt too long (max 35000 chars)." },
       { status: 400 },
@@ -252,7 +269,7 @@ export async function POST(req: Request) {
     const image = await generateImageByModel(fullPrompt, {
       aspectRatio: "2:3",
       model: resolvedModel,
-      systemInstruction: STORY_PAGE_TODDLER_SYSTEM,
+      systemInstruction,
       extraImages: extraImages.length ? extraImages : undefined,
     });
     const dataUrl = `data:${image.mimeType};base64,${image.data}`;

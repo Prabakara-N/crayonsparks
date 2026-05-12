@@ -354,6 +354,12 @@ export function PlaygroundShell() {
             initialReference={seedReference ?? undefined}
             initialMode={seedMode ?? undefined}
             onSwitchToChat={switchToChat}
+            onReset={() => {
+              setSeedPlan(null);
+              setSeedReference(null);
+              setSeedMode(null);
+              setSeededCategory(null);
+            }}
           />
         </>
       )}

@@ -8,124 +8,21 @@ import {
   type ImageModel,
 } from "@/lib/constants";
 import {
-  MASTER_PROMPT_TEMPLATE,
+  MASTER_PROMPT_SYSTEM,
+  MASTER_PROMPT_USER,
   REFERENCE_LED_PROMPT_TEMPLATE,
   COLOR_COVER_PROMPT_TEMPLATE,
   BACK_COVER_PROMPT_TEMPLATE,
   BELONGS_TO_PROMPT_TEMPLATE,
   CONSISTENCY_ANCHOR_PROMPT,
   findCategory,
-  type AgeRange,
-  type Detail,
-  type Background,
-  type CoverStyle,
-  type CoverBorder,
-  type BelongsToStyle,
 } from "@/lib/prompts";
 import { rateColoringPage, type QualityScore } from "@/lib/quality-gate";
 import { extractStyleFromReference } from "@/lib/style-extractor";
+import { parseDataUrl, type Body } from "./request";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-interface Body {
-  mode?: "subject" | "raw" | "cover" | "back-cover" | "belongs-to";
-  subject?: string;
-  prompt?: string;
-  age?: AgeRange;
-  detail?: Detail;
-  background?: Background;
-  aspectRatio?: AspectRatio;
-  categorySlug?: string;
-  // Custom-category overrides (for user-defined books)
-  scene?: string;
-  coverTitle?: string;
-  coverScene?: string;
-  coverStyle?: CoverStyle;
-  coverBorder?: CoverBorder;
-  // Page count of the interior — used to render the "N CUTE & FUN DESIGNS"
-  // corner badge on the front cover.
-  pageCount?: number;
-  // Optional age label override (e.g. "Ages 4-8"). Defaults to "Ages 3-6"
-  // inside the cover prompt template when omitted.
-  ageLabel?: string;
-  // Three short ALL-CAPS phrases for the front-cover footer ribbon.
-  // When omitted (or invalid) the template falls back to the default
-  // CrayonSparks brand strip.
-  bottomStripPhrases?: string[];
-  // Three short ALL-CAPS lines for the front-cover side plaque, in
-  // top-to-bottom order. Falls back to a generic plaque when omitted.
-  sidePlaqueLines?: string[];
-  // One-sentence design-language description applied to the page-count
-  // badge, side plaque, and bottom strip so all three overlays look like
-  // objects from the book's world (e.g. wooden farm signs, chalkboard
-  // menus, metallic space panels). Falls back to a clean default.
-  coverBadgeStyle?: string;
-  // Optional override for the small brand strapline inside the bottom
-  // strip's second line. Defaults to the CrayonSparks brand line.
-  brandStrapline?: string;
-  // For back-cover mode: marketing blurb that appears on the back
-  backCoverDescription?: string;
-  // Back-cover refine panel — when set, force a specific named hue for
-  // the back-cover body (e.g. "soft pastel pink") instead of letting
-  // Gemini infer from the front cover reference.
-  backCoverColor?: string;
-  // Back-cover refine panel — when set, force this exact tagline text
-  // instead of letting Gemini invent one.
-  backCoverTagline?: string;
-  // For belongs-to mode: 1-3 main characters from the book (used in corner
-  // cameos) + bw|color style choice.
-  belongsToCharacters?: string;
-  belongsToStyle?: BelongsToStyle;
-  // CHARACTER LOCK extracted once from the cover by /api/extract-characters.
-  // Pre-formatted block (starts with "🔒 CHARACTER LOCK ...") that gets
-  // injected into the master subject prompt so every page draws recurring
-  // characters identical to the cover. Solves the "fat cat on cover,
-  // skinny cat on page 7" KDP-rejection problem.
-  characterLock?: string;
-  // Per-prompt variation (so each page in a book differs)
-  variantSeed?: string;
-  // Optional reference image — used as style/composition inspiration
-  referenceDataUrl?: string;
-  // Optional STYLE-CHAIN reference: a previously generated page from the
-  // SAME book, passed alongside the user's reference (if any) so Gemini
-  // can match character look + line weight + overall style across pages.
-  // Solves the "bear looks different on page 3 vs page 7" drift problem.
-  // Unlike `referenceDataUrl`, this does NOT switch to the slim
-  // reference-led prompt template — full master prompt rules stay in effect.
-  chainReferenceDataUrl?: string;
-  /**
-   * Cover image of the same book — when set, attached as an ADDITIONAL
-   * visual reference alongside the chain reference. Locks character
-   * design to the cover for every interior page (not just page 1, the
-   * way the chain ref drifts after promotion). Sent independently so we
-   * can have BOTH the previous-interior anchor (border + style) AND the
-   * cover (character look) influence the new page.
-   */
-  coverReferenceDataUrl?: string;
-  // Whether to run the AI vision quality gate after generation. Defaults to true
-  // for "subject" and "cover" modes (skipped for "raw" playground mode).
-  qualityGate?: boolean;
-  // Optional image-model override. When omitted, the server picks a sensible
-  // default based on `mode` (covers → DEFAULT_COVER_MODEL, everything else →
-  // DEFAULT_INTERIOR_MODEL). The bulk-book UI sends an explicit model from
-  // its cover/interior dropdowns; the playground and other surfaces can
-  // omit this field and inherit the per-mode default.
-  model?: ImageModel;
-}
-
-function parseDataUrl(url: string): { mimeType: string; data: string } | null {
-  // String-based parsing — regex backtracking on multi-MB base64 reference
-  // images was overflowing V8's regex stack ("RangeError: Maximum call stack
-  // size exceeded").
-  if (!url.startsWith("data:")) return null;
-  const sep = url.indexOf(";base64,");
-  if (sep < 0) return null;
-  const mimeType = url.slice(5, sep);
-  const data = url.slice(sep + 8);
-  if (!mimeType || !data) return null;
-  return { mimeType, data };
-}
 
 export async function POST(req: Request) {
   let body: Body;
@@ -140,6 +37,7 @@ export async function POST(req: Request) {
 
   let text: string;
   let aspectRatio: AspectRatio;
+  let systemInstruction: string | undefined;
 
   if (mode === "cover") {
     const title = body.coverTitle?.trim() || category?.coverTitle;
@@ -217,7 +115,8 @@ export async function POST(req: Request) {
     if (!subject) {
       return NextResponse.json({ error: "Subject is required." }, { status: 400 });
     }
-    text = MASTER_PROMPT_TEMPLATE(subject, {
+    systemInstruction = MASTER_PROMPT_SYSTEM;
+    text = MASTER_PROMPT_USER(subject, {
       age: body.age,
       detail: body.detail,
       background: body.background,
@@ -241,7 +140,7 @@ export async function POST(req: Request) {
   }
 
   // Two-step reference flow:
-  //   1. gpt-4o-mini Vision extracts a concise art-style description from
+  //   1. OpenAI vision extracts a concise art-style description from
   //      the reference image (no raw image sent to Gemini).
   //   2. The style description is appended to the prompt so Gemini sees
   //      "imitate THIS STYLE" as text only — no image-edit confusion.
@@ -274,7 +173,9 @@ export async function POST(req: Request) {
         const subject = body.subject?.trim() ?? "";
         text = REFERENCE_LED_PROMPT_TEMPLATE(subject, description, {
           age: body.age,
+          detail: body.detail,
         });
+        systemInstruction = undefined;
         referenceImage = parsed;
       } catch {
         // Style extraction failed — fall back to MASTER prompt without ref.
@@ -283,7 +184,7 @@ export async function POST(req: Request) {
     } else if (mode === "back-cover") {
       // Back-cover: chain BOTH the text style description AND the actual
       // front-cover image. Text alone (the prior flow) lost color precision
-      // — GPT-5.5 might say "soft pastel" and Gemini would default to mint
+      // — the vision model might say "soft pastel" and Gemini would default to mint
       // green even when the front was baby pink. Sending the image lets
       // Gemini visually anchor the dominant color, while the text guides
       // the overall composition rules (two-layer band, tagline placement).
@@ -292,12 +193,12 @@ export async function POST(req: Request) {
           body.referenceDataUrl,
           "cover",
         );
-        text = `🎨 FRONT-COVER COLOR ANCHOR — A reference image of the FRONT COVER is attached. The back cover MUST use the SAME dominant background color as the front cover (study the attached image to identify it). Style description from vision analysis: "${description}". Apply that style — but the BACK is minimal layout (no characters, no scene, just colored background + tagline + barcode strip), NOT a copy of the front. Use the front cover ONLY for color matching, not for content.\n\n${text}`;
+        text = `FRONT-COVER COLOR ANCHOR — A reference image of the FRONT COVER is attached. The back cover MUST use the SAME dominant background color as the front cover (study the attached image to identify it). Style description from vision analysis: "${description}". Apply that style — but the BACK is minimal layout (no characters, no scene, just colored background + one centered tagline), NOT a copy of the front. Use the front cover ONLY for color matching, not for content.\n\n${text}`;
         referenceImage = parsed;
       } catch {
         // Style extraction failed — still send the image so color match
         // works even without the text description.
-        text = `🎨 FRONT-COVER COLOR ANCHOR — A reference image of the front cover is attached. Match its dominant background color exactly on the back cover.\n\n${text}`;
+        text = `FRONT-COVER COLOR ANCHOR — A reference image of the front cover is attached. Match its dominant background color exactly on the back cover.\n\n${text}`;
         referenceImage = parsed;
       }
     } else {
@@ -309,7 +210,7 @@ export async function POST(req: Request) {
           body.referenceDataUrl,
           "cover",
         );
-        text = `🎨 ART STYLE TO IMITATE — READ FIRST AND OBEY: Generate the new illustration in this art style: "${description}". This style description was extracted from a reference image the user uploaded. Apply this style to a COMPLETELY NEW illustration of the subject described below. DO NOT copy any specific elements from the reference; only adopt its visual style.\n\n${text}`;
+        text = `ART STYLE TO IMITATE — READ FIRST AND OBEY: Generate the new illustration in this art style: "${description}". This style description was extracted from a reference image the user uploaded. Apply this style to a COMPLETELY NEW illustration of the subject described below. DO NOT copy any specific elements from the reference; only adopt its visual style.\n\n${text}`;
       } catch {
         text = `(Note: a reference image was provided but could not be analyzed.)\n${text}`;
       }
@@ -380,6 +281,7 @@ export async function POST(req: Request) {
       aspectRatio,
       sourceImage: referenceImage,
       extraImages: chainImages.length ? chainImages : undefined,
+      systemInstruction,
       model: resolvedModel,
     });
     const dataUrl = `data:${image.mimeType};base64,${image.data}`;

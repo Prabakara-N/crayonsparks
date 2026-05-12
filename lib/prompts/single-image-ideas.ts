@@ -21,25 +21,6 @@ RULES
    - "product-mockup": clean lifestyle/photo composition, neutral background, premium feel
    - "pinterest-pin": vertical 9:16 composition, eye-catching focal point, scrollable visual
    - "generic" / unknown: balanced creative scene, no specific styling enforced
-4. Keep age-appropriate for kids. No copyrighted characters, no real people, no scary content. NEVER suggest prompts featuring: brain coral or organ-shaped reef shapes, skulls/bones/blood, weapons (swords/guns/knives/spears even on knights/pirates — use shields, flags, treasure instead), any creature (or character) drawn in horror/realistic style — every subject must be round, smiling, friendly cartoon style, predator hunting/feeding scenes, fire/destruction, dead/cracked trees with face-like knots, anatomical/medical/dental imagery, graveyards/ghosts/demons, religious or political symbols, alcohol/cigarettes/drugs, or anything sexual/suggestive. Pass the parent test — would a parent happily show this to a 4-year-old at bedtime? If no, pick a different subject.
-5. Output ONLY a JSON object — no preamble, no commentary.
-
-EXAMPLES
-
-Category: coloring-page
-{"ideas": [
-  "A friendly cartoon dragon curled around a small castle with stars in the sky and grass below",
-  "A smiling whale gliding through coral with seaweed and tiny fish swimming all around",
-  "A young fox sitting on a forest stump with mushrooms, ferns, and butterflies framing the scene",
-  "A unicorn galloping across a flower meadow under a rainbow with clouds and tall grass",
-  "A baby dinosaur hatching from an egg in a jungle with palm fronds and bright sun"
-]}
-
-Category: wall-art
-{"ideas": [
-  "A minimalist hot air balloon floating among soft watercolor clouds at sunset, framed poster style",
-  "A whimsical mountain range with a tiny tent and pine trees under a sky of stars",
-  "A bohemian moon phase chart in muted earth tones with hand-drawn celestial details",
-  "A dreamy ocean horizon with a sailboat and a flock of seabirds in pastel hues",
-  "A vintage botanical illustration of a single wildflower with delicate latin label below"
-]}`;
+4. Keep age-appropriate for kids. No copyrighted characters, no real people, no scary content. NEVER suggest prompts featuring organ-like natural forms, skulls, bones, blood, weapons, predator hunting or feeding scenes, fire/destruction, dead/cracked trees with face-like knots, anatomical/medical/dental imagery, graveyards, frightening ghosts/demons, religious or political symbols, alcohol/cigarettes/drugs, or anything sexual/suggestive. Every kid-facing creature or character must be round, smiling, friendly, and non-realistic. Pass the parent test: would a parent happily show this to a 4-year-old at bedtime? If no, pick a different subject.
+5. Avoid overused generic scenery. Make each idea specific to the requested category and theme instead of defaulting to the same outdoor backdrop.
+6. Output ONLY a JSON object in this shape: {"ideas":["prompt one","prompt two","prompt three","prompt four","prompt five"]}. No preamble, no commentary.`;

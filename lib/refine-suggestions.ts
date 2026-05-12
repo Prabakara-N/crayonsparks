@@ -1,7 +1,7 @@
 /**
  * AI-generated refinement suggestions per image.
  *
- * Sends the actual image to GPT-4o-mini Vision and asks for 6 short
+ * Sends the actual image to the configured light vision model and asks for 6 short
  * context-aware refinement suggestions ("change the cow spots to stripes",
  * "remove the second cloud at top right", "make the title text smaller")
  * — much more useful than a hardcoded list of generic prompts.
@@ -16,7 +16,7 @@ import { OPENAI_VISION_LIGHT_MODEL } from "@/lib/constants";
 
 // Light vision — generates throwaway suggestion chips. Distinct constant
 // from OPENAI_VISION_MODEL so the heavy vision paths (refine chat,
-// quality gate, character extractor) stay on gpt-5.5.
+// quality gate, character extractor) stay on the stronger vision model.
 const MODEL_ID = OPENAI_VISION_LIGHT_MODEL;
 
 export type RefineContext = "page" | "cover" | "back-cover";
@@ -43,7 +43,6 @@ export interface QualityHint {
   anatomy_ok?: boolean;
   size_consistency_ok?: boolean;
   no_text?: boolean;
-  /** True when the AI did NOT draw any rectangular border (the printer's border is added in post-processing by lib/pdf.ts). */
   no_ai_border?: boolean;
 }
 
@@ -64,13 +63,22 @@ function qualityFlawsHint(q: QualityHint | null | undefined): string {
   if (!q) return "";
   const flaws: string[] = [];
   if (q.subject_size_ok === false) flaws.push("subject is too small");
-  if (q.anatomy_ok === false) flaws.push("anatomy is wrong (extra/fused/swapped features)");
-  if (q.size_consistency_ok === false) flaws.push("character sizes don't match between scenes");
-  if (q.pure_bw === false) flaws.push("page is not pure B&W line art — remove any solid black fills on the subject (body, leg, hair, paws) and invert any dark-background / negative-space rendering back to white page with black outlines");
+  if (q.anatomy_ok === false)
+    flaws.push("anatomy is wrong (extra/fused/swapped features)");
+  if (q.size_consistency_ok === false)
+    flaws.push("character sizes don't match between scenes");
+  if (q.pure_bw === false)
+    flaws.push(
+      "page is not pure B&W line art — remove any solid black fills on the subject (body, leg, hair, paws) and invert any dark-background / negative-space rendering back to white page with black outlines",
+    );
   if (q.closed_outlines === false) flaws.push("outlines have gaps");
-  if (q.on_subject === false) flaws.push("the subject doesn't match what was requested");
+  if (q.on_subject === false)
+    flaws.push("the subject doesn't match what was requested");
   if (q.no_text === false) flaws.push("unwanted text/numbers in the image");
-  if (q.no_ai_border === false) flaws.push("AI drew a rectangular border at the page edge — remove it entirely; the printer's border is added by post-processing, so the page must be borderless from the AI side");
+  if (q.no_ai_border === false)
+    flaws.push(
+      "AI drew a rectangular border at the page edge — remove it entirely; the printer's border is added by post-processing, so the page must be borderless from the AI side",
+    );
   if (flaws.length === 0) return "";
   return `\n\nIMPORTANT — quality flaws detected on this image (vision rater scored ${q.score}/10): ${flaws.join("; ")}. The reason given was: "${q.reason}". Make 2-3 of your suggestions specifically target these flaws (e.g. for size flaw: "Make the subject 30% larger"; for anatomy: "Fix the extra leg"; for sky bleed: "Remove the sun and clouds"). The other 3-4 suggestions can be normal observational tweaks. Lead with the flaw-fix suggestions since those are most useful.`;
 }

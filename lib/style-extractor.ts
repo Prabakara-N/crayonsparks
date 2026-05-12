@@ -3,11 +3,11 @@
  *
  * Gemini 2.5 Flash Image is primarily an image-EDIT model; passing a raw
  * image as input nudges it to "modify this" rather than "use as style only".
- * Instead we ask gpt-4o-mini Vision to extract a concise textual style
+ * Instead we ask the configured OpenAI vision model to extract a concise textual style
  * description from the reference, then append that text to the prompt for
  * Gemini. No image is sent to Gemini — eliminating the edit-mode confusion.
  *
- * Cost per call: ~$0.0001 (one gpt-4o-mini vision turn).
+ * Cost depends on OPENAI_VISION_MODEL.
  */
 
 import { openai } from "@ai-sdk/openai";
@@ -36,19 +36,19 @@ function systemPromptFor(mode: StyleMode): string {
 The output goes into a coloring-page prompt where the FINAL IMAGE WILL BE PURE BLACK-AND-WHITE LINE ART. Therefore IGNORE the reference's colors entirely. Focus ONLY on:
 - Line weight & quality (thick/thin, smooth/rough, uniform/varied)
 - Character/subject RENDERING style (cartoon proportions, kawaii, realistic, geometric, organic, friendliness — describe HOW characters are drawn, not WHICH characters)
-- Eye style and facial features (e.g. "oversized round eyes with tiny pupils")
+- Eye style and facial features
 - Stroke and shading conventions (e.g. "uniform thick outlines, no internal shading")
 - Level of detail (minimalist vs intricate; sparse vs dense pattern work)
-- Era/genre vibe (1980s storybook, modern picture-book, mid-century, Pixar-style, manga, etc.)
+- Era/genre vibe
 
-🚫 STRICT EXCLUSIONS — DO NOT describe any of these (they would leak the reference's specific scene into every page of the book and make all 20 pages look the same):
-- The reference's specific subject (don't say "a bear", "a unicorn", "a cat")
-- The reference's specific background or setting (don't say "in a forest", "with a barn", "on a beach", "underwater", "in space")
-- The reference's specific props or scene elements (don't say "with flowers", "with stars", "with a fence")
-- The reference's specific composition layout (don't say "subject on the left with trees on the right")
+STRICT EXCLUSIONS — DO NOT describe any of these (they would leak the reference's specific scene into every page of the book and make all pages look the same):
+- The reference's specific subject
+- The reference's specific background or setting
+- The reference's specific props or scene elements
+- The reference's specific composition layout
 - Color choices (it's going to B&W anyway)
 
-Be CONCRETE and SPECIFIC about STYLE. Use language another AI can act on, e.g. "thick uniform 3pt black outlines, kawaii faces with oversized round eyes and tiny pupils, simplified rounded body shapes, mid-2010s indie picture-book aesthetic, no internal shading, clean closed contours". The downstream prompt will supply its own subject and background — your job is JUST the visual style fingerprint.
+Be CONCRETE and SPECIFIC about STYLE. Describe stroke thickness, contour cleanliness, face construction, body-shape language, detail density, and shading rules. The downstream prompt will supply its own subject and background — your job is JUST the visual style fingerprint.
 
 Output structured response only.`;
   }
@@ -56,7 +56,7 @@ Output structured response only.`;
   return `You are an art director extracting a STYLE description from a reference cover image so another image generator can imitate the style for a NEW colored book cover.
 
 The output goes into a fully-colored book-cover prompt. Include:
-- Art style era/genre (modern picture-book, Pixar-3D, watercolor, flat cartoon, painterly, retro, etc.)
+- Art style era/genre
 - Color palette (warm/cool, saturated/muted, specific hues)
 - Lighting & shading approach (flat, soft directional, dramatic, painterly)
 - Line weight (thick black outlines, subtle tonal edges, no outlines)

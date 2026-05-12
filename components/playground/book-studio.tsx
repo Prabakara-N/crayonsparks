@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
   BookPlus,
@@ -25,6 +26,11 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  useCyclingStatus,
+  useFakeProgress,
+  ProgressFill,
+} from "@/components/playground/progress-status";
 import { ReferenceImageField } from "@/components/ui/reference-image-field";
 import {
   ImageRefineModal,
@@ -55,6 +61,8 @@ import { AspectRatioPicker } from "@/components/playground/aspect-ratio-picker";
 import type { KdpMetadata } from "@/lib/kdp-metadata";
 import { type StoryType } from "@/lib/story-book-planner";
 import { StoryTypePicker } from "@/components/playground/story-type-picker";
+import { DialogueStylePicker } from "@/components/playground/dialogue-style-picker";
+import type { DialogueStyle } from "@/lib/prompts";
 import {
   COVER_MODEL_OPTIONS,
   INTERIOR_MODEL_OPTIONS,
@@ -309,6 +317,7 @@ export function BookStudio({
   initialReference,
   initialMode,
   onSwitchToChat,
+  onReset,
 }: {
   /**
    * If provided, BookStudio skips the "describe your book" idea phase and
@@ -340,6 +349,8 @@ export function BookStudio({
    * users who prefer chat-based planning can switch from either flow.
    */
   onSwitchToChat?: (idea: string, mode: "qa" | "story") => void;
+  /** Notifies the parent shell when the user clicks "Start new book" so the shell can drop any Sparky-seeded plan / reference / mode. */
+  onReset?: () => void;
 } = {}) {
   const dialog = useDialog();
   const [phase, setPhase] = useState<Phase>(initialPlan ? "review" : "idea");
@@ -384,12 +395,14 @@ export function BookStudio({
   // link for users who want it.
   const [bookKind, setBookKind] = useState<"coloring" | "story">("coloring");
 
-  // Story-mode IdeaForm fields. Coloring mode ignores both. Both default
-  // to empty — story type is OPTIONAL and the planner falls back to the
-  // canonical plot (for known fables) or the most natural shape (for
-  // original ideas) when the user doesn't pick a type.
+  // Story-mode IdeaForm fields. Coloring mode ignores all three. Story
+  // type is OPTIONAL (planner falls back to canonical plot for known
+  // fables or the most natural shape for originals). Dialogue style
+  // defaults to "balanced" — the planner emits ~50% bubble pages.
   const [storyType, setStoryType] = useState<StoryType | null>(null);
   const [storyCharacterNames, setStoryCharacterNames] = useState<string>("");
+  const [dialogueStyle, setDialogueStyle] =
+    useState<DialogueStyle>("balanced");
 
   const [planning, setPlanning] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
@@ -459,7 +472,7 @@ export function BookStudio({
     model?: ImageModel;
   }>({ status: "pending" });
   const [belongsToStyle, setBelongsToStyle] = useState<"bw" | "color">("bw");
-  // Character lock — extracted ONCE from the front cover by GPT-5.5 Vision
+  // Character lock — extracted once from the front cover by the OpenAI vision model
   // and injected into every subsequent page-generation prompt so recurring
   // characters stay visually identical across all 20 pages (same body
   // shape, same proportions, same distinguishing features). Without this
@@ -487,6 +500,16 @@ export function BookStudio({
   // (without this, pause only kicks in BETWEEN pages, which is what the
   // user was hitting on Page 13/17).
   const abortRef = useRef<AbortController | null>(null);
+
+  // Live snapshot of the items array so the bulk-generate loop reads
+  // up-to-date statuses on each iteration. Without this the loop's
+  // closure-captured `items` stays frozen at the moment startGeneration
+  // ran — so a page manually regenerated mid-loop still reads as pending
+  // when the loop reaches it, and the loop re-runs the same page.
+  const itemsRef = useRef<PromptItem[]>([]);
+  useEffect(() => {
+    itemsRef.current = items;
+  });
 
 
   // Story-mode image preview — when a user clicks "refine" on any story
@@ -650,6 +673,7 @@ export function BookStudio({
           age,
           storyType: storyType ?? undefined,
           characterNames: storyCharacterNames.trim() || undefined,
+          dialogueStyle,
         }
         : { idea: trimmed, pageCount, age };
       const res = await fetch(endpoint, {
@@ -703,6 +727,7 @@ export function BookStudio({
     setCover({ status: "pending" });
     setBackCover({ status: "pending" });
     setCurrentIndex(0);
+    onReset?.();
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -728,6 +753,7 @@ export function BookStudio({
           headers: { "Content-Type": "application/json" },
           signal: abortRef.current?.signal,
           body: JSON.stringify({
+            ageBand: age,
             title: plan.coverTitle,
             coverScene: plan.coverScene,
             characters: plan.characters,
@@ -828,6 +854,7 @@ export function BookStudio({
           headers: { "Content-Type": "application/json" },
           signal: abortRef.current?.signal,
           body: JSON.stringify({
+            ageBand: age,
             title: plan.coverTitle,
             palette: plan.palette,
             tagline: deriveStoryBackCoverTagline(plan),
@@ -889,7 +916,7 @@ export function BookStudio({
   }, [plan, mode, cover.dataUrl, coverStyle, coverBorder, qualityCheck, coverModel]);
 
   // Character locker — runs ONCE per book right after the cover succeeds.
-  // Reads the cover image with GPT-5.5 Vision and produces a
+  // Reads the cover image with the OpenAI vision model and produces a
   // CHARACTER LOCK descriptor block. The block is injected into every
   // subsequent page-generation prompt so recurring characters look
   // identical across all pages. Failures are non-blocking: pages still
@@ -1041,6 +1068,7 @@ export function BookStudio({
             headers: { "Content-Type": "application/json" },
             signal: abortRef.current?.signal,
             body: JSON.stringify({
+              ageBand: age,
               characters: plan.characters,
               palette: plan.palette,
               scene: item.subject + flawSuffix,
@@ -1053,8 +1081,6 @@ export function BookStudio({
                   : undefined,
               chainReferenceDataUrl,
               model: interiorModel,
-              // Match the cover's chosen style so interior pages render
-              // in the same visual language (flat 2D vs painterly).
               coverStyle,
             }),
           });
@@ -1221,14 +1247,16 @@ export function BookStudio({
             subject: plan.coverScene ?? plan.title ?? "cover",
           }
           : undefined;
-      for (let i = 0; i < items.length; i++) {
+      const total = itemsRef.current.length;
+      for (let i = 0; i < total; i++) {
         if (cancelRef.current) break;
         while (pausedRef.current && !cancelRef.current) {
           await new Promise((r) => setTimeout(r, 200));
         }
         if (cancelRef.current) break;
         setCurrentIndex(i);
-        const item = items[i];
+        const item = itemsRef.current[i];
+        if (!item) continue;
         if (item.status === "done") {
           // Promote first done interior to anchor (for border consistency).
           if (
@@ -1318,9 +1346,23 @@ export function BookStudio({
       if (cover.status === "done" && cover.dataUrl) {
         zip.file("00_cover.png", cover.dataUrl.split(",")[1], { base64: true });
       }
+      if (
+        belongsTo.status === "done" &&
+        belongsTo.dataUrl &&
+        mode !== "story"
+      ) {
+        zip.file("01_belongs_to.png", belongsTo.dataUrl.split(",")[1], {
+          base64: true,
+        });
+      }
       for (const item of done) {
         const safe = item.name.replace(/[^a-z0-9]+/gi, "_");
         zip.file(`${item.id}_${safe}.png`, item.dataUrl!.split(",")[1], {
+          base64: true,
+        });
+      }
+      if (backCover.status === "done" && backCover.dataUrl) {
+        zip.file("zz_back_cover.png", backCover.dataUrl.split(",")[1], {
           base64: true,
         });
       }
@@ -1344,7 +1386,7 @@ export function BookStudio({
     } finally {
       setPdfBuilding(false);
     }
-  }, [items, cover, plan]);
+  }, [items, cover, backCover, belongsTo, mode, plan]);
 
   const downloadPdf = useCallback(async () => {
     const done = items.filter((i) => i.status === "done" && i.dataUrl);
@@ -1381,51 +1423,41 @@ export function BookStudio({
           backCover: { dataUrl: backCover.dataUrl },
           pages: storyPages,
         };
-        const [coverRes, interiorRes, etsyLetterRes, etsyA4Res] =
-          await Promise.all([
-            fetch("/api/assemble-pdf", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                category: plan?.coverTitle ?? "story-book",
-                cover: { dataUrl: cover.dataUrl },
-                backCover: { dataUrl: backCover.dataUrl },
-                mode: "cover-wrap",
-                paper: "standardColor",
-                interiorPageCount: storyPages.length,
-                trimWidthInches: 6,
-                trimHeightInches: 9,
-              }),
+        const [coverRes, interiorRes, etsyA4Res] = await Promise.all([
+          fetch("/api/assemble-pdf", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              category: plan?.coverTitle ?? "story-book",
+              cover: { dataUrl: cover.dataUrl },
+              backCover: { dataUrl: backCover.dataUrl },
+              mode: "cover-wrap",
+              paper: "standardColor",
+              interiorPageCount: storyPages.length,
+              trimWidthInches: 6,
+              trimHeightInches: 9,
             }),
-            fetch("/api/assemble-story-book-pdf", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                title: plan?.coverTitle ?? plan?.title,
-                pages: storyPages,
-                trimWidthInches: 6,
-                trimHeightInches: 9,
-              }),
+          }),
+          fetch("/api/assemble-story-book-pdf", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: plan?.coverTitle ?? plan?.title,
+              pages: storyPages,
+              trimWidthInches: 6,
+              trimHeightInches: 9,
             }),
-            fetch("/api/assemble-story-book-pdf", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                ...storyBaseBody,
-                trimWidthInches: 8.5,
-                trimHeightInches: 11,
-              }),
+          }),
+          fetch("/api/assemble-story-book-pdf", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...storyBaseBody,
+              trimWidthInches: 8.27,
+              trimHeightInches: 11.69,
             }),
-            fetch("/api/assemble-story-book-pdf", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                ...storyBaseBody,
-                trimWidthInches: 8.27,
-                trimHeightInches: 11.69,
-              }),
-            }),
-          ]);
+          }),
+        ]);
 
         if (!coverRes.ok) {
           const j = await coverRes.json().catch(() => ({}));
@@ -1435,21 +1467,15 @@ export function BookStudio({
           const j = await interiorRes.json().catch(() => ({}));
           throw new Error(j.error || "Story interior PDF failed");
         }
-        if (!etsyLetterRes.ok) {
-          const j = await etsyLetterRes.json().catch(() => ({}));
-          throw new Error(j.error || "Story Etsy Letter PDF failed");
-        }
         if (!etsyA4Res.ok) {
           const j = await etsyA4Res.json().catch(() => ({}));
           throw new Error(j.error || "Story Etsy A4 PDF failed");
         }
 
-        const [coverBlob, interiorBlob, etsyLetterBlob, etsyA4Blob] =
-          await Promise.all([
-            coverRes.blob(),
-            interiorRes.blob(),
-            etsyLetterRes.blob(),
-            etsyA4Res.blob(),
+        const [coverBlob, interiorBlob, etsyA4Blob] = await Promise.all([
+          coverRes.blob(),
+          interiorRes.blob(),
+          etsyA4Res.blob(),
           ]);
 
         const { default: JSZip } = await import("jszip");
@@ -1462,13 +1488,14 @@ export function BookStudio({
           `${safeName}_interior_KDP.pdf`,
           await interiorBlob.arrayBuffer(),
         );
+        zip.file(`${safeName}_etsy_a4.pdf`, await etsyA4Blob.arrayBuffer());
+        zip.file(`${safeName}_cover.png`, cover.dataUrl!.split(",")[1], {
+          base64: true,
+        });
         zip.file(
-          `${safeName}_etsy_letter.pdf`,
-          await etsyLetterBlob.arrayBuffer(),
-        );
-        zip.file(
-          `${safeName}_etsy_a4.pdf`,
-          await etsyA4Blob.arrayBuffer(),
+          `${safeName}_back_cover.png`,
+          backCover.dataUrl!.split(",")[1],
+          { base64: true },
         );
         zip.file(
           "README.txt",
@@ -1479,7 +1506,7 @@ export function BookStudio({
             `Pages:  ${storyPages.length} interior scenes`,
             `Trim:   6 × 9 inches (KDP color paperback standard)`,
             "",
-            "This zip contains 4 PDFs — pick the ones that match where",
+            "This zip contains 3 PDFs — pick the ones that match where",
             "you're publishing.",
             "",
             "── AMAZON KDP (color paperback) ──────────────────────────────",
@@ -1497,26 +1524,21 @@ export function BookStudio({
             "  Help: https://kdp.amazon.com/en_US/help/topic/G201834260",
             "",
             "── ETSY / GUMROAD (digital download) ─────────────────────────",
-            "  Single PDFs in this order:",
+            "  Single PDF in this order:",
             "    • Page 1     — Front cover (full color)",
             "    • Pages 2..N — Story scenes back-to-back (no blanks)",
             "    • Last page  — Back cover",
-            "  Upload BOTH files to your listing so buyers worldwide can print:",
             "",
-            `  3. ${safeName}_etsy_letter.pdf  — US Letter (8.5×11")`,
-            "     For US, Canada, Mexico, Philippines.",
-            "",
-            `  4. ${safeName}_etsy_a4.pdf      — A4 (210×297 mm)`,
-            "     For UK, EU, India, Australia, NZ, Asia, and the rest.",
-            "",
-            "  Listing tip: mention 'Includes US Letter AND A4 versions' in",
-            "  your description — international buyers actively search for it.",
+            `  3. ${safeName}_etsy_a4.pdf — A4 (210×297 mm)`,
+            "     A4 is the standard worldwide outside the US and prints",
+            "     fine on US Letter printers (slight margin trim).",
           ].join("\n"),
         );
 
         const zipBytes = await zip.generateAsync({
           type: "blob",
-          compression: "STORE",
+          compression: "DEFLATE",
+          compressionOptions: { level: 6 },
         });
         const url = URL.createObjectURL(zipBytes);
         const a = document.createElement("a");
@@ -1545,12 +1567,11 @@ export function BookStudio({
         })),
       };
 
-      // Fetch FOUR PDFs in parallel:
+      // Fetch THREE PDFs in parallel:
       //   1. KDP cover wrap (back + spine + front, KDP-spec dimensions)
       //   2. KDP interior (alternating blanks per KDP convention)
-      //   3. Etsy/Gumroad single PDF — US Letter (8.5×11)
-      //   4. Etsy/Gumroad single PDF — A4 (210×297mm) for international buyers
-      const [coverRes, interiorRes, etsyLetterRes, etsyA4Res] = await Promise.all([
+      //   3. Etsy/Gumroad single PDF — A4 (210×297mm), prints fine on US Letter
+      const [coverRes, interiorRes, etsyA4Res] = await Promise.all([
         fetch("/api/assemble-pdf", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1585,18 +1606,6 @@ export function BookStudio({
             ...baseBody,
             mode: "combined",
             includeBlankPages: false,
-            // US Letter (default — explicit for clarity)
-            trimWidthInches: 8.5,
-            trimHeightInches: 11,
-          }),
-        }),
-        fetch("/api/assemble-pdf", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...baseBody,
-            mode: "combined",
-            includeBlankPages: false,
             // A4: 210 × 297 mm = 8.2677 × 11.6929 inches
             trimWidthInches: 8.27,
             trimHeightInches: 11.69,
@@ -1612,19 +1621,14 @@ export function BookStudio({
         const j = await interiorRes.json().catch(() => ({}));
         throw new Error(j.error || "Interior PDF failed");
       }
-      if (!etsyLetterRes.ok) {
-        const j = await etsyLetterRes.json().catch(() => ({}));
-        throw new Error(j.error || "Etsy Letter PDF failed");
-      }
       if (!etsyA4Res.ok) {
         const j = await etsyA4Res.json().catch(() => ({}));
         throw new Error(j.error || "Etsy A4 PDF failed");
       }
 
-      const [coverBlob, interiorBlob, etsyLetterBlob, etsyA4Blob] = await Promise.all([
+      const [coverBlob, interiorBlob, etsyA4Blob] = await Promise.all([
         coverRes.blob(),
         interiorRes.blob(),
-        etsyLetterRes.blob(),
         etsyA4Res.blob(),
       ]);
 
@@ -1636,14 +1640,28 @@ export function BookStudio({
       const zip = new JSZip();
       zip.file(`${safeName}_cover_KDP.pdf`, await coverBlob.arrayBuffer());
       zip.file(`${safeName}_interior_KDP.pdf`, await interiorBlob.arrayBuffer());
-      zip.file(`${safeName}_etsy_letter.pdf`, await etsyLetterBlob.arrayBuffer());
       zip.file(`${safeName}_etsy_a4.pdf`, await etsyA4Blob.arrayBuffer());
+      zip.file(`${safeName}_cover.png`, cover.dataUrl!.split(",")[1], {
+        base64: true,
+      });
+      zip.file(
+        `${safeName}_back_cover.png`,
+        backCover.dataUrl!.split(",")[1],
+        { base64: true },
+      );
+      if (belongsTo.status === "done" && belongsTo.dataUrl) {
+        zip.file(
+          `${safeName}_belongs_to.png`,
+          belongsTo.dataUrl.split(",")[1],
+          { base64: true },
+        );
+      }
       zip.file(
         "README.txt",
         [
           "CrayonSparks → Print package",
           "",
-          "This zip contains 4 PDFs — pick the ones that match where you're",
+          "This zip contains 3 PDFs — pick the ones that match where you're",
           "publishing.",
           "",
           "── AMAZON KDP (paperback) ────────────────────────────────────",
@@ -1659,25 +1677,23 @@ export function BookStudio({
           "  Help: https://kdp.amazon.com/en_US/help/topic/G201834260",
           "",
           "── ETSY / GUMROAD (digital download) ─────────────────────────",
-          "  Single PDFs in this order:",
+          "  Single PDF in this order:",
           "    • Page 1     — Front cover (full color)",
           "    • Page 2     — 'This Book Belongs To' nameplate",
           "    • Pages 3..N — Coloring pages, back-to-back (no blanks)",
           "    • Last page  — Back cover",
-          "  Upload BOTH files to your listing so buyers worldwide can print:",
           "",
-          `  3. ${safeName}_etsy_letter.pdf  — US Letter (8.5×11\")`,
-          "     For US, Canada, Mexico, Philippines.",
-          "",
-          `  4. ${safeName}_etsy_a4.pdf      — A4 (210×297 mm)`,
-          "     For UK, EU, India, Australia, NZ, Asia, and the rest.",
-          "",
-          "  Listing tip: mention 'Includes US Letter AND A4 versions' in",
-          "  your description — international buyers actively search for it.",
+          `  3. ${safeName}_etsy_a4.pdf — A4 (210×297 mm)`,
+          "     A4 is the standard worldwide outside the US and prints",
+          "     fine on US Letter printers (slight margin trim).",
         ].join("\n"),
       );
 
-      const zipBytes = await zip.generateAsync({ type: "blob" });
+      const zipBytes = await zip.generateAsync({
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: { level: 6 },
+      });
       const url = URL.createObjectURL(zipBytes);
       const a = document.createElement("a");
       a.href = url;
@@ -1740,6 +1756,8 @@ export function BookStudio({
         setStoryType={setStoryType}
         storyCharacterNames={storyCharacterNames}
         setStoryCharacterNames={setStoryCharacterNames}
+        dialogueStyle={dialogueStyle}
+        setDialogueStyle={setDialogueStyle}
         onSwitchToChat={onSwitchToChat}
       />
     );
@@ -1958,21 +1976,21 @@ export function BookStudio({
               : "Front cover is locked — interior pages already reference it. Click Start new book to begin a new project."
           }
           onRefineFront={(dataUrl) => {
+            const coverLocked =
+              phase === "generating" ||
+              phase === "paused" ||
+              items.some((it) => it.status === "done");
             openRefine({
-              // Story mode uses the story-cover refine context so the
-              // route injects full-color / character-preserving guardrails
-              // instead of the coloring-book cover rules.
               context: mode === "story" ? "story-cover" : "cover",
               targetId: "cover",
               dataUrl,
               title: "Cover",
-              subtitle:
-                mode === "story"
+              subtitle: coverLocked
+                ? "Tweaks only — interior pages already reference this cover. Ask for small adjustments (text, colors, accessories); avoid full redesigns or character changes."
+                : mode === "story"
                   ? "Describe changes. Sparky edits the painterly cover while preserving title, characters, and overlays."
                   : "Describe changes. Gemini edits while preserving layout.",
               downloadName: "cover.png",
-              // Refine inherits the model that produced the cover. Fall
-              // back to the live dropdown for pre-tagging sessions.
               model: cover.model ?? coverModel,
               onRefined: (d) =>
                 setCover({
@@ -2056,7 +2074,7 @@ export function BookStudio({
                 <Play className="w-4 h-4" /> Start generating
               </button>
             )}
-            {phase === "generating" && (
+            {phase === "generating" && !pdfBuilding && (
               <>
                 <button
                   onClick={pause}
@@ -2072,7 +2090,7 @@ export function BookStudio({
                 </button>
               </>
             )}
-            {phase === "paused" && (
+            {phase === "paused" && !pdfBuilding && (
               <>
                 <button
                   onClick={resume}
@@ -2298,9 +2316,6 @@ export function BookStudio({
         model={refine.model}
         openNonce={refineOpenNonce}
         onBackgroundChange={(state) => {
-          // Track per-target so cards can render a "refine in process" /
-          // "refine done" pill. "done" entries clear themselves after a
-          // few seconds so the page card returns to its normal state.
           const id = refine.targetId;
           if (!id) return;
           setRefineStatus((prev) => {
@@ -2311,6 +2326,20 @@ export function BookStudio({
             return { ...prev, [id]: state };
           });
           if (state === "done") {
+            const snapshot = { ...refine, open: true };
+            const targetLabel = refine.title?.trim() || "Page";
+            toast.success(`Refine done · ${targetLabel}`, {
+              description:
+                "Background refine landed and was applied to the card.",
+              action: {
+                label: "Open",
+                onClick: () => {
+                  setRefineOpenNonce((n) => n + 1);
+                  setRefine(snapshot);
+                },
+              },
+              duration: 8000,
+            });
             setTimeout(() => {
               setRefineStatus((prev) => {
                 if (prev[id] !== "done") return prev;
@@ -2414,6 +2443,8 @@ function IdeaForm({
   setStoryType,
   storyCharacterNames,
   setStoryCharacterNames,
+  dialogueStyle,
+  setDialogueStyle,
   onSwitchToChat,
 }: {
   idea: string;
@@ -2437,6 +2468,8 @@ function IdeaForm({
   setStoryType: (v: StoryType | null) => void;
   storyCharacterNames: string;
   setStoryCharacterNames: (v: string) => void;
+  dialogueStyle: DialogueStyle;
+  setDialogueStyle: (v: DialogueStyle) => void;
   onSwitchToChat?: (idea: string, mode: "qa" | "story") => void;
 }) {
   const [showIdeas, setShowIdeas] = useState(false);
@@ -2596,6 +2629,21 @@ function IdeaForm({
               fables).
             </p>
           </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-semibold text-neutral-200 mb-2">
+              Dialogue style
+            </label>
+            <DialogueStylePicker
+              value={dialogueStyle}
+              onChange={setDialogueStyle}
+              disabled={planning}
+            />
+            <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
+              How chatty the book feels. Quiet = narration-driven bedtime
+              energy. Balanced = captions + dialogue (default). Chatty =
+              most pages have speech bubbles with back-and-forth exchanges.
+            </p>
+          </div>
         </div>
       )}
 
@@ -2634,6 +2682,7 @@ function IdeaForm({
               onClose={() => setShowIdeas(false)}
               onPick={(text) => setIdea(text)}
               kind={isStory ? "story" : "coloring"}
+              storyType={isStory ? storyType : null}
             />
           </div>
         )}
@@ -2749,20 +2798,70 @@ function IdeaForm({
         </div>
       )}
 
-      <button
+      <PlanButton
         onClick={onPlan}
         disabled={planning || idea.trim().length < 10}
-        className={cn(
-          "w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold text-white shadow-lg disabled:opacity-60 disabled:cursor-not-allowed transition-all",
-          isStory
-            ? "bg-linear-to-r from-cyan-500 via-teal-400 to-emerald-400 shadow-cyan-500/40 hover:shadow-xl hover:shadow-cyan-500/60"
-            : "bg-linear-to-r from-violet-500 via-indigo-400 to-cyan-400 shadow-violet-500/40 hover:shadow-xl hover:shadow-violet-500/60",
-        )}
-      >
+        planning={planning}
+        isStory={isStory}
+      />
+      <p className="text-[11px] text-center text-neutral-500">
+        {isStory
+          ? `We'll draft characters, a palette, ${pageCount} scenes, and dialogue from your idea. You can review + edit before generation starts.`
+          : `Gemini will draft a title, cover scene, and ${pageCount} page prompts. You can review + edit before generation starts.`}
+      </p>
+    </div>
+  );
+}
+
+const STORY_PLAN_STAGES = [
+  "Sketching the world…",
+  "Naming locked characters…",
+  "Picking the colour palette…",
+  "Writing scene-by-scene plot…",
+  "Drafting dialogue + narration…",
+  "Polishing the brief…",
+] as const;
+
+const COLORING_PLAN_STAGES = [
+  "Brainstorming the theme…",
+  "Locking the cover scene…",
+  "Drafting the title…",
+  "Generating page prompts…",
+  "Building the side plaque + bottom strip…",
+  "Polishing the brief…",
+] as const;
+
+function PlanButton({
+  onClick,
+  disabled,
+  planning,
+  isStory,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  planning: boolean;
+  isStory: boolean;
+}) {
+  const stages = isStory ? STORY_PLAN_STAGES : COLORING_PLAN_STAGES;
+  const status = useCyclingStatus(stages, planning, 1800);
+  const pct = useFakeProgress(planning, isStory ? 14000 : 10000);
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "relative w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold text-white shadow-lg disabled:opacity-60 disabled:cursor-not-allowed transition-all overflow-hidden",
+        isStory
+          ? "bg-linear-to-r from-cyan-500 via-teal-400 to-emerald-400 shadow-cyan-500/40 hover:shadow-xl hover:shadow-cyan-500/60"
+          : "bg-linear-to-r from-violet-500 via-indigo-400 to-cyan-400 shadow-violet-500/40 hover:shadow-xl hover:shadow-violet-500/60",
+      )}
+    >
+      {planning && <ProgressFill pct={pct} />}
+      <span className="relative inline-flex items-center gap-2">
         {planning ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Planning your {isStory ? "story book" : "book"}…
+            {status}
           </>
         ) : (
           <>
@@ -2770,13 +2869,8 @@ function IdeaForm({
             {isStory ? "Plan my story book" : "Plan my book with AI"}
           </>
         )}
-      </button>
-      <p className="text-[11px] text-center text-neutral-500">
-        {isStory
-          ? `We'll draft characters, a palette, ${pageCount} scenes, and dialogue from your idea. You can review + edit before generation starts.`
-          : `Gemini will draft a title, cover scene, and ${pageCount} page prompts. You can review + edit before generation starts.`}
-      </p>
-    </div>
+      </span>
+    </button>
   );
 }
 

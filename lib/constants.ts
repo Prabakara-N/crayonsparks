@@ -128,9 +128,7 @@ export function refineModelOptionsFor(
 }
 
 /** Default model when the inherited source model is unknown or invalid. */
-export function defaultRefineModelFor(
-  surface: RefineSurface,
-): ImageModel {
+export function defaultRefineModelFor(surface: RefineSurface): ImageModel {
   if (surface === "cover" || surface === "story-cover")
     return DEFAULT_COVER_MODEL;
   return DEFAULT_INTERIOR_MODEL;
@@ -150,13 +148,16 @@ export const GEMINI_TEXT_MODEL = "gemini-2.5-flash";
 export const OPENAI_VISION_MODEL = "gpt-5.5";
 
 /** Cheaper vision model — used for low-stakes refine suggestions. */
-export const OPENAI_VISION_LIGHT_MODEL = "gpt-5-mini";
+export const OPENAI_VISION_LIGHT_MODEL = "gpt-5.4-mini";
 
-/** Plain text generation — book chat, idea suggestions. */
-export const OPENAI_TEXT_MODEL = "gpt-5-mini";
+/** Complex planning for Sparky chat and story-book planning. */
+export const OPENAI_PLANNER_MODEL = "gpt-5.5";
+
+/** Plain helper text generation for quick ideas, rewrites, and taglines. */
+export const OPENAI_TEXT_MODEL = "gpt-5.4-mini";
 
 /** KDP marketing copy generation. */
-export const OPENAI_COPY_MODEL = "gpt-5-mini";
+export const OPENAI_COPY_MODEL = "gpt-5.4-mini";
 
 /** Refine chat assistant ("Sparky"). */
 export const OPENAI_REFINE_MODEL = "gpt-5.5";

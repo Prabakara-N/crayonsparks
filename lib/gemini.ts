@@ -1,15 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
-import { generateText } from "ai";
-import { openai } from "@ai-sdk/openai";
 import {
   DEFAULT_INTERIOR_MODEL,
-  OPENAI_TEXT_MODEL,
   type ImageModel,
 } from "@/lib/constants";
-import {
-  SAFETY_SUBSTITUTIONS_SYSTEM_PROMPT,
-  buildSafetySubstitutionsUserPrompt,
-} from "@/lib/prompts/safety-substitutions";
+import { buildPromptSuggestions } from "@/lib/gemini-failure-suggestions";
 
 let _client: GoogleGenAI | null = null;
 
@@ -73,126 +67,6 @@ export interface GenerateOptions {
    * content (subject, scene, variation) in the regular `prompt` argument.
    */
   systemInstruction?: string;
-}
-
-/**
- * Words that quietly trip Gemini's child-safety / IP filters when rendered
- * as kids' coloring-book pages, mapped to neutral synonyms that produce the
- * same visual but pass safety. Applied as a single ordered pass when the
- * first generation attempt comes back empty (silent refusal).
- *
- * Order matters — longer phrases first so "held up high" doesn't get
- * partially mangled by the "high" rule.
- */
-const SAFETY_SOFTEN_RULES: Array<[RegExp, string]> = [
-  [/\bheld up high\b/gi, "presented gently"],
-  [/\bhold(ing)? up high\b/gi, "present(ing) gently"],
-  [/\bgiant rocky cliff\b/gi, "tall sunny rock outcrop"],
-  [/\bdrop(ping)? off (a|the) cliff\b/gi, "stepping near a hill$1"],
-  [/\bcliff edge\b/gi, "rock ledge"],
-  [/\bcliff\b/gi, "tall rock"],
-  [/\bshadowy cave\b/gi, "rocky cave with line-art rocks, no solid black fill"],
-  [/\bshadowy\b/gi, "dim"],
-  [/\bdark mane\b/gi, "thick mane"],
-  [/\bscar over (one|his|her) eye\b/gi, "tuft of fur near $1 eye"],
-  [/\bscarred\b/gi, "ruffled"],
-  [/\bplotting\b/gi, "watching"],
-  [/\bsneaky-looking\b/gi, "curious"],
-  [/\bsneaky\b/gi, "curious"],
-  [/\bvillain(s)?\b/gi, "rival$1"],
-  [/\bscary\b/gi, "silly"],
-  [/\bfrightened\b/gi, "surprised"],
-  [/\bstampeding wildebeest\b/gi, "running herd of friendly wildebeest"],
-  [/\bdust storm of the stampede\b/gi, "swirl of running animals"],
-  [/\bstampede\b/gi, "running herd"],
-  [/\blightning crackling\b/gi, "soft clouds"],
-  [/\bstormy sky\b/gi, "cloudy sky"],
-  [/\bnose to nose\b/gi, "facing each other"],
-  [/\bconfront(ing|ed|s)?\b/gi, "meeting"],
-  [/\bvultures circling\b/gi, "birds soaring"],
-  [/\btiny baby\b/gi, "small"],
-  [/\btears? streaming\b/gi, "one big tear"],
-];
-
-function softenForSafety(prompt: string): {
-  softened: string;
-  changed: boolean;
-} {
-  let out = prompt;
-  let changed = false;
-  for (const [re, replacement] of SAFETY_SOFTEN_RULES) {
-    if (re.test(out)) {
-      out = out.replace(re, replacement);
-      changed = true;
-    }
-  }
-  return { softened: out, changed };
-}
-
-/**
- * Generic AI-powered substitution map — fires only when rule-based soften
- * has failed. Calls gpt-5-mini and asks it to identify a SHORT LIST of
- * IP/safety-trigger phrases to swap, NOT to rewrite the whole prompt.
- * We then apply the substitutions as targeted string replacements on the
- * original prompt — preserving every rule (B&W, character lock, page
- * frame, anatomy, etc.) while breaking the IP / safety fingerprint.
- *
- * Generic across ALL stories: Lion King, Frozen, Toy Story, Cars, Finding
- * Nemo, anything. Costs ~$0.0003 per failed page (only fires on failures).
- */
-async function aiSuggestSubstitutions(
-  prompt: string,
-  hint?: string,
-): Promise<Array<{ from: string; to: string }> | null> {
-  if (!process.env.OPENAI_API_KEY) return null;
-
-  const userPrompt = buildSafetySubstitutionsUserPrompt(prompt, hint);
-
-  try {
-    const result = await generateText({
-      model: openai(OPENAI_TEXT_MODEL),
-      system: SAFETY_SUBSTITUTIONS_SYSTEM_PROMPT,
-      prompt: userPrompt,
-    });
-    const text = result.text.trim();
-    // Strip ```json fences if the model added them.
-    const stripped = text
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
-    const parsed = JSON.parse(stripped);
-    if (!Array.isArray(parsed)) return null;
-    const validated = parsed
-      .filter(
-        (e): e is { from: string; to: string } =>
-          !!e &&
-          typeof e === "object" &&
-          typeof (e as { from?: unknown }).from === "string" &&
-          typeof (e as { to?: unknown }).to === "string" &&
-          (e as { from: string }).from.length > 2,
-      )
-      .slice(0, 6);
-    return validated.length > 0 ? validated : null;
-  } catch {
-    return null;
-  }
-}
-
-function applySubstitutions(
-  prompt: string,
-  subs: Array<{ from: string; to: string }>,
-): { result: string; appliedCount: number } {
-  let result = prompt;
-  let appliedCount = 0;
-  for (const { from, to } of subs) {
-    if (!from || !result.includes(from)) continue;
-    // Replace ALL occurrences (subject often appears multiple times in
-    // the master prompt, e.g. "The ${subject} is the main character" +
-    // "${subject}'s natural environment").
-    result = result.split(from).join(to);
-    appliedCount += 1;
-  }
-  return { result, appliedCount };
 }
 
 /** Gemini response metadata we surface for better error messages. */
@@ -282,6 +156,9 @@ async function callGemini(
         config: {
           responseModalities: ["IMAGE"],
           imageConfig: { aspectRatio },
+          ...(opts.systemInstruction
+            ? { systemInstruction: opts.systemInstruction }
+            : {}),
         },
       });
       lastErr = null;
@@ -369,52 +246,6 @@ function smellsLikeIpRefusal(prompt: string, finishReason?: string): boolean {
     /\bcircle of life\b/.test(lower) ||
     /\bpride rock\b/.test(lower);
   return hasMeerkatWarthog || hasLionKingMotif;
-}
-
-/**
- * Pre-defined IP-trigger pairs we suggest swapping when the prompt smells
- * like a copyrighted work. Order matters — most specific first.
- */
-const IP_SUGGESTIONS: Array<[RegExp, string]> = [
-  [
-    /\bmeerkat\b.*\bwarthog\b|\bwarthog\b.*\bmeerkat\b/i,
-    "Swap meerkat + warthog → hedgehog + rabbit, OR fox cub + raccoon, OR squirrel + tortoise (keeps the odd-couple feel without the Lion King fingerprint)",
-  ],
-  [
-    /\bcliff\b.*\bcub\b|\bcub\b.*\bcliff\b|\bbaboon\b/i,
-    "Replace 'cliff' + 'baboon presenting cub' wording → 'sunny rock outcrop' + 'wise old owl perched nearby' (defangs the Pride Rock recognition)",
-  ],
-  [
-    /\bstargazing\b|\blooking up at thousands of stars\b|\blying on (their|its) backs?\b/i,
-    "Reword 'lying on backs looking at stars' → 'sitting around a small campfire' or 'counting fireflies in a meadow' (avoids the 'They live in you' scene)",
-  ],
-];
-
-/** Scan the prompt for trigger phrases and return concrete reword suggestions. */
-function buildPromptSuggestions(prompt: string): string[] {
-  const out: string[] = [];
-
-  // Safety-word substitutions present in the prompt.
-  for (const [re, replacement] of SAFETY_SOFTEN_RULES) {
-    const cleanRe = new RegExp(re.source, re.flags.replace("g", ""));
-    const match = prompt.match(cleanRe);
-    if (match) {
-      out.push(
-        `Replace "${match[0]}" → "${replacement.replace(/\$\d/g, "...")}"`,
-      );
-    }
-    if (out.length >= 4) break;
-  }
-
-  // IP-flavoured pairs.
-  for (const [re, suggestion] of IP_SUGGESTIONS) {
-    if (re.test(prompt)) {
-      out.push(suggestion);
-      if (out.length >= 5) break;
-    }
-  }
-
-  return out;
 }
 
 /** Build a specific, user-readable failure message based on Gemini's signals. */

@@ -50,13 +50,33 @@ export {
 
 export { CATEGORIES, TOTAL_PROMPTS, findCategory } from "./categories";
 
-export { NO_REAL_BRAND_RULE, NO_AI_BORDER_RULE } from "./guardrails";
+export {
+  NO_REAL_BRAND_RULE,
+  NO_AI_BORDER_RULE,
+  SIGNATURE_ELEMENT_USAGE_RULE,
+  AGE_BAND_RANGE,
+  AGE_BAND_LABEL_SINGULAR,
+  AGE_BAND_AUDIENCE_PILL,
+  AGE_BAND_PLAQUE_TAGLINE,
+  DIALOGUE_MAX_WORDS,
+  TAGLINE_MAX_WORDS,
+  DIALOGUE_STYLE_LABEL,
+  DIALOGUE_STYLE_DESCRIPTION,
+  DIALOGUE_STYLE_TARGET,
+  DEFAULT_DIALOGUE_STYLE,
+} from "./guardrails";
+export type { AgeBand, DialogueStyle } from "./guardrails";
 
 export {
-  STORY_PAGE_TODDLER_SYSTEM,
-  STORY_PAGE_TODDLER_USER,
-  STORY_PAGE_TODDLER_TEMPLATE,
-} from "./story-page";
+  STORY_PLANNER_QUALITY_RULES,
+  STORY_RENDER_TEXT_ACCURACY_RULE,
+  STORY_RENDER_CAST_CONTINUITY_RULE,
+  STORY_RENDER_BEAT_HONESTY_RULE,
+  STORY_RENDER_INTERIOR_NO_ATTRIBUTION_RULE,
+  STORY_RENDER_CHILD_SAFETY_RULE,
+} from "./story-quality";
+
+export { buildStoryPageSystem, buildStoryPageUser } from "./story-page";
 export type {
   StoryCharacter,
   StoryDialogueLine,
@@ -64,16 +84,11 @@ export type {
   StoryPageTemplateOptions,
 } from "./story-page";
 
-export {
-  STORY_COVER_TODDLER_SYSTEM,
-  STORY_COVER_TODDLER_USER,
-  STORY_COVER_TODDLER_TEMPLATE,
-} from "./story-cover";
+export { buildStoryCoverSystem, buildStoryCoverUser } from "./story-cover";
 export type { StoryCoverTemplateOptions } from "./story-cover";
 
 export {
-  STORY_BACK_COVER_TODDLER_SYSTEM,
-  STORY_BACK_COVER_TODDLER_USER,
-  STORY_BACK_COVER_TODDLER_TEMPLATE,
+  buildStoryBackCoverSystem,
+  buildStoryBackCoverUser,
 } from "./story-back-cover";
 export type { StoryBackCoverTemplateOptions } from "./story-back-cover";

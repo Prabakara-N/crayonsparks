@@ -23,6 +23,7 @@ import {
   type StoryBookPlanInput,
   type StoryType,
 } from "@/lib/story-book-planner";
+import type { DialogueStyle } from "@/lib/prompts";
 
 export const runtime = "nodejs";
 export const maxDuration = 90;
@@ -33,6 +34,20 @@ interface Body {
   age?: StoryBookPlanInput["age"];
   storyType?: StoryType;
   characterNames?: string;
+  dialogueStyle?: DialogueStyle;
+}
+
+const ALLOWED_DIALOGUE_STYLES: ReadonlyArray<DialogueStyle> = [
+  "quiet",
+  "balanced",
+  "chatty",
+];
+
+function isDialogueStyle(value: unknown): value is DialogueStyle {
+  return (
+    typeof value === "string" &&
+    (ALLOWED_DIALOGUE_STYLES as readonly string[]).includes(value)
+  );
 }
 
 const ALLOWED_STORY_TYPES: ReadonlyArray<StoryType> = [
@@ -78,6 +93,11 @@ export async function POST(req: Request) {
     ? body.storyType
     : undefined;
   const characterNames = body.characterNames?.trim() || undefined;
+  const dialogueStyle: DialogueStyle | undefined = isDialogueStyle(
+    body.dialogueStyle,
+  )
+    ? body.dialogueStyle
+    : undefined;
 
   try {
     const plan = await planStoryBook({
@@ -86,6 +106,7 @@ export async function POST(req: Request) {
       age,
       storyType,
       characterNames,
+      dialogueStyle,
     });
     return NextResponse.json({ plan });
   } catch (e) {

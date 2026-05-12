@@ -1,19 +1,19 @@
-/**
- * Story-book front-cover prompt (Phase 1 — toddler band 3-6).
- *
- * Distinct from `cover.ts` which builds the COLORING-BOOK cover (with
- * subtitle pill, page-count badge, side plaque, and bottom strip overlays).
- * Story-book covers are picture-book covers: title + characters in a hero
- * scene, no marketing overlays. The cover is also passed back to every
- * interior page as a visual anchor (character look + style ground truth),
- * so its visual language defines the look of the entire book.
- */
+// Story-book front-cover prompt — picture-book covers across all three
+// age bands (toddlers 3-6, kids 6-10, tweens 10-14). Distinct from
+// `cover.ts` which builds the COLORING-BOOK cover. The story cover is
+// also passed back to every interior page as a visual anchor so its
+// visual language defines the look of the entire book.
 
 import {
   ANATOMY_GUARDRAIL,
   ANATOMY_COUNT_RULE,
   KID_SAFE_CONTENT_RULE,
   NO_REAL_BRAND_RULE,
+  AGE_BAND_PAGE_NOTE,
+  AGE_BAND_LABEL_SINGULAR,
+  AGE_BAND_RANGE,
+  AGE_BAND_AUDIENCE_PILL,
+  type AgeBand,
 } from "./guardrails";
 import {
   COVER_STYLE_DIRECTIVES,
@@ -24,56 +24,24 @@ import type {
   StoryCharacter,
   StoryPalette,
 } from "./story-page";
+import { STORY_RENDER_TEXT_ACCURACY_RULE } from "./story-quality";
 
 export interface StoryCoverTemplateOptions {
-  /** Full book title — rendered as the cover title-block. */
+  ageBand?: AgeBand;
   title: string;
-  /** 1-3 locked characters that appear together on the cover. */
   characters: StoryCharacter[];
-  /** Locked palette — same as the interior pages. */
   palette: StoryPalette;
-  /**
-   * Description of the cover composition — who is in it, what they're
-   * doing, the setting, the mood. 12-30 words. Should NAME each character
-   * who appears so the prompt enforces "only named characters are drawn".
-   */
   coverScene: string;
-  /** Optional camera / framing hint. */
   composition?: string;
-
-  /** Audience label for the subtitle pill (e.g. "PICTURE BOOK · AGES 3-6"). */
   audienceLabel?: string;
-  /** Number of scenes/pages — drives the corner badge copy. */
   pageCount?: number;
-  /** Three short ALL-CAPS phrases for the bottom strip. */
   bottomStripPhrases?: string[];
-  /** Three short ALL-CAPS lines for the side plaque, top to bottom. */
   sidePlaqueLines?: string[];
-  /** One-sentence overlay design language for badge / plaque / strip. */
   coverBadgeStyle?: string;
-  /** Brand strapline rendered under the bottom strip. */
   brandStrapline?: string;
-  /**
-   * Render style for the cover. "flat" (default) keeps the current flat
-   * 2D cartoon look (vibrant flat colors, bold outlines, no gradients).
-   * "illustrated" swaps in the painterly Pixar/Disney-storybook directive
-   * shared with the coloring-book cover (soft directional lighting,
-   * gentle shading, depth between foreground and background).
-   * Story interior pages will adopt the same value via the chain
-   * reference + a matching directive on /api/generate-story-page.
-   */
   coverStyle?: CoverStyle;
-  /**
-   * Cover border. "bleed" (default) renders full-bleed edge-to-edge.
-   * "framed" applies the decorative cream-beige speckled rounded-rectangle
-   * frame from the coloring-book cover. Interior pages stay full-bleed
-   * regardless — this option only affects the cover itself.
-   */
   coverBorder?: CoverBorder;
 }
-
-const TODDLER_BAND_NOTE =
-  "Audience: toddlers 3-6. Friendly rounded characters with big expressive eyes, big simple shapes, calm safe scene, no scary or stressful imagery.";
 
 // Two style variants. "flat" is the historical default (kept verbatim so
 // existing books stay visually consistent). "illustrated" swaps in the
@@ -108,26 +76,26 @@ const TEXT_POLICY_RULE =
 const NO_HAND_DRAWN_CLAIM_RULE =
   "Do not include any claim or watermark suggesting the art is hand-drawn, hand-painted, hand-illustrated, handmade, or original artwork. The art style is illustrated, not artisanal.";
 
-/**
- * Stable system rules for the toddler-band story-book cover. Sent via
- * Gemini's `systemInstruction` channel for implicit caching.
- */
-export const STORY_COVER_TODDLER_SYSTEM = [
-  "You generate front-cover illustrations for premium Amazon KDP children's picture books in the toddler band (ages 3-6). Every cover must be print-ready 300 DPI quality and visually polished enough to win an Amazon thumbnail click.",
-  TODDLER_BAND_NOTE,
-  // Style + border are now per-call (user can pick Flat / Illustrated +
-  // Bleed / Framed) and live in the user message instead of here so they
-  // can vary without invalidating the cached static system prefix.
-  TITLE_TYPOGRAPHY_RULE,
-  CHARACTER_FIDELITY_RULE,
-  TEXT_POLICY_RULE,
-  NO_REAL_BRAND_RULE,
-  KID_SAFE_CONTENT_RULE,
-  ANATOMY_GUARDRAIL,
-  ANATOMY_COUNT_RULE,
-  NO_HAND_DRAWN_CLAIM_RULE,
-  "Output: a single coherent full-color full-bleed picture-book front cover.",
-].join(" ");
+// Stable system rules for a band-specific story-book cover. Sent via
+// Gemini's `systemInstruction` channel for implicit caching (per band).
+export function buildStoryCoverSystem(band: AgeBand = "toddlers"): string {
+  const range = AGE_BAND_RANGE[band];
+  const label = AGE_BAND_LABEL_SINGULAR[band];
+  return [
+    `You generate front-cover illustrations for premium Amazon KDP children's picture books in the ${label} band (ages ${range}). Every cover must be print-ready 300 DPI quality and visually polished enough to win an Amazon thumbnail click.`,
+    AGE_BAND_PAGE_NOTE[band],
+    TITLE_TYPOGRAPHY_RULE,
+    STORY_RENDER_TEXT_ACCURACY_RULE,
+    CHARACTER_FIDELITY_RULE,
+    TEXT_POLICY_RULE,
+    NO_REAL_BRAND_RULE,
+    KID_SAFE_CONTENT_RULE,
+    ANATOMY_GUARDRAIL,
+    ANATOMY_COUNT_RULE,
+    NO_HAND_DRAWN_CLAIM_RULE,
+    "Output: a single coherent full-color full-bleed picture-book front cover.",
+  ].join(" ");
+}
 
 function formatCharacterLock(characters: StoryCharacter[]): string {
   if (characters.length === 0) {
@@ -185,7 +153,10 @@ function normalizePhraseList(
 }
 
 function buildOverlayBlock(opts: StoryCoverTemplateOptions): string[] {
-  const audienceLabel = (opts.audienceLabel?.trim() || "PICTURE BOOK · AGES 3-6").toUpperCase();
+  const band = opts.ageBand ?? "toddlers";
+  const audienceLabel = (
+    opts.audienceLabel?.trim() || AGE_BAND_AUDIENCE_PILL[band]
+  ).toUpperCase();
   const badgePrimary =
     typeof opts.pageCount === "number" && opts.pageCount > 0
       ? `${opts.pageCount} BIG SCENES`
@@ -214,22 +185,21 @@ function buildOverlayBlock(opts: StoryCoverTemplateOptions): string[] {
     "SELLING-POINT OVERLAYS — render all four of these as additional graphic elements on the cover, in addition to the title. Spell every word EXACTLY as written in quotes. Keep them clearly readable, well-spaced, and never overlapping the main characters' faces or the title.",
     `OVERLAY DESIGN LANGUAGE — render the page-count badge (item 2), the side plaque (item 3), and the bottom strip (item 4) as physical objects that belong in this book's world, using this design language: ${overlayDesignLanguage}. The three overlays must read as a matching set — same material vibe, same color family, consistent edge treatment. Lettering inside each overlay stays bold capitals with enough contrast against the overlay's surface to be instantly readable from a thumbnail. The subtitle pill (item 1) is excluded from this design language; it stays a clean modern UI pill.`,
     `1) SUBTITLE PILL — directly under the main title, a horizontal rounded-rectangle pill in a deep saturated color (navy, deep teal, or burgundy) with a thin contrasting outline. Inside the pill, in clean bold sans-serif white capitals: "${audienceLabel}". Pill width ~55-70% of cover width, centered.`,
-    `2) PAGE-COUNT BADGE — top-right corner, a circular / seal-shaped badge (about 18-22% of cover width) styled per the overlay design language above. The badge contains EXACTLY this text and NOTHING else, in bold rounded capitals: "${badgePrimary}". 🚨 NUMBER LOCK — CRITICAL: this book has EXACTLY ${typeof opts.pageCount === "number" && opts.pageCount > 0 ? opts.pageCount : "the stated"} scenes, so the badge MUST render that exact number. DO NOT substitute a different number. DO NOT write "50 PAGES", "100 PAGES", "30 PAGES", "25 SCENES", or any other number from your training data of typical picture books. DO NOT add the word "PAGES" if the supplied phrase does not contain it — render the supplied phrase character-for-character. The supplied phrase is the source of truth. Layout: stack as ${badgeRest ? `top line "${badgeTopLine}", bottom line "${badgeRest}"` : `a single centered line "${badgeTopLine}"`} with comfortable padding inside the badge. Three small filled accent shapes (stars, dots, or a motif that fits the design language) sit under the text. Place the badge so it does NOT cover the title or any character's face.`,
+    `2) PAGE-COUNT BADGE — top-right corner, a circular / seal-shaped badge (about 18-22% of cover width) styled per the overlay design language above. The badge contains EXACTLY this text and NOTHING else, in bold rounded capitals: "${badgePrimary}". NUMBER LOCK — CRITICAL: this book has EXACTLY ${typeof opts.pageCount === "number" && opts.pageCount > 0 ? opts.pageCount : "the stated"} scenes, so the badge MUST render that exact number. DO NOT substitute a different number. DO NOT write "50 PAGES", "100 PAGES", "30 PAGES", "25 SCENES", or any other number from your training data of typical picture books. DO NOT add the word "PAGES" if the supplied phrase does not contain it — render the supplied phrase character-for-character. The supplied phrase is the source of truth. Layout: stack as ${badgeRest ? `top line "${badgeTopLine}", bottom line "${badgeRest}"` : `a single centered line "${badgeTopLine}"`} with comfortable padding inside the badge. Three small filled accent shapes (stars, dots, or a motif that fits the design language) sit under the text. Place the badge so it does NOT cover the title or any character's face.`,
     `3) SIDE PLAQUE — a small plaque / sign / banner shape (about 22-28% of cover width) styled per the overlay design language above, tilted ~5-10 degrees, with three short stacked lines of friendly capitals (the first line in an accent color from the design language, the next two in the dominant readable color): "${plaqueLines[0]}" / "${plaqueLines[1]}" / "${plaqueLines[2]}". PLACEMENT — STRICT: position on the LEFT side of the cover, vertically MID-LEVEL (the plaque's center sits between 38% and 58% from the top of the cover — neither in the title zone at the top nor in the bottom strip). Anchor its left edge 2-6% in from the cover's left edge. RENDER AS A BACKGROUND OBJECT: the plaque belongs to the BACKGROUND PLANE of the scene — like a real wooden sign / paper poster / fabric banner mounted in the world behind the characters. Foreground characters stand IN FRONT OF the plaque; where a character's silhouette overlaps the plaque, the character paints OVER the plaque's frame (the plaque does NOT render on top of the character's body). TEXT-AREA PROTECTION — CRITICAL: even though the plaque sits behind foreground subjects, the THREE LINES OF TEXT must stay fully readable from a thumbnail. ZERO character body, face, hand, foot, tail, accessory, or prop may pass in front of the lettering. Only the plaque's outer frame / decorative border may be obscured — the text columns themselves stay completely clear. If the layout would force a character across the text, SHRINK the plaque to 16-20% width or shift it slightly up or down to find a clear text channel. INTEGRATION — the plaque is a physical object that belongs in this book's world; derive its material and attachment from this book's actual setting, never defaulting to wood / fence / branch / chalkboard unless those genuinely fit. It must look like part of the background that belongs there, not a UI overlay floating on top.`,
     `4) BOTTOM STRIP — at the very bottom of the cover, a slightly taller full-width horizontal ribbon / band styled per the overlay design language above (height ~9-12% of cover height) so it can hold TWO stacked lines of text with comfortable padding. The strip contains exactly these two lines, top to bottom: (a) one bold ALL-CAPS line of selling phrases, separated by small filled accent shapes (stars, dots, or a motif that fits the design language): "${bottomStripText}". (b) directly under it, a smaller mixed-case brand strapline in a clean italic or rounded script with a small four-point sparkle shape between the brand name and the next word: "${brandStrapline}". The strapline reads as a soft brand signature, NOT another marketing shout — about half the type-size of line (a), elegant, calmer color (cream / off-white / soft accent). Both lines centered. Render the brand name "CrayonSparks" exactly as written, one word, capital C and capital S, no space.`,
     `Permitted text on this cover (and only this text): the title; the subtitle pill copy; the page-count badge copy; the side-plaque copy; the bottom-strip top line; the bottom-strip brand strapline. No other text anywhere on this cover.`,
   ];
 }
 
-/**
- * Per-cover dynamic content. Pair with {@link STORY_COVER_TODDLER_SYSTEM}
- * when calling Gemini so the static prefix is cached.
- */
-export const STORY_COVER_TODDLER_USER = (
-  opts: StoryCoverTemplateOptions,
-): string => {
+// Per-cover dynamic content. Pair with buildStoryCoverSystem(band)
+// when calling Gemini so the static prefix is cached.
+export function buildStoryCoverUser(opts: StoryCoverTemplateOptions): string {
+  const band = opts.ageBand ?? "toddlers";
+  const range = AGE_BAND_RANGE[band];
+  const label = AGE_BAND_LABEL_SINGULAR[band];
   const parts: string[] = [
-    "Toddler picture-book front cover (ages 3-6).",
+    `${label.charAt(0).toUpperCase() + label.slice(1)} picture-book front cover (ages ${range}).`,
     styleDirective(opts.coverStyle),
     borderDirective(opts.coverBorder),
     `Title to render at the top of the cover: "${opts.title.trim()}".`,
@@ -242,14 +212,4 @@ export const STORY_COVER_TODDLER_USER = (
   }
   parts.push(...buildOverlayBlock(opts));
   return parts.join(" ");
-};
-
-/**
- * Backward-compatible single-string template. Concatenates the static
- * guardrails (system) and the dynamic per-cover content (user).
- */
-export const STORY_COVER_TODDLER_TEMPLATE = (
-  opts: StoryCoverTemplateOptions,
-): string => {
-  return `${STORY_COVER_TODDLER_SYSTEM} ${STORY_COVER_TODDLER_USER(opts)}`;
-};
+}

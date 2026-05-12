@@ -21,11 +21,11 @@ Rules:
    - Recognizable IP combos: meerkat+warthog+lion (Lion King) → mongoose+forest pig+lion; reindeer+ice queen → goat+winter girl; clownfish father+son → striped fish father+son; toys that come alive → toys; talking cars → carts; etc.
    - Iconic copyrighted scenes: "cub held up high on cliff" → "cub presented on a sunny rock outcrop"; "lying on backs looking at stars" → "sitting around a small campfire"; "ice castle" → "crystal cave".
    - Scary / violent / unsafe wording: "scary" → "silly"; "shadowy cave" → "rocky cave"; "stampeding" → "running herd"; "lightning crackling" → "soft clouds"; "scarred lion" → "ruffled lion".
-5. NEVER target rule lines starting with 🚨, ✅, 📐, 🚫 — those are guardrails.
+5. NEVER target rule lines starting with strict rule labels such as "RULE", "STRICT", "PAGE FRAME", "ABSOLUTE", "COPY", or "DO NOT COPY" — those are guardrails.
 6. NEVER target the character lock block (it starts with "CHARACTER LOCK" or describes specific named characters with sizes / colors).
 7. NEVER add color words to a "to" string. Coloring-book pages are pure B&W.
 
-Examples:
+EXAMPLE (illustrative only, do not literally use these elements unless they match this book):
 
 Input contains: "the cub, the meerkat, and the warthog dancing happily together in a lush green jungle oasis"
 Output: [
