@@ -54,6 +54,10 @@ import { KdpMetadataPanel } from "@/components/playground/kdp-metadata-panel";
 import { CoverPair } from "@/components/playground/cover-pair";
 import { RegenerateCardButton } from "@/components/playground/regenerate-card-button";
 import { IdeaSuggestionsPanel } from "@/components/playground/idea-suggestions-panel";
+import {
+  extractPageCountFromIdeaText,
+  categoryToStoryType,
+} from "@/lib/idea-suggestions";
 import { ModelPicker } from "@/components/playground/model-picker";
 import { SelectField } from "@/components/playground/select-field";
 import { PlanReviewButton } from "@/components/playground/plan-review-panel";
@@ -209,6 +213,14 @@ const NOUN_OVERLAP_STOPWORDS = new Set([
   "coloring", "color", "colour", "book", "kids", "child", "children",
   "simple", "detailed", "outline", "outlines", "background", "white",
   "black", "happy", "smiling", "cute", "playing", "sitting", "standing",
+  "animal", "animals", "creature", "creatures", "wild", "tame", "friendly",
+  "jungle", "forest", "woodland", "savanna", "desert", "ocean", "sea",
+  "underwater", "river", "lake", "mountain", "mountains", "garden",
+  "farm", "barnyard", "meadow", "field", "yard", "park", "playground",
+  "indoors", "outdoors", "inside", "outside", "around", "together",
+  "morning", "evening", "afternoon", "night", "daytime", "sunny",
+  "bright", "soft", "warm", "cold", "little", "small", "large",
+  "magic", "magical", "world", "place", "scenery", "landscape",
 ]);
 
 function extractKeyNouns(text: string): Set<string> {
@@ -308,6 +320,7 @@ function buildRefineBookContext(args: {
     pages,
     coverStatus: args.cover.status,
     backCoverStatus: args.backCover.status,
+    palette: args.plan.palette,
   };
 }
 
@@ -2315,8 +2328,8 @@ export function BookStudio({
         quality={refine.quality}
         model={refine.model}
         openNonce={refineOpenNonce}
-        onBackgroundChange={(state) => {
-          const id = refine.targetId;
+        onBackgroundChange={(state, explicitTargetId) => {
+          const id = explicitTargetId ?? refine.targetId;
           if (!id) return;
           setRefineStatus((prev) => {
             if (state === "idle") {
@@ -2474,6 +2487,22 @@ function IdeaForm({
 }) {
   const [showIdeas, setShowIdeas] = useState(false);
   const isStory = bookKind === "story";
+  const ideasPanelRef = useRef<HTMLDivElement>(null);
+
+  // When the user toggles ideas on, scroll the panel into view. Use
+  // `nearest` so the browser only scrolls the minimum needed — bringing
+  // the panel top into the lower part of the viewport while the textarea
+  // above stays visible. `start` was pulling the page too far down.
+  useEffect(() => {
+    if (!showIdeas) return;
+    const id = requestAnimationFrame(() => {
+      ideasPanelRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [showIdeas]);
 
   return (
     <div className="rounded-3xl p-6 md:p-8 bg-zinc-900/60 backdrop-blur-xl border border-white/10 space-y-6">
@@ -2676,13 +2705,27 @@ function IdeaForm({
           disabled={planning}
         />
         {showIdeas && (
-          <div className="mt-3">
+          <div ref={ideasPanelRef} className="mt-3 scroll-mt-4">
             <IdeaSuggestionsPanel
               open={showIdeas}
               onClose={() => setShowIdeas(false)}
-              onPick={(text) => setIdea(text)}
+              onPick={(picked) => {
+                setIdea(picked.text);
+                const derivedPageCount = extractPageCountFromIdeaText(
+                  picked.text,
+                );
+                if (derivedPageCount) setPageCount(derivedPageCount);
+                if (isStory && !storyType) {
+                  const derivedType = categoryToStoryType(picked.category);
+                  if (derivedType) setStoryType(derivedType as StoryType);
+                }
+              }}
               kind={isStory ? "story" : "coloring"}
               storyType={isStory ? storyType : null}
+              currentAge={age}
+              onAudienceChange={(slug) => {
+                if (slug !== "any") setAge(slug);
+              }}
             />
           </div>
         )}
@@ -2785,11 +2828,13 @@ function IdeaForm({
         </div>
       </div>
 
-      <ReferenceImageField
-        value={reference}
-        onChange={setReference}
-        helper="Optional: Gemini will borrow style, palette, and composition from this image for both cover and pages."
-      />
+      {!isStory && (
+        <ReferenceImageField
+          value={reference}
+          onChange={setReference}
+          helper="Optional: Gemini will borrow style, palette, and composition from this image for both cover and pages."
+        />
+      )}
 
       {error && (
         <div className="flex items-start gap-2 text-sm text-red-300">

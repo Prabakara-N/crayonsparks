@@ -27,20 +27,10 @@ interface BackCoverRefinePanelProps {
   pageCount?: number;
   /** True while the parent is regenerating (so we can disable Apply). */
   busy: boolean;
-  /**
-   * Apply handler — receives the picked color hue name (e.g. "soft
-   * pastel pink") and the picked tagline text. Tagline may be empty
-   * when the user wants to apply just a color change without changing
-   * the existing tagline copy.
-   */
   onApply: (color: string, tagline: string) => void;
-  /**
-   * Optional controlled open-state — lets the parent coordinate with
-   * sibling popovers (the chat composer's quick-suggestions drawer)
-   * so only one is open at a time.
-   */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  bookKind?: "coloring" | "story";
 }
 
 export function BackCoverRefinePanel({
@@ -55,6 +45,7 @@ export function BackCoverRefinePanel({
   onApply,
   open: controlledOpen,
   onOpenChange,
+  bookKind = "coloring",
 }: BackCoverRefinePanelProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
@@ -141,6 +132,7 @@ export function BackCoverRefinePanel({
         pageSubjects,
         pageCount,
         variantSeed: taglineSeed,
+        bookKind,
       }),
     })
       .then(async (res) => {
@@ -177,6 +169,7 @@ export function BackCoverRefinePanel({
     pageSubjects,
     pageCount,
     taglineSeed,
+    bookKind,
   ]);
 
   // Re-fetch taglines whenever the user clicks "Suggest more" (taglineSeed

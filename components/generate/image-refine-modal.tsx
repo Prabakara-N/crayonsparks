@@ -101,14 +101,13 @@ export interface RefineBookContextProp {
   bookTitle: string;
   bookScene?: string;
   audience?: string;
-  /** Id of the page being edited. */
   targetId: string;
-  /** Human label for the page being edited (e.g. "Front cover", "Page 3"). */
   targetLabel: string;
   targetSubject?: string;
   pages: PageMeta[];
   coverStatus: PageStatus;
   backCoverStatus: PageStatus;
+  palette?: { name: string; hexes: string[] };
 }
 
 export interface ImageRefineModalProps {
@@ -182,7 +181,10 @@ export interface ImageRefineModalProps {
    *   "done"    → fetch resolved, onRefined was called
    *   "idle"    → no background work
    */
-  onBackgroundChange?: (state: "idle" | "running" | "done") => void;
+  onBackgroundChange?: (
+    state: "idle" | "running" | "done",
+    explicitTargetId?: string,
+  ) => void;
   /**
    * Increments every time the parent calls "open the refine modal" (card
    * click, cover refine button, etc.). Lets the modal detect a fresh
@@ -223,6 +225,15 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [history, setHistory] = useState<ModelMessage[]>([]);
+  // Per-target backup of conversation state. Survives any reason the
+  // local state might get reset between close and reopen (re-mount,
+  // sourceDataUrl change, parent re-render). Keyed by targetKey.
+  const sessionStoreRef = useRef<
+    Map<
+      string,
+      { turns: Turn[]; history: ModelMessage[]; versions: Version[] }
+    >
+  >(new Map());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -282,10 +293,13 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
   // request keeps running. When it resolves, we auto-apply the latest
   // version via onRefined and finally call onClose to release the parent.
   const [closingWhileBusy, setClosingWhileBusy] = useState(false);
-  // Snapshot of onRefined captured when entering background mode — we use
-  // it instead of the live prop because the parent may swap onRefined on
-  // close (rare, but cheap to be defensive).
+  // Captured at send() time so a fetch-in-flight always routes to the
+  // target it started on, even if the user opens a different page's
+  // refine before this one finishes.
   const pendingOnRefinedRef = useRef<((dataUrl: string) => void) | null>(null);
+  const pendingTargetLabelRef = useRef<string | null>(null);
+  const pendingVersionsBaselineRef = useRef<number>(0);
+  const inFlightTargetIdRef = useRef<string | null>(null);
 
   function stopInFlight() {
     abortRef.current?.abort();
@@ -316,12 +330,15 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
   useEffect(() => {
     if (!closingWhileBusy || busy) return;
     const latest = versions[versions.length - 1];
-    if (latest && versions.length > 1 && pendingOnRefinedRef.current) {
-      pendingOnRefinedRef.current(latest.dataUrl);
+    const cb = pendingOnRefinedRef.current ?? targetOnRefinedRef.current;
+    const doneTargetId = inFlightTargetIdRef.current ?? undefined;
+    if (latest && versions.length > 1 && cb) {
+      cb(latest.dataUrl);
     }
     pendingOnRefinedRef.current = null;
+    inFlightTargetIdRef.current = null;
     setClosingWhileBusy(false);
-    onBackgroundChange?.("done");
+    onBackgroundChange?.("done", doneTargetId);
     onClose();
   }, [closingWhileBusy, busy, versions, onClose, onBackgroundChange]);
 
@@ -335,15 +352,33 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
     if (openNonce === undefined) return;
     if (openNonce === lastNonceRef.current) return;
     lastNonceRef.current = openNonce;
-    if (closingWhileBusy) {
+    const newTargetId = bookContext?.targetId ?? null;
+    const switchingTargets =
+      inFlightTargetIdRef.current !== null &&
+      newTargetId !== null &&
+      newTargetId !== inFlightTargetIdRef.current;
+    if (switchingTargets) {
+      const oldTargetId = inFlightTargetIdRef.current;
+      abortRef.current?.abort();
+      abortRef.current = null;
+      setBusy(false);
       pendingOnRefinedRef.current = null;
-      setClosingWhileBusy(false);
-      onBackgroundChange?.("idle");
+      inFlightTargetIdRef.current = null;
+      if (oldTargetId) onBackgroundChange?.("idle", oldTargetId);
     }
-  }, [openNonce, closingWhileBusy, onBackgroundChange]);
+    if (closingWhileBusy) {
+      setClosingWhileBusy(false);
+      if (!switchingTargets) onBackgroundChange?.("idle");
+    }
+  }, [openNonce, closingWhileBusy, onBackgroundChange, bookContext]);
 
   const targetKey = `${context}::${bookContext?.targetId ?? sourceDataUrl ?? ""}`;
   const lastTargetKeyRef = useRef<string | null>(null);
+  // Snapshot of the callback for the target this modal opened for. Used
+  // by Apply and by the background-resolve path so a stale `onRefined`
+  // prop (which would point at a different page if the parent swapped
+  // targets) can never misroute the result.
+  const targetOnRefinedRef = useRef<((dataUrl: string) => void) | null>(null);
   useEffect(() => {
     if (!open || !sourceDataUrl) return;
     if (lastTargetKeyRef.current === targetKey) {
@@ -355,19 +390,43 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
         setCurrentIndex(next.length - 1);
         return next;
       });
+      targetOnRefinedRef.current = onRefined ?? null;
       return;
     }
     lastTargetKeyRef.current = targetKey;
-    setVersions([{ dataUrl: sourceDataUrl }]);
-    setCurrentIndex(0);
-    setTurns([]);
-    setHistory([]);
+    targetOnRefinedRef.current = onRefined ?? null;
+    const saved = sessionStoreRef.current.get(targetKey);
+    if (saved && saved.turns.length > 0) {
+      setTurns(saved.turns);
+      setHistory(saved.history);
+      setVersions(
+        saved.versions.length ? saved.versions : [{ dataUrl: sourceDataUrl }],
+      );
+      setCurrentIndex(Math.max(0, saved.versions.length - 1));
+    } else {
+      setVersions([{ dataUrl: sourceDataUrl }]);
+      setCurrentIndex(0);
+      setTurns([]);
+      setHistory([]);
+    }
     setBusy(false);
     setError(null);
     const cacheKey = `${context}::${sourceDataUrl}`;
     const cached = suggestionsCacheRef.current.get(cacheKey);
     setDynamicSuggestions(cached ?? null);
   }, [open, sourceDataUrl, context, targetKey]);
+
+  // Save chat state into the per-target store whenever it changes so a
+  // close/reopen for the same target can rehydrate it.
+  useEffect(() => {
+    if (!lastTargetKeyRef.current) return;
+    if (turns.length === 0 && versions.length <= 1) return;
+    sessionStoreRef.current.set(lastTargetKeyRef.current, {
+      turns,
+      history,
+      versions,
+    });
+  }, [turns, history, versions]);
 
   // Pull AI suggestions tailored to the currently-displayed image.
   // Cached per (context + dataUrl) so re-opening the modal or flipping
@@ -478,7 +537,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
   const applyBackCoverPreset = useCallback(
     async (color: string, tagline: string) => {
       if (busy) return;
-      if (context !== "back-cover") return;
+      if (context !== "back-cover" && context !== "story-back-cover") return;
       const userTurnId = `u-${Date.now()}`;
       const assistantTurnId = `a-${Date.now() + 1}`;
       const instructionText = tagline
@@ -503,21 +562,38 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
       setBusy(true);
 
       try {
-        const res = await fetch("/api/generate", {
+        const isStoryBack = context === "story-back-cover";
+        const endpoint = isStoryBack
+          ? "/api/generate-story-back-cover"
+          : "/api/generate";
+        const requestBody = isStoryBack
+          ? {
+              title: bookTitle ?? title ?? "Story Book",
+              palette: bookContext?.palette ?? {
+                name: "Cover palette",
+                hexes: ["#FFFFFF", "#000000", "#888888"],
+              },
+              tagline: tagline || "A tiny story for big imaginations.",
+              forceColor: color,
+              coverReferenceDataUrl: frontCoverDataUrl,
+              model: activeModel,
+            }
+          : {
+              mode: "back-cover",
+              coverTitle: bookTitle ?? title ?? "Coloring Book",
+              coverScene: coverScene ?? "",
+              backCoverColor: color,
+              backCoverTagline: tagline || undefined,
+              coverBorder: "bleed",
+              referenceDataUrl: frontCoverDataUrl,
+              qualityGate: false,
+              model: activeModel,
+            };
+        const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal,
-          body: JSON.stringify({
-            mode: "back-cover",
-            coverTitle: bookTitle ?? title ?? "Coloring Book",
-            coverScene: coverScene ?? "",
-            backCoverColor: color,
-            backCoverTagline: tagline || undefined,
-            coverBorder: "bleed",
-            referenceDataUrl: frontCoverDataUrl,
-            qualityGate: false,
-            model: activeModel,
-          }),
+          body: JSON.stringify(requestBody),
         });
         const json = (await res.json()) as {
           dataUrl?: string;
@@ -580,6 +656,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
       title,
       coverScene,
       frontCoverDataUrl,
+      bookContext,
     ],
   );
 
@@ -611,6 +688,10 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
       ]);
       setBusy(true);
       setError(null);
+      pendingOnRefinedRef.current = onRefined ?? null;
+      pendingTargetLabelRef.current = title ?? null;
+      pendingVersionsBaselineRef.current = versions.length;
+      inFlightTargetIdRef.current = bookContext?.targetId ?? null;
 
       const ctx =
         bookContext ?? {
@@ -880,7 +961,8 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
   }, [sourceDataUrl]);
 
   const acceptVersion = useCallback(() => {
-    if (current && onRefined) onRefined(current.dataUrl);
+    const cb = targetOnRefinedRef.current ?? onRefined;
+    if (current && cb) cb(current.dataUrl);
     onClose();
   }, [current, onRefined, onClose]);
 
@@ -1028,8 +1110,12 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
                       Try{" "}
                       <span className="text-violet-300">
                         &quot;match the bear from page 3&quot;
-                      </span>{" "}
-                      or attach a reference image.
+                      </span>
+                      {context === "story-page" ||
+                      context === "story-cover" ||
+                      context === "story-back-cover"
+                        ? "."
+                        : " or attach a reference image."}
                     </p>
                   </div>
                 )}
@@ -1064,7 +1150,8 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
                 )}
               </div>
 
-              {context === "back-cover" && (
+              {(context === "back-cover" ||
+                context === "story-back-cover") && (
                 <div className="px-4 pt-2 pb-1 flex justify-end">
                   <BackCoverRefinePanel
                     frontCoverDataUrl={frontCoverDataUrl}
@@ -1080,6 +1167,9 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
                     onOpenChange={(open) =>
                       setOpenSubpanel(open ? "customize" : "none")
                     }
+                    bookKind={
+                      context === "story-back-cover" ? "story" : "coloring"
+                    }
                   />
                 </div>
               )}
@@ -1094,6 +1184,11 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
                 suggestionsOpen={openSubpanel === "suggestions"}
                 onSuggestionsOpenChange={(open) =>
                   setOpenSubpanel(open ? "suggestions" : "none")
+                }
+                hideAttach={
+                  context === "story-page" ||
+                  context === "story-cover" ||
+                  context === "story-back-cover"
                 }
               />
 

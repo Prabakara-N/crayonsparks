@@ -41,6 +41,15 @@ function parseDataUrl(url: string): { mimeType: string; data: string } | null {
   return { mimeType, data };
 }
 
+function detectsBubbleSwapIntent(instruction: string): boolean {
+  const t = instruction.toLowerCase();
+  const hasBubbleWord =
+    /\b(bubble|speech|dialogue|line|tail|saying|says|speaker)\b/.test(t);
+  const hasSwapWord =
+    /\b(swap|switch|swapped|switched|reassign|move|flip|wrong|pointing|points to|anchored)\b/.test(t);
+  return hasBubbleWord && hasSwapWord;
+}
+
 const CONTEXT_GUARDRAILS: Record<RefineContext, string> = {
   page: `PAGE RULES (must remain): Pure 100% black-and-white line art, no color, no shading, no gray. All shapes enclosed by clean continuous outlines. NO text, NO numbers, NO page indicators (e.g. 1/2 or 2/3 — never add these), NO watermarks. ${NO_AI_BORDER_RULE} IF THE SOURCE IMAGE HAS A BORDER, A DECORATIVE FRAME, OR DOUBLE PARALLEL LINES ALONG THE EDGE — REMOVE THEM ENTIRELY in the output. Do NOT carry the source's border into the new image. The output is BORDERLESS line art, edge-to-edge. Keep anatomy correct.`,
   cover:
@@ -113,11 +122,15 @@ export async function POST(req: Request) {
       ? `\n\nCROSS-PAGE REFERENCE — additional image(s) attached after the source image. The user's instruction (above) names WHICH ASPECT to match — read it carefully:\n  • If the instruction mentions characters / animals / a specific creature → match recurring character designs (same species, body proportions, head shape, color/markings, distinguishing features) from the reference.\n  • If the instruction mentions BORDER / FRAME / EDGE → IGNORE that aspect of the request. This book's borders are NOT drawn by the model; they are added in PDF post-processing as a single deterministic vector layer. Whatever border the user perceives in the reference is from that post-processing layer, not from the line art. The output stays BORDERLESS.\n  • If the instruction mentions PAGE NUMBER / NUMBERING → IGNORE that aspect — page numbers are not drawn on the line art.\n  • If the instruction mentions LAYOUT / COMPOSITION / POSITION / FRAMING → match where the subject sits on the canvas (left/center/right, top/bottom), the camera angle, and the proportion of subject vs. background.\n  • If the instruction mentions COLOR PALETTE / LIGHTING / MOOD → match the reference's hue family, saturation, and lighting direction (B&W pages are exempt — those stay pure black ink on white).\n  • If the instruction mentions STYLE / LINE WEIGHT / DETAIL DENSITY → match how lines, shading, and ornamental detail are drawn.\nIN ALL CASES: do NOT copy the reference's specific subject or scene. Generate the NEW edit described below; the reference is ONLY for the specific aspect the user named.`
       : "";
 
+  const swapBubbleOverride = detectsBubbleSwapIntent(instruction)
+    ? "\n\nSPEECH-BUBBLE REASSIGNMENT — LOAD-BEARING. The user is explicitly telling you the speech bubble is anchored to the WRONG character in the source image. You MUST visibly relocate the bubble. Concretely: (a) ERASE the bubble from its current location entirely — do not leave its tail behind. (b) REDRAW the bubble in fresh empty space NEAR THE CHARACTER NAMED BY THE USER (the new speaker). The bubble's BODY sits on the new speaker's side of the page — left half if the new speaker is on the left, right half if on the right. (c) The bubble's POINTED TAIL must visibly touch or point directly into the NEW SPEAKER's mouth — never the old speaker's mouth, never a midpoint. (d) Keep the bubble text EXACTLY the same words. (e) Do NOT also keep the old bubble — there is ONLY one bubble for that line, and it now belongs to the new speaker. If the new speaker is across the page from where the bubble used to be, the bubble moves across the page. Verify: in the OUTPUT image, can a child reading the page point unambiguously at the new speaker as the source of the line? If not, redraw."
+    : "";
+
   const editPrompt = `Edit the provided image as follows: ${instruction}.
 
 Keep the overall composition and identity consistent with the original. Output as a full image (not a diff).
 
-${guardrails}${consistencyDirective}`;
+${guardrails}${consistencyDirective}${swapBubbleOverride}`;
 
   try {
     const isCoverSurface = context === "cover" || context === "back-cover";

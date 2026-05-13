@@ -207,16 +207,11 @@ const STORY_TYPE_FALLBACK_IDEAS: Partial<Record<IdeaStoryType, IdeaSuggestion[]>
 interface IdeaSuggestionsPanelProps {
   open: boolean;
   onClose: () => void;
-  /** Called with the chosen idea's text. The parent fills its idea field. */
-  onPick: (text: string) => void;
-  /**
-   * Picks the idea bank. "coloring" (default) returns theme-shaped coloring
-   * book prompts; "story" returns narrative-shaped story-book prompts (fable
-   * titles + original premises with scene counts).
-   */
+  onPick: (idea: IdeaSuggestion) => void;
   kind?: IdeaKind;
-  /** Optional Bulk Book story-type selection used to shape story ideas. */
   storyType?: IdeaStoryType | null;
+  currentAge?: "toddlers" | "kids" | "tweens";
+  onAudienceChange?: (audience: IdeaAudience) => void;
 }
 
 export function IdeaSuggestionsPanel({
@@ -225,8 +220,10 @@ export function IdeaSuggestionsPanel({
   onPick,
   kind = "coloring",
   storyType = null,
+  currentAge,
+  onAudienceChange,
 }: IdeaSuggestionsPanelProps) {
-  const [audience, setAudience] = useState<IdeaAudience>("any");
+  const [audience, setAudience] = useState<IdeaAudience>(currentAge ?? "any");
   const [ideas, setIdeas] = useState<IdeaSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -285,6 +282,11 @@ export function IdeaSuggestionsPanel({
     return () => window.clearTimeout(id);
   }, [open, audience, kind, storyType, fetchIdeas]);
 
+  // Mirror the form's age picker into the panel's audience pill.
+  useEffect(() => {
+    if (currentAge && currentAge !== audience) setAudience(currentAge);
+  }, [currentAge]);
+
   if (!open) return null;
 
   return (
@@ -322,7 +324,10 @@ export function IdeaSuggestionsPanel({
               <button
                 key={a.slug}
                 type="button"
-                onClick={() => setAudience(a.slug)}
+                onClick={() => {
+                  setAudience(a.slug);
+                  onAudienceChange?.(a.slug);
+                }}
                 disabled={loading}
                 className={`text-[11px] px-2.5 py-1 rounded-full border font-medium transition-colors disabled:opacity-50 ${
                   active
@@ -339,14 +344,14 @@ export function IdeaSuggestionsPanel({
             onClick={() => void fetchIdeas(audience, kind, storyType)}
             disabled={loading}
             className="ml-auto inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-neutral-300 hover:border-violet-500/40 hover:text-white disabled:opacity-50"
-            aria-label="Refresh ideas"
+            aria-label="Try other ideas"
           >
             {loading ? (
               <Loader2 className="w-3 h-3 animate-spin" />
             ) : (
               <RefreshCw className="w-3 h-3" />
             )}
-            Refresh
+            Try other ideas
           </button>
         </div>
 
@@ -358,8 +363,8 @@ export function IdeaSuggestionsPanel({
         )}
 
         <div className="grid sm:grid-cols-2 gap-1.5 max-h-[60vh] overflow-y-auto pr-1">
-          {loading && ideas.length === 0
-            ? [0, 1, 2, 3, 4, 5].map((i) => (
+          {loading
+            ? [0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
                 <div
                   key={i}
                   className="h-14 rounded-xl bg-white/5 border border-white/10 animate-pulse"
@@ -370,7 +375,7 @@ export function IdeaSuggestionsPanel({
                   key={`${idea.text}-${i}`}
                   type="button"
                   onClick={() => {
-                    onPick(idea.text);
+                    onPick(idea);
                     onClose();
                   }}
                   className="text-left p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-violet-500/40 hover:bg-violet-500/5 transition-colors group"

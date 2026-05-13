@@ -105,6 +105,7 @@ type View =
   | {
       kind: "question";
       question: string;
+      intro?: string;
       options: string[];
       option_descriptions?: string[];
       allow_freeform: boolean;
@@ -338,7 +339,12 @@ export function GuidedChat({
       setMessages(data.messages);
       const v = data.view;
       if (v.kind === "question") {
-        setBubbles((b) => [...b, { role: "assistant", text: v.question }]);
+        setBubbles((b) => {
+          const next = [...b];
+          if (v.intro) next.push({ role: "assistant", text: v.intro });
+          next.push({ role: "assistant", text: v.question });
+          return next;
+        });
         setView(v);
       } else if (v.kind === "message") {
         setBubbles((b) => [
@@ -633,7 +639,7 @@ export function GuidedChat({
       </div>
 
       <div className="border-t border-white/10 p-3 md:p-4 space-y-2">
-        {/* Reference image attachment row */}
+        {mode !== "story" && (
         <div className="flex items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <button
@@ -700,6 +706,7 @@ export function GuidedChat({
             <span className="text-[10px] text-red-300">{referenceError}</span>
           )}
         </div>
+        )}
 
         <PlaceholdersAndVanishInput
           ref={inputHandleRef}

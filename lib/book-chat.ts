@@ -88,8 +88,8 @@ export type BookChatView =
   | {
       kind: "question";
       question: string;
+      intro?: string;
       options: string[];
-      /** Optional per-option tooltip strings, indexed-aligned with `options`. */
       option_descriptions?: string[];
       allow_freeform: boolean;
       allow_multi: boolean;
@@ -154,8 +154,25 @@ You are a real assistant, not a form-filler. Match the user's energy:
 
 When you reply with a plain message (no tool call), keep it under 3 sentences and end with an open invite. Format for readability — when listing 3+ ideas/options/examples in plain text, put each on its own line with a leading "- " so the chat bubble renders them as a vertical list, not a wall of commas. NEVER use the bullet/dash style as a workaround for clickable choices — if the items are choices the user should pick from, call \`ask_user\` instead.
 
+ENGAGEMENT BEFORE QUESTIONS — CRITICAL
+When the user shares a SPECIFIC creative idea (their own twist, a modernization, an emotional hook, 2+ sentences of detail, or a question like "how would you tell it?"), your NEXT response MUST be a real brainstorm — not a one-line "Great idea! What age?" hand-off. Behave like ChatGPT/Claude/Gemini would in a creative chat. Concretely:
+
+1. In the text content that accompanies your \`ask_user\` call, write 3-5 sentences (NOT one line) that:
+   - Reflect back what's distinctive about the idea in your own words (1 sentence) — show you actually understood the twist, not just the title.
+   - Suggest 1-2 specific story beats, character moments, or twists that would strengthen it (1-2 sentences). Make them concrete to THIS idea — never generic praise like "great twist!" or "fun premise!".
+   - Optionally offer one alternative angle the user can pick instead (1 short sentence) — e.g. "Or we could lean into a cozy bedtime version where the hare powers down the phone and they nap together."
+   - Bridge naturally into the next question ("Before I plan it, tell me — ...").
+
+2. ALWAYS include the \`ask_user\` tool call after the text content — the text is the conversation, the tool call is the structured question. NEVER skip the tool call hoping the conversation alone is enough.
+
+3. For each subsequent question in the planning flow (Q2, Q3, Q4, Q5), keep a short 1-2 sentence reaction to the user's previous answer before posing the new question — e.g. "Kids 6-10 is a great fit for the social-media angle since they get the joke. How many scenes do you want?"
+
+4. The "appreciation + suggestion + question" pattern applies WHENEVER the user contributes real creative content. Skip it only when the user typed a bare title with no twist ("Cinderella") — in that case a short confirmation question is fine.
+
+Forbidden patterns: "Great twist —", "Love it —", "Cool idea!", or any praise sentence that doesn't say what specifically you found interesting. If the engagement text could be pasted on someone else's idea unchanged, rewrite it.
+
 PLANNING JOB (after the user names a story or accepts a suggestion)
-Ask 2-4 short questions to clarify the story, then call \`finalize_brief\` with a NARRATIVE plan where each prompt is a scene in story order.
+Ask 2-4 short questions to clarify the story, then call \`finalize_brief\` with a NARRATIVE plan where each prompt is a scene in story order. Apply the ENGAGEMENT BEFORE QUESTIONS rule above on every turn that follows a substantive user reply.
 
 MARKETABILITY LENS
 When the user asks for story ideas or lets you decide, favor premises that solve a parent-recognizable emotional need while staying visually cute for kids. Strong original story niches have one simple emotional arc, low text needs, high illustration value, and can expand into matching coloring books, worksheets, activity pages, posters, flashcards, or other printables. Good emotional hooks include confidence, kindness, sharing, bedtime calm, first-day courage, patience, independence, friendship, and gentle problem-solving.
@@ -464,7 +481,7 @@ const TOOLS = {
   }),
 } as const;
 
-function viewFromAsk(args: AskUserInput): BookChatView {
+function viewFromAsk(args: AskUserInput, intro?: string): BookChatView {
   const allowMulti = args.allow_multi ?? false;
   const max = allowMulti ? 8 : 5;
   const options = args.options
@@ -480,9 +497,11 @@ function viewFromAsk(args: AskUserInput): BookChatView {
           .map((d) => d.trim())
           .slice(0, max)
       : undefined;
+  const trimmedIntro = intro?.trim();
   return {
     kind: "question",
     question: args.question.trim(),
+    intro: trimmedIntro ? trimmedIntro : undefined,
     options,
     option_descriptions,
     allow_freeform: args.allow_freeform,
@@ -664,7 +683,10 @@ export async function runBookChatTurn(
     messages = [...messages, stubResult];
 
     if (first.toolName === "ask_user") {
-      return { messages, view: viewFromAsk(first.input as AskUserInput) };
+      return {
+        messages,
+        view: viewFromAsk(first.input as AskUserInput, result.text),
+      };
     }
     if (first.toolName === "finalize_brief") {
       return {

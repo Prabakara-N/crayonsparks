@@ -23,6 +23,8 @@ When refactoring an existing large file, split it in this order: (1) data types 
 
 # Comments
 
+**NEVER WRITE A COMMENT LONGER THAN ONE LINE.** This is a hard rule — no exceptions. Not two lines. Not "just this once because it's complicated". If the WHY needs two lines to explain, the code is the wrong shape — refactor it or remove the comment entirely. Two consecutive `//` lines above a block is a violation of this rule, the same as a `/** multi-line */` block.
+
 **ONE LINE MAX. NEVER MID-CODE.** Default to no comments — well-named identifiers usually carry the meaning.
 
 If a comment is genuinely needed, write ONE short line ABOVE the block (function, JSX element, type, prompt-builder constant). Never insert a comment between JSX props, between fields of a type, or between sections of a function body — those are mid-code locations and are disallowed. Multi-line comments and `/** ... */` doc blocks are also disallowed; if a single line can't explain the WHY, remove the comment and let the code speak for itself.

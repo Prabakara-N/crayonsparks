@@ -32,6 +32,7 @@ interface ChatComposerProps {
    */
   suggestionsOpen?: boolean;
   onSuggestionsOpenChange?: (open: boolean) => void;
+  hideAttach?: boolean;
 }
 
 export interface ChatComposerHandle {
@@ -52,6 +53,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       onStop,
       suggestionsOpen: controlledOpen,
       onSuggestionsOpenChange,
+      hideAttach = false,
     },
     ref,
   ) {
@@ -220,23 +222,27 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       )}
 
       <div className="flex items-end gap-2">
-        <button
-          type="button"
-          onClick={pickFile}
-          disabled={busy}
-          className="p-2 rounded-lg bg-white/5 border border-white/10 text-neutral-300 hover:bg-violet-500/10 hover:text-white hover:border-violet-500/40 disabled:opacity-50 transition-colors"
-          aria-label="Attach reference image"
-          title="Attach reference image"
-        >
-          <Paperclip className="w-4 h-4" />
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={onFileChange}
-        />
+        {!hideAttach && (
+          <>
+            <button
+              type="button"
+              onClick={pickFile}
+              disabled={busy}
+              className="p-2 rounded-lg bg-white/5 border border-white/10 text-neutral-300 hover:bg-violet-500/10 hover:text-white hover:border-violet-500/40 disabled:opacity-50 transition-colors"
+              aria-label="Attach reference image"
+              title="Attach reference image"
+            >
+              <Paperclip className="w-4 h-4" />
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onFileChange}
+            />
+          </>
+        )}
         <textarea
           ref={textareaRef}
           value={text}

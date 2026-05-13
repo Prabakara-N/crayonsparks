@@ -26,12 +26,31 @@ export type IdeaStoryType =
   | "bedtime";
 
 export interface IdeaSuggestion {
-  /** One-line book idea (~10-18 words) the user pastes into the idea textarea. */
   text: string;
-  /** Short tag the panel shows next to the idea (e.g. "Animals", "Holiday"). */
   category: string;
-  /** Compact visual marker for scanability. */
   icon: string;
+}
+
+export function extractPageCountFromIdeaText(text: string): number | null {
+  const m = text.match(/(\d+)\s*[-–]?\s*(?:page|scene|prompt)s?/i);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  if (Number.isNaN(n)) return null;
+  return Math.min(50, Math.max(5, n));
+}
+
+export function categoryToStoryType(category: string): IdeaStoryType | null {
+  const c = category.trim().toUpperCase();
+  if (c === "FABLE" || c === "MORAL") return "moral";
+  if (c === "FAIRYTALE" || c === "FAIRY TALE") return "fairytale";
+  if (c === "BEDTIME") return "bedtime";
+  if (c === "MYSTERY") return "mystery";
+  if (c === "FANTASY") return "fantasy";
+  if (c === "ADVENTURE") return "adventure";
+  if (c === "COMIC" || c === "COMEDY") return "comic";
+  if (c === "NON-FICTION" || c === "NONFICTION") return "non-fiction";
+  if (c === "ORIGINAL" || c === "FICTION") return "fiction";
+  return null;
 }
 
 const AUDIENCE_NOTES: Record<IdeaAudience, string> = {

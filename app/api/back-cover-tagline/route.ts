@@ -12,32 +12,22 @@ import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { OPENAI_TEXT_MODEL } from "@/lib/constants";
-import { BACK_COVER_TAGLINE_SYSTEM_PROMPT } from "@/lib/prompts/back-cover-tagline";
+import {
+  BACK_COVER_TAGLINE_SYSTEM_PROMPT,
+  STORY_BACK_COVER_TAGLINE_SYSTEM_PROMPT,
+} from "@/lib/prompts/back-cover-tagline";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
 interface Body {
-  /** Book title (e.g. "Wild Animals Coloring Book"). */
   bookTitle?: string;
-  /** Cover scene description so the rewriter knows the vibe. Optional. */
   coverScene?: string;
-  /** Audience tag (toddlers/kids/tweens). Brand is kid-focused. */
   audience?: string;
-  /** Sample subjects from the book's interior pages — strongest signal
-   * for book-specific taglines. e.g. ["sea otter","dolphin","whale"]. */
   pageSubjects?: string[];
-  /**
-   * Number of INTERIOR COLORING PAGES the buyer will get (i.e. items
-   * the child can color). Excludes: front cover, "belongs to" nameplate,
-   * and back cover. When provided the AI may mention it (e.g. "Twenty
-   * pages…"). When omitted the tagline must NOT cite any number —
-   * page-count claims should never be invented.
-   */
   pageCount?: number;
-  /** When > 0, push the generator to produce DIFFERENT taglines from
-   * earlier batches. Increment client-side on "Suggest more". */
   variantSeed?: number;
+  bookKind?: "coloring" | "story";
 }
 
 
@@ -66,7 +56,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const title = (body.bookTitle ?? "").trim() || "a kids' coloring book";
+  const bookKind: "coloring" | "story" =
+    body.bookKind === "story" ? "story" : "coloring";
+  const title =
+    (body.bookTitle ?? "").trim() ||
+    (bookKind === "story" ? "a kids' picture book" : "a kids' coloring book");
   const scene = (body.coverScene ?? "").trim();
   const audience = (body.audience ?? "").trim();
   const subjects = (body.pageSubjects ?? [])
@@ -94,7 +88,10 @@ export async function POST(req: Request) {
   try {
     const result = await generateObject({
       model: openai(OPENAI_TEXT_MODEL),
-      system: BACK_COVER_TAGLINE_SYSTEM_PROMPT,
+      system:
+        bookKind === "story"
+          ? STORY_BACK_COVER_TAGLINE_SYSTEM_PROMPT
+          : BACK_COVER_TAGLINE_SYSTEM_PROMPT,
       schema: SCHEMA,
       prompt: userPrompt,
     });
