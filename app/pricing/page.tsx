@@ -1,116 +1,112 @@
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
 import { Footer } from "@/components/ui/footer";
-import { Check, Sparkles, Zap, Crown, Rocket } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Sparkles, Zap, Rocket, ShieldCheck, Globe, Repeat } from "lucide-react";
 import { FaqAccordion } from "@/components/pricing/faq-accordion";
+import { TierGrid } from "@/components/pricing/tier-grid";
+import { CreditExplainer } from "@/components/pricing/credit-explainer";
+import { TopupPacks } from "@/components/pricing/topup-packs";
+import type { TierCardData } from "@/components/pricing/tier-card";
 import { buildFaqPage } from "@/lib/seo-schema";
 
 export const metadata = {
   title: "Pricing — CrayonSparks",
   description:
-    "Simple pricing for AI coloring book generation. Free tier available. Paid plans from $9.99/mo.",
+    "Credit-based pricing for AI coloring and story books. Free tier with 50 credits, Hobbyist $19/mo, Pro $49/mo. Cancel anytime, 30-day refund.",
 };
 
-const tiers = [
+const TIERS: ReadonlyArray<TierCardData> = [
   {
     name: "Free",
-    price: "$0",
-    period: "forever",
+    monthlyPrice: 0,
     icon: <Sparkles className="w-5 h-5" />,
-    desc: "Try the studio with your own Gemini API key.",
+    blurb: "Make one full book end-to-end, on us.",
+    creditAllocation: "50 credits — one-time",
     features: [
-      "Bring-your-own Gemini API key",
-      "All 280 curated prompts",
-      "1 book / month (20 pages)",
-      "Watermarked PDF export",
-      "PNG downloads",
+      { text: "Generate 1 sample book" },
+      { text: "Flash (fast) image models" },
+      { text: "Watermarked PDF + PNG" },
+      { text: "1 book in your library" },
+      { text: "Personal use only" },
     ],
     cta: { label: "Start free", href: "/playground" },
-    highlight: false,
   },
   {
-    name: "Starter",
-    price: "$9.99",
-    period: "/month",
+    name: "Hobbyist",
+    monthlyPrice: 19,
+    annualPrice: 190,
     icon: <Zap className="w-5 h-5" />,
-    desc: "Hobby sellers publishing their first books.",
+    blurb: "For creators publishing a few books a month.",
+    creditAllocation: "800 credits / month",
     features: [
-      "Our managed Gemini quota",
-      "5 books / month",
-      "Up to 50 pages per book",
-      "No watermark",
-      "KDP-ready PDF (8.5×11, 300 DPI)",
-      "Email support",
+      { text: "~4-5 coloring books per month", bold: true },
+      { text: "No watermark" },
+      { text: "KDP commercial license" },
+      { text: "All Flash models" },
+      { text: "Etsy A4 + KDP Letter PDFs" },
+      { text: "Credits roll over (up to 1,500)" },
+      { text: "Email support" },
     ],
-    cta: { label: "Start Starter", href: "#" },
-    highlight: false,
+    cta: { label: "Choose Hobbyist", href: "/account/billing?plan=hobbyist" },
+    highlight: true,
+    badge: "Most popular",
   },
   {
     name: "Pro",
-    price: "$24.99",
-    period: "/month",
+    monthlyPrice: 49,
+    annualPrice: 490,
     icon: <Rocket className="w-5 h-5" />,
-    desc: "Serious KDP creators scaling portfolios.",
+    blurb: "For active KDP sellers shipping every week.",
+    creditAllocation: "3,500 credits / month",
     features: [
-      "20 books / month",
-      "Unlimited pages per book",
-      "Pinterest auto-posting",
-      "Auto pin scheduling (30-day)",
-      "UTM-tagged tracking links",
-      "Sales attribution analytics",
-      "Priority support",
+      { text: "~12-15 story books per month", bold: true },
+      { text: "Pro models (Gemini 3 Pro, GPT Image 1.5)", bold: true },
+      { text: "Priority generation queue" },
+      { text: "All output formats" },
+      { text: "KDP + Etsy + Gumroad license" },
+      { text: "Credits roll over (up to 6,000)" },
+      { text: "Faster support response" },
     ],
-    cta: { label: "Start Pro", href: "#" },
-    highlight: true,
-  },
-  {
-    name: "Studio",
-    price: "$49.99",
-    period: "/month",
-    icon: <Crown className="w-5 h-5" />,
-    desc: "Agencies, teams, and high-volume publishers.",
-    features: [
-      "Unlimited books",
-      "Etsy + Gumroad auto-publish",
-      "Team seats (3 included)",
-      "Custom branding on exports",
-      "API access",
-      "Dedicated onboarding",
-    ],
-    cta: { label: "Talk to us", href: "#" },
-    highlight: false,
+    cta: { label: "Choose Pro", href: "/account/billing?plan=pro" },
   },
 ];
 
-const faqs = [
+const FAQS = [
   {
-    q: "Can I use my own Gemini API key?",
-    a: "Yes — the Free tier is BYO-key. You only pay Google for the tokens you use. Paid tiers include our managed quota so you don't need your own key.",
+    q: "How do credits work?",
+    a: "Each action — generating a page, refining an image — has a small credit cost shown right on the button before you click. Your subscription gives you a monthly credit allowance. Unused credits roll over (up to a cap). Sparky AI planning, PDF assembly, and our own quality-gate auto-regens cost zero credits — you only pay for the deliverable.",
   },
   {
-    q: "Why no Stripe? I see Lemon Squeezy.",
-    a: "Lemon Squeezy is the Merchant of Record — they handle global VAT, GST, and sales tax automatically. For an India-based founder serving global customers, it eliminates a massive compliance headache.",
+    q: "What happens if I run out mid-book?",
+    a: "We reserve credits for the WHOLE book before generation starts, so the bulk-generate flow can't strand you halfway through. If your balance won't cover the book, you'll see the shortfall up front with one-click top-up or upgrade options.",
   },
   {
-    q: "Do I own the coloring pages I generate?",
-    a: "Yes. Under Google's current terms for Gemini image generation, you own what you create. You're free to publish on KDP, Etsy, Gumroad, or print at home.",
+    q: "Do credits expire?",
+    a: "Subscription credits roll over each month up to a generous cap (1,500 on Hobbyist, 6,000 on Pro) — quiet months don't punish you. Top-up credits stay valid for 12 months from purchase and are consumed only after your monthly subscription credits run out.",
   },
   {
-    q: "How consistent is the art style across 20 pages?",
-    a: "The master prompt formula is tuned specifically for coloring-book line art — thick outlines, flat 2D, no shading. Consistency is ~90% out of the box. Regenerate any outlier in one click.",
+    q: "Why not Stripe?",
+    a: "We use Lemon Squeezy as our Merchant of Record — they handle global VAT, GST, and US sales tax automatically across every country. It's a smoother experience for international buyers and removes a huge compliance burden on our end as an India-based team serving worldwide creators.",
   },
   {
-    q: "Can I cancel anytime?",
-    a: "Yes. No contracts. Cancel from the Lemon Squeezy customer portal and you keep access until the end of your billing period.",
+    q: "Do I own the books I create?",
+    a: "Yes. Every paid plan includes a commercial license — sell on Amazon KDP, Etsy, Gumroad, your own site, or print at home. The Free tier is personal use only and outputs a watermarked preview.",
   },
   {
-    q: "Is there a refund policy?",
-    a: "30-day no-questions-asked refund on monthly plans. Email us and we'll refund your last payment.",
+    q: "Can I switch tiers later?",
+    a: "Anytime. Upgrade and the new credit allowance is prorated for the rest of the cycle. Downgrade and you keep your current credits + tier benefits through the period you've paid for; the downgrade takes effect at renewal.",
+  },
+  {
+    q: "Cancellation and refunds?",
+    a: "Cancel anytime from the billing portal — no contracts, no calls. You keep access through your paid period. We honor a 30-day no-questions-asked refund on your most recent monthly payment, and prorated refunds on unused annual months if you cancel within the first 30 days of an annual subscription.",
+  },
+  {
+    q: "Why is Pro $49? Competitors charge less.",
+    a: "Pro unlocks our highest-quality painterly models (Gemini 3 Pro, GPT Image 1.5) — about 3x the API cost of our Flash models. Most Pro subscribers earn their $49 back from a single KDP listing in their first month. If Flash quality is enough for your style, the Hobbyist plan is a great fit at $19.",
   },
 ];
 
-const faqSchema = buildFaqPage(faqs.map((f) => ({ q: f.q, a: f.a })));
+const faqSchema = buildFaqPage(FAQS.map((f) => ({ q: f.q, a: f.a })));
 
 export default function PricingPage() {
   return (
@@ -120,118 +116,119 @@ export default function PricingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
       <Navbar />
-      <main className="flex-1 pt-28 pb-20 bg-linear-to-b from-white via-purple-50/30 to-white dark:from-black dark:via-violet-950/20 dark:to-black">
+      <main className="flex-1 pt-28 pb-20 bg-linear-to-b from-black via-violet-950/15 to-black text-white">
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-linear-to-r from-violet-500/10 to-cyan-500/10 dark:from-violet-950/50 dark:to-pink-950/50 text-xs font-medium text-violet-700 dark:text-violet-300 mb-4">
-              Transparent pricing · Cancel anytime
-            </div>
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-              Pick the plan that <span className="gradient-text">ships your book</span>
-            </h1>
-            <p className="mt-4 text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto">
-              Start free with your own Gemini API key. Upgrade when you&apos;re
-              ready to scale.
-            </p>
+          <Hero />
+          <div className="mt-12">
+            <TierGrid tiers={TIERS} />
           </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {tiers.map((t) => (
-              <div
-                key={t.name}
-                className={cn(
-                  "relative rounded-2xl p-6 flex flex-col border",
-                  t.highlight
-                    ? "bg-linear-to-br from-violet-500 via-indigo-400 to-cyan-400 border-transparent shadow-2xl shadow-violet-500/30 text-white scale-105"
-                    : "bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border-neutral-200/60 dark:border-white/10"
-                )}
-              >
-                {t.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white text-violet-700 text-xs font-bold uppercase tracking-wide shadow">
-                    Most Popular
-                  </div>
-                )}
-
-                <div
-                  className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center mb-3",
-                    t.highlight
-                      ? "bg-white/20 text-white"
-                      : "bg-linear-to-br from-violet-500/10 to-cyan-500/10 text-violet-500 dark:text-violet-300"
-                  )}
-                >
-                  {t.icon}
-                </div>
-
-                <h3 className="text-xl font-bold">{t.name}</h3>
-                <p
-                  className={cn(
-                    "text-sm mb-4",
-                    t.highlight ? "text-white/80" : "text-neutral-600 dark:text-neutral-400"
-                  )}
-                >
-                  {t.desc}
-                </p>
-
-                <div className="mb-6">
-                  <span className="text-4xl font-bold tracking-tight">{t.price}</span>
-                  <span
-                    className={cn(
-                      "text-sm ml-1",
-                      t.highlight ? "text-white/80" : "text-neutral-500"
-                    )}
-                  >
-                    {t.period}
-                  </span>
-                </div>
-
-                <ul className="space-y-2.5 mb-6 flex-1">
-                  {t.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm">
-                      <Check
-                        className={cn(
-                          "w-4 h-4 mt-0.5 shrink-0",
-                          t.highlight ? "text-white" : "text-violet-400"
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          t.highlight
-                            ? "text-white/90"
-                            : "text-neutral-700 dark:text-neutral-300"
-                        )}
-                      >
-                        {f}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  href={t.cta.href}
-                  className={cn(
-                    "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all",
-                    t.highlight
-                      ? "bg-white text-violet-700 hover:bg-violet-50 shadow-md"
-                      : "bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-black"
-                  )}
-                >
-                  {t.cta.label}
-                </Link>
-              </div>
-            ))}
-          </div>
-
-          {/* FAQ */}
+          <TrustRow />
+          <section className="mt-20 space-y-6">
+            <CreditExplainer />
+            <TopupPacks />
+          </section>
+          <WhySection />
           <section className="mt-24 max-w-3xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
-              Frequently asked questions
+            <h2 className="text-3xl font-bold text-center mb-3">
+              Common questions
             </h2>
-            <FaqAccordion faqs={faqs} />
+            <p className="text-center text-neutral-400 mb-10">
+              Still unsure?{" "}
+              <Link
+                href="mailto:hello@crayonsparks.com"
+                className="text-violet-300 hover:text-violet-200 underline-offset-4 hover:underline"
+              >
+                Email us
+              </Link>{" "}
+              and we&apos;ll answer in a day.
+            </p>
+            <FaqAccordion faqs={FAQS} />
           </section>
         </section>
       </main>
       <Footer />
     </>
+  );
+}
+
+function Hero() {
+  return (
+    <div className="text-center">
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-linear-to-r from-violet-500/15 to-cyan-500/15 border border-violet-500/30 text-xs font-medium text-violet-200 mb-5">
+        Credit-based · Cancel anytime · 30-day refund
+      </div>
+      <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+        Pricing made for{" "}
+        <span className="gradient-text">KDP creators</span>
+      </h1>
+      <p className="mt-5 text-neutral-300 max-w-2xl mx-auto leading-relaxed">
+        Pay for what you make, not for time. Start with 50 free credits — enough
+        for a full sample book. Upgrade when you&apos;re ready to ship to KDP.
+      </p>
+    </div>
+  );
+}
+
+function TrustRow() {
+  const items: ReadonlyArray<{ icon: React.ReactNode; label: string }> = [
+    {
+      icon: <ShieldCheck className="w-4 h-4 text-emerald-400" />,
+      label: "30-day refund on every plan",
+    },
+    {
+      icon: <Globe className="w-4 h-4 text-cyan-400" />,
+      label: "Pay in USD via Lemon Squeezy — VAT/GST handled",
+    },
+    {
+      icon: <Repeat className="w-4 h-4 text-violet-400" />,
+      label: "Credits roll over month to month",
+    },
+  ];
+  return (
+    <div className="mt-10 flex flex-wrap items-center justify-center gap-x-7 gap-y-3 text-sm text-neutral-400">
+      {items.map((it) => (
+        <div key={it.label} className="inline-flex items-center gap-2">
+          {it.icon}
+          <span>{it.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function WhySection() {
+  return (
+    <section className="mt-20 max-w-5xl mx-auto">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold">Why credits + subscription?</h2>
+        <p className="text-neutral-400 mt-2 max-w-xl mx-auto">
+          Most AI tools force you to choose: predictable monthly bill, or
+          pay-per-use anxiety. We give you both.
+        </p>
+      </div>
+      <div className="grid md:grid-cols-3 gap-5">
+        <WhyCard
+          title="Predictable bill"
+          body="Your monthly subscription is set in stone — no surprise charges, no end-of-month invoices."
+        />
+        <WhyCard
+          title="No click anxiety"
+          body="Credits inside your plan mean you've already paid for the work. Every Generate click costs you nothing extra."
+        />
+        <WhyCard
+          title="Heavy users scale honestly"
+          body="If you outgrow your plan, top-up packs are cheaper than upgrading. Power users pay more without forcing everyone else to."
+        />
+      </div>
+    </section>
+  );
+}
+
+function WhyCard({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-2xl p-5 bg-zinc-900/60 border border-white/10">
+      <h3 className="text-base font-bold text-white mb-1.5">{title}</h3>
+      <p className="text-sm text-neutral-400 leading-relaxed">{body}</p>
+    </div>
   );
 }
