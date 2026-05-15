@@ -38,21 +38,96 @@ export interface KdpMetadataInput {
   kind?: KdpKind;
 }
 
-export interface KdpMetadata {
-  /** SEO-optimized KDP title — under 200 chars. */
+// Etsy listing — different rules than Amazon (140-char title, 13 tags
+// each <=20 chars, plain-text description).
+export interface EtsyMetadata {
   title: string;
-  /** Optional shorter subtitle. */
+  description: string;
+  tags: string[];
+}
+
+// Instagram launch post — short caption + 5 focused hashtags.
+export interface InstagramPost {
+  caption: string;
+  hashtags: string[];
+}
+
+export interface GumroadAdditionalInfoRow {
+  label: string;
+  value: string;
+}
+
+// Gumroad listing — emoji-rich description, one-line summary, key/value
+// "additional information" rows (5-7), tags, and category.
+export interface GumroadMetadata {
+  name: string;
+  summary: string;
+  description: string;
+  additionalInfo: GumroadAdditionalInfoRow[];
+  tags: string[];
+  category: string;
+}
+
+// Pinterest pin — title (<=100) + description (<=800).
+export interface PinterestPin {
+  title: string;
+  description: string;
+}
+
+// Twitter / X launch post — single tweet with inline hashtags, no link
+// (user appends their own).
+export interface TwitterPost {
+  caption: string;
+}
+
+// KDP-only fields — returned by the KDP per-platform generator.
+export interface KdpCore {
+  title: string;
   subtitle: string;
-  /** HTML-formatted description for KDP — bullets, bold allowed. */
   descriptionHtml: string;
-  /** Plain-text fallback of the description. */
   descriptionText: string;
-  /** Exactly 7 backend keywords, each ≤50 chars. */
   keywords: string[];
-  /** 2 suggested KDP browse categories. */
   categories: string[];
-  /** Suggested retail price (USD). */
   suggestedPriceUsd: string;
-  /** Notes — anything the AI flagged. */
   notes?: string;
+}
+
+export interface KdpMetadata extends KdpCore {
+  etsy?: EtsyMetadata;
+  instagram?: InstagramPost;
+  gumroad?: GumroadMetadata;
+  pinterest?: PinterestPin;
+  twitter?: TwitterPost;
+}
+
+// Working state used by the panel while platforms finish out-of-order.
+export type ListingPlatform =
+  | "kdp"
+  | "etsy"
+  | "gumroad"
+  | "pinterest"
+  | "instagram"
+  | "twitter";
+
+export type PlatformStatus = "pending" | "loading" | "done" | "error";
+
+export interface ListingDraft {
+  kdp?: KdpCore;
+  etsy?: EtsyMetadata;
+  gumroad?: GumroadMetadata;
+  pinterest?: PinterestPin;
+  instagram?: InstagramPost;
+  twitter?: TwitterPost;
+}
+
+export function draftToKdpMetadata(draft: ListingDraft): KdpMetadata | null {
+  if (!draft.kdp) return null;
+  return {
+    ...draft.kdp,
+    etsy: draft.etsy,
+    gumroad: draft.gumroad,
+    pinterest: draft.pinterest,
+    instagram: draft.instagram,
+    twitter: draft.twitter,
+  };
 }

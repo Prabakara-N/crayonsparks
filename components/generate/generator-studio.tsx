@@ -43,7 +43,11 @@ import { KdpMetadataPanel } from "@/components/playground/kdp-metadata-panel";
 import { CoverPair } from "@/components/playground/cover-pair";
 import { useDialog } from "@/components/ui/confirm-dialog";
 import { MockupGate } from "@/components/ui/mockup-gate";
-import type { KdpMetadata } from "@/lib/kdp-metadata";
+import type {
+  ListingDraft,
+  ListingPlatform,
+  PlatformStatus,
+} from "@/lib/kdp-metadata";
 import { ModelPicker } from "@/components/playground/model-picker";
 import {
   COVER_MODEL_OPTIONS,
@@ -160,6 +164,26 @@ const BG_OPTIONS: { value: Background; label: string }[] = [
   { value: "framed", label: "Decor Border" },
   { value: "minimal", label: "Minimal" },
 ];
+const LISTING_PLATFORMS: ListingPlatform[] = [
+  "kdp",
+  "etsy",
+  "gumroad",
+  "pinterest",
+  "instagram",
+  "twitter",
+];
+
+function initListingStatus(): Record<ListingPlatform, PlatformStatus> {
+  return {
+    kdp: "pending",
+    etsy: "pending",
+    gumroad: "pending",
+    pinterest: "pending",
+    instagram: "pending",
+    twitter: "pending",
+  };
+}
+
 const ASPECT_OPTIONS: { value: AspectRatio; label: string; sub: string }[] = [
   { value: "3:4", label: "KDP", sub: "3:4" },
   { value: "1:1", label: "Square", sub: "1:1" },
@@ -214,11 +238,15 @@ export function GeneratorStudio({ categories }: { categories: ColoringCategory[]
   const [backCoverBuilding, setBackCoverBuilding] = useState(false);
   const [backCoverError, setBackCoverError] = useState<string | null>(null);
 
-  const [kdpMetadataMap, setKdpMetadataMap] = useState<
-    Record<string, KdpMetadata>
+  const [listingDraftMap, setListingDraftMap] = useState<
+    Record<string, ListingDraft>
   >({});
-  const [kdpLoading, setKdpLoading] = useState(false);
-  const [kdpError, setKdpError] = useState<string | null>(null);
+  const [listingStatusMap, setListingStatusMap] = useState<
+    Record<string, Record<ListingPlatform, PlatformStatus>>
+  >({});
+  const [listingErrorMap, setListingErrorMap] = useState<
+    Record<string, Partial<Record<ListingPlatform, string>>>
+  >({});
 
   const [pdfBuilding, setPdfBuilding] = useState(false);
   const [pdfStep, setPdfStep] = useState<string>("");
@@ -420,44 +448,81 @@ export function GeneratorStudio({ categories }: { categories: ColoringCategory[]
     }
   }, [category, coverStyle, coverBorder, covers, coverModel]);
 
-  const generateMetadataForCategory = useCallback(async () => {
-    setKdpLoading(true);
-    setKdpError(null);
-    try {
+  const generateMetadataForCategory = useCallback(
+    async (only?: ListingPlatform) => {
+      const slug = category.slug;
       const samplePages = category.prompts.slice(0, 8).map((p) => p.subject);
-      const res = await fetch("/api/kdp-metadata", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bookTitle: category.coverTitle ?? category.name,
-          scene: category.scene,
-          age,
-          pageCount: category.prompts.length,
-          samplePages,
-        }),
-      });
-      const json = (await res.json()) as {
-        metadata?: KdpMetadata;
-        error?: string;
+      const body = {
+        bookTitle: category.coverTitle ?? category.name,
+        scene: category.scene,
+        age,
+        pageCount: category.prompts.length,
+        samplePages,
       };
-      if (!res.ok || !json.metadata)
-        throw new Error(json.error ?? "Metadata generation failed");
-      setKdpMetadataMap((prev) => ({
-        ...prev,
-        [category.slug]: json.metadata!,
-      }));
-    } catch (e) {
-      setKdpError(
-        e instanceof Error ? e.message : "Metadata generation failed",
+      const targets = only ? [only] : LISTING_PLATFORMS;
+      setListingStatusMap((prev) => {
+        const current = prev[slug] ?? initListingStatus();
+        const next = { ...current };
+        targets.forEach((p) => {
+          next[p] = "loading";
+        });
+        return { ...prev, [slug]: next };
+      });
+      setListingErrorMap((prev) => {
+        const current = { ...(prev[slug] ?? {}) };
+        targets.forEach((p) => delete current[p]);
+        return { ...prev, [slug]: current };
+      });
+      await Promise.all(
+        targets.map(async (platform) => {
+          try {
+            const res = await fetch(`/api/listing/${platform}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+            const json = (await res.json()) as {
+              data?: unknown;
+              error?: string;
+            };
+            if (!res.ok || !json.data)
+              throw new Error(json.error ?? `${platform} failed`);
+            setListingDraftMap((prev) => ({
+              ...prev,
+              [slug]: { ...(prev[slug] ?? {}), [platform]: json.data },
+            }));
+            setListingStatusMap((prev) => ({
+              ...prev,
+              [slug]: { ...(prev[slug] ?? initListingStatus()), [platform]: "done" },
+            }));
+          } catch (e) {
+            setListingStatusMap((prev) => ({
+              ...prev,
+              [slug]: {
+                ...(prev[slug] ?? initListingStatus()),
+                [platform]: "error",
+              },
+            }));
+            setListingErrorMap((prev) => ({
+              ...prev,
+              [slug]: {
+                ...(prev[slug] ?? {}),
+                [platform]: e instanceof Error ? e.message : `${platform} failed`,
+              },
+            }));
+          }
+        }),
       );
-    } finally {
-      setKdpLoading(false);
-    }
-  }, [category, age]);
+    },
+    [category, age],
+  );
 
   const activeBackCover = backCovers[category.slug];
-  const activeMetadata: KdpMetadata | null =
-    kdpMetadataMap[category.slug] ?? null;
+  const activeDraft: ListingDraft = listingDraftMap[category.slug] ?? {};
+  const activeStatus: Record<ListingPlatform, PlatformStatus> =
+    listingStatusMap[category.slug] ?? initListingStatus();
+  const activeErrors: Partial<Record<ListingPlatform, string>> =
+    listingErrorMap[category.slug] ?? {};
 
   const downloadZip = useCallback(async () => {
     const done = Object.values(items).filter((i) => i.status === "done" && i.dataUrl);
@@ -846,10 +911,12 @@ export function GeneratorStudio({ categories }: { categories: ColoringCategory[]
         <KdpMetadataPanel
           bookName={category.coverTitle ?? category.name}
           pageCount={category.prompts.length}
-          metadata={activeMetadata}
-          loading={kdpLoading}
-          error={kdpError}
-          onGenerate={() => void generateMetadataForCategory()}
+          draft={activeDraft}
+          status={activeStatus}
+          errors={activeErrors}
+          onGenerate={(platform) =>
+            void generateMetadataForCategory(platform)
+          }
         />
       ) : (
         <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 px-4 py-3 text-xs text-violet-200">

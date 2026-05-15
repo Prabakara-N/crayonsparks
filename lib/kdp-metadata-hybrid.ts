@@ -1,25 +1,24 @@
 /**
- * Hybrid KDP metadata generator: Perplexity does live-web research for
- * KEYWORDS + CATEGORIES, OpenAI writes the SEO COPY (title, subtitle,
- * description). Each model is used for what it's best at.
- *
- * Flow:
- *   1. Perplexity (sonar) — query live Amazon to get real category paths
- *      and high-volume buyer keywords for the book's niche.
- *   2. OpenAI copy model — generate SEO-optimized title, subtitle,
- *      HTML description using the verified keywords as input.
- *   3. Combine into KdpMetadata.
- *
- * Falls back gracefully: if Perplexity fails, runs OpenAI alone with a
- * hint that keywords need fallback. If OpenAI fails, still returns
- * Perplexity-only result with a basic fallback title.
+ * Hybrid listing-metadata generator. Perplexity does live-Amazon research
+ * (keywords + categories) once, then per-platform OpenAI copy calls run in
+ * parallel. Each platform export is callable on its own so the UI can fire
+ * 6 fetches and update each tab as it resolves.
  */
 
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { callPerplexity, extractJsonFromPerplexity } from "./perplexity";
-import type { KdpMetadata, KdpMetadataInput } from "./kdp-metadata";
+import type {
+  EtsyMetadata,
+  GumroadMetadata,
+  InstagramPost,
+  KdpCore,
+  KdpMetadata,
+  KdpMetadataInput,
+  PinterestPin,
+  TwitterPost,
+} from "./kdp-metadata";
 import { OPENAI_COPY_MODEL } from "./constants";
 
 const OPENAI_MODEL = OPENAI_COPY_MODEL;
@@ -30,9 +29,9 @@ const AGE_DESCRIPTORS: Record<KdpMetadataInput["age"], string> = {
   tweens: "tweens ages 10-14",
 };
 
-// ---------- Step 1: Perplexity research ----------
+// ---------- Shared Perplexity research ----------
 
-interface PerplexityResearch {
+export interface PerplexityResearch {
   keywords: string[];
   categories: string[];
   competitorTitles?: string[];
@@ -75,7 +74,7 @@ Return JSON ONLY in this exact shape:
 }`;
 }
 
-async function researchWithPerplexity(
+export async function researchWithPerplexity(
   input: KdpMetadataInput,
 ): Promise<PerplexityResearch> {
   const system = `You are an Amazon KDP listing research expert. Use live web search to find ACCURATE, CURRENT data for the book described. Return ONLY a JSON object — no prose, no markdown fences, no citations.`;
@@ -111,9 +110,62 @@ async function researchWithPerplexity(
   };
 }
 
-// ---------- Step 2: OpenAI copy ----------
+function emptyResearch(): PerplexityResearch {
+  return { keywords: Array(7).fill(""), categories: ["", ""] };
+}
 
-const COPY_SCHEMA = z.object({
+async function safeResearch(
+  input: KdpMetadataInput,
+): Promise<{ research: PerplexityResearch; researchError?: string }> {
+  const hasPerplexity = !!process.env.PERPLEXITY_API_KEY;
+  if (!hasPerplexity) {
+    return {
+      research: emptyResearch(),
+      researchError:
+        "PERPLEXITY_API_KEY not set — using OpenAI to invent keywords (less accurate than live Amazon data).",
+    };
+  }
+  try {
+    return { research: await researchWithPerplexity(input) };
+  } catch (e) {
+    return {
+      research: emptyResearch(),
+      researchError: e instanceof Error ? e.message : "Research failed",
+    };
+  }
+}
+
+function requireOpenAi(): void {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error(
+      "OPENAI_API_KEY is required for listing metadata. Add it to .env.local.",
+    );
+  }
+}
+
+// ---------- Shared book brief (used by every per-platform prompt) ----------
+
+function buildBookBrief(input: KdpMetadataInput): string {
+  const isStory = input.kind === "story";
+  const productHeading = isStory
+    ? "full-color children's picture book"
+    : "coloring book";
+  const sceneLabel = isStory ? "Story scene / plot" : "World/scene";
+  const samplesLabel = isStory ? "Sample scenes" : "Sample interior pages";
+  return `BOOK
+- Type: ${productHeading} (printable PDF digital download)
+- Theme/working title: "${input.bookTitle}"
+- Audience: ${AGE_DESCRIPTORS[input.age]}
+- Pages: ${input.pageCount}
+- ${sceneLabel}: ${input.scene}
+- ${samplesLabel}: ${input.samplePages.slice(0, 6).join("; ")}`;
+}
+
+const COMMON_AVOID = `Avoid: copyrighted characters (Disney, Marvel, Pokemon), trademarked phrases, made-up awards.`;
+
+// ---------- KDP core ----------
+
+const KDP_SCHEMA = z.object({
   title: z.string().min(1).max(200),
   subtitle: z.string().max(100),
   descriptionHtml: z.string().min(1),
@@ -121,18 +173,13 @@ const COPY_SCHEMA = z.object({
   suggestedPriceUsd: z.string(),
 });
 
-type CopyOutput = z.infer<typeof COPY_SCHEMA>;
-
-function buildCopyUserPrompt(
+export async function generateKdpCore(
   input: KdpMetadataInput,
-  research: PerplexityResearch,
-): string {
+): Promise<KdpCore> {
+  requireOpenAi();
+  const { research, researchError } = await safeResearch(input);
+
   const isStory = input.kind === "story";
-  const productHeading = isStory
-    ? "full-color children's picture book"
-    : "coloring book";
-  const sceneLabel = isStory ? "Story scene / plot" : "World/scene";
-  const samplesLabel = isStory ? "Sample scenes" : "Sample interior pages";
   const titleFormat = isStory
     ? `Format: "[Story Name]: A [Audience] Picture Book for Read-Aloud" or "[Story Name] — Illustrated Story Book for [Audience]". Include 2-3 of the verified keywords naturally. Never call it a coloring book.`
     : `Format: "[Theme] Coloring Book for [Audience]: [Page Count] [Hook] | [Differentiator]". Include 2-3 of the verified keywords naturally.`;
@@ -140,95 +187,280 @@ function buildCopyUserPrompt(
     ? `e.g. "7.99" for short toddler picture books (8-16 pages), "9.99" for standard 20-30 page picture books, "12.99" for premium hardcover-feel editions.`
     : `e.g. "6.99" for 20-30 pages, "8.99" for 40+ pages, "9.99" for premium tween editions.`;
   const descriptionGuidance = isStory
-    ? `descriptionHtml: 180-350 words. Open with the story hook (one-sentence pitch: "Meet Pip, a tiny panda on his first day of school…"), then <ul><li> bullets of WHAT THE PARENT GETS (read-aloud time, character lessons, vibrant illustrations, age-appropriate vocabulary, calming bedtime narrative — pick 4-6). Close with a soft parent-facing sell ("a keepsake to share, page by page"). Use <p>, <strong>, <ul>, <li> tags only. No markdown.`
+    ? `descriptionHtml: 180-350 words. Open with the story hook, then <ul><li> bullets of WHAT THE PARENT GETS (4-6). Close with a soft parent-facing sell. Use <p>, <strong>, <ul>, <li> tags only. No markdown.`
     : `descriptionHtml: 200-400 words, opens with audience hook, then <ul><li> bullets of features (4-6), closes with soft sell. Use <p>, <strong>, <ul>, <li> tags only. No markdown.`;
 
-  return `Write SEO-optimized KDP listing copy for this ${productHeading}.
+  const user = `Write SEO-optimized Amazon KDP listing copy.
 
-BOOK
-- Theme/working title: "${input.bookTitle}"
-- Audience: ${AGE_DESCRIPTORS[input.age]}
-- Pages: ${input.pageCount}
-- ${sceneLabel}: ${input.scene}
-- ${samplesLabel}: ${input.samplePages.slice(0, 6).join("; ")}
+${buildBookBrief(input)}
 
-VERIFIED HIGH-INTENT KEYWORDS (use these throughout the title and description; they were just researched on live Amazon):
+VERIFIED HIGH-INTENT KEYWORDS (use these in the title and description; researched on live Amazon):
 ${research.keywords.map((k, i) => `  ${i + 1}. ${k}`).join("\n")}
 
-${research.competitorTitles?.length ? `TOP COMPETITOR TITLES (for tone/structure only, DO NOT copy):\n${research.competitorTitles.map((t) => `  - ${t}`).join("\n")}\n` : ""}
-WRITE
-- title: ≤200 chars, keyword-stuffed but readable. ${titleFormat}
+${research.competitorTitles?.length ? `TOP COMPETITOR TITLES (for tone/structure only, DO NOT copy):\n${research.competitorTitles.map((t) => `  - ${t}`).join("\n")}\n` : ""}WRITE
+- title: ≤200 chars. ${titleFormat}
 - subtitle: optional, 5-10 words, complements title; empty string if not needed.
 - ${descriptionGuidance}
 - descriptionText: same description as plain text (no HTML).
 - suggestedPriceUsd: ${priceGuidance}
 
-Avoid: copyrighted characters (Disney, Marvel, Pokemon), trademarked phrases, made-up awards.${
+${COMMON_AVOID}${
     isStory
       ? " Never claim the art is hand-drawn, hand-painted, hand-illustrated, handmade, or original artwork — these are AI-illustrated picture books."
       : ""
   }`;
-}
-
-async function writeCopyWithOpenAi(
-  input: KdpMetadataInput,
-  research: PerplexityResearch,
-): Promise<CopyOutput> {
-  const system = `You are an Amazon KDP SEO copywriter. You write KDP listings that buyers actually click and convert. Output strictly via the schema.`;
-
-  const user = buildCopyUserPrompt(input, research);
 
   const result = await generateObject({
     model: openai(OPENAI_MODEL),
-    system,
-    schema: COPY_SCHEMA,
+    system: `You are an Amazon KDP SEO copywriter. Output strictly via the schema.`,
+    schema: KDP_SCHEMA,
     prompt: user,
   });
-  return result.object;
+
+  return {
+    title: result.object.title,
+    subtitle: result.object.subtitle,
+    descriptionHtml: result.object.descriptionHtml,
+    descriptionText: result.object.descriptionText,
+    suggestedPriceUsd: result.object.suggestedPriceUsd,
+    keywords: research.keywords,
+    categories: research.categories,
+    notes: [research.notes, researchError].filter(Boolean).join(" · ") || undefined,
+  };
 }
 
-// ---------- Orchestrator ----------
+// ---------- Etsy ----------
+
+const ETSY_SCHEMA = z.object({
+  title: z.string().min(1).max(140),
+  description: z.string().min(1),
+  tags: z.array(z.string().max(20)).length(13),
+});
+
+export async function generateEtsy(
+  input: KdpMetadataInput,
+): Promise<EtsyMetadata> {
+  requireOpenAi();
+  const user = `Write an ETSY listing for this printable PDF book. Etsy buyers search for "printable", "digital download", "PDF" — front-load those signals.
+
+${buildBookBrief(input)}
+
+WRITE
+- title: ≤140 chars. Front-load 2-3 strong keywords (Etsy weights first ~40 chars heaviest). Include "Printable" or "Digital Download". No emoji, no ALL CAPS.
+- description: 250-500 words plain text (no HTML, no markdown). Open with what the buyer downloads ("Instant download: 1 PDF, ${input.pageCount} pages, print at home on US Letter or A4"). Use short paragraphs separated by blank lines. End with a printing/license line.
+- tags: EXACTLY 13 tags, each ≤20 chars. Multi-word phrases preferred ("kids coloring book" beats "kids"). Mix broad + niche. No commas, no quotation marks, no hashtags.
+
+${COMMON_AVOID}`;
+
+  const result = await generateObject({
+    model: openai(OPENAI_MODEL),
+    system: `You are an Etsy listing copywriter. Output strictly via the schema.`,
+    schema: ETSY_SCHEMA,
+    prompt: user,
+  });
+
+  return {
+    title: result.object.title.slice(0, 140),
+    description: result.object.description,
+    tags: result.object.tags.map((t) => t.slice(0, 20)),
+  };
+}
+
+// ---------- Gumroad ----------
+
+const GUMROAD_SCHEMA = z.object({
+  name: z.string().min(1).max(140),
+  summary: z.string().min(1).max(280),
+  description: z.string().min(1),
+  additionalInfo: z
+    .array(
+      z.object({
+        label: z.string().min(1).max(30),
+        value: z.string().min(1).max(80),
+      }),
+    )
+    .min(5)
+    .max(7),
+  tags: z.array(z.string().max(30)).min(5).max(10),
+  category: z.string().min(1).max(60),
+});
+
+export async function generateGumroad(
+  input: KdpMetadataInput,
+): Promise<GumroadMetadata> {
+  requireOpenAi();
+  const user = `Write a GUMROAD listing for this printable PDF book. Gumroad sells digital products; the description uses emoji section headers and short paragraphs, not HTML.
+
+${buildBookBrief(input)}
+
+WRITE
+- name: short product name, ≤140 chars. Buyer-friendly headline, NOT a long SEO title.
+- summary: ONE sentence, ≤280 chars, benefit at a glance. EXAMPLE shape (illustrative only, do not literally use these words unless they match this book): "Fun and beginner-friendly ABC tracing workbook for toddlers and preschoolers featuring A–Z letter practice, handwriting activities, and printable learning pages in an instant PDF download."
+- description: multi-paragraph emoji-decorated description. Use this EXACT structure (illustrative example below — write fresh prose tailored to THIS book):
+    Paragraph 1: One-sentence opener describing what the book is and who it's for (2-3 sentences max). Plain prose, no emoji here.
+    Paragraph 2 starts with "✨ What's Included:" then a line break, then 4-6 short feature lines, each on its own line. NO bullet characters.
+    Paragraph 3 starts with "Perfect for:" then a line break, then 4-6 short usage lines, each on its own line. NO bullet characters.
+    Paragraph 4: 1-2 sentences about who benefits (parents, teachers, homeschoolers, age band).
+    Final paragraph: three short standalone lines:
+      "📥 Instant Download"
+      "🖨 Print at home anytime"
+      "❌ No physical product will be shipped"
+   Use \\n for paragraph breaks. Plain text only, no HTML, no markdown bold/italic.
+- additionalInfo: 5-7 key/value rows shown as "Label — Value" lines. EXAMPLES of label types (illustrative only): "Pages", "Format", "Age Range", "Language", "Usage", "File Size", "Print Size". Pick 5-7 that fit THIS book. Values are short (≤80 chars), e.g. "${input.pageCount} Printable Pages", "PDF Digital Download".
+- tags: 5-10 short Gumroad tags (each ≤30 chars). Lowercase, multi-word allowed, no commas, no hashtag prefix.
+- category: ONE Gumroad top-level category, output verbatim from this list: "Education", "Drawing & Painting", "Comics & Graphic Novels", "Fiction Books", "Audio", "Self Improvement", "Crafts & DIY", "Design", "Other". Most coloring/picture books fit "Education" or "Drawing & Painting".
+
+${COMMON_AVOID}`;
+
+  const result = await generateObject({
+    model: openai(OPENAI_MODEL),
+    system: `You are a Gumroad listing copywriter. Output strictly via the schema.`,
+    schema: GUMROAD_SCHEMA,
+    prompt: user,
+  });
+
+  return {
+    name: result.object.name.slice(0, 140),
+    summary: result.object.summary.slice(0, 280),
+    description: result.object.description,
+    additionalInfo: result.object.additionalInfo.map((row) => ({
+      label: row.label.slice(0, 30),
+      value: row.value.slice(0, 80),
+    })),
+    tags: result.object.tags.map((t) => t.replace(/^#/, "").slice(0, 30)),
+    category: result.object.category,
+  };
+}
+
+// ---------- Pinterest ----------
+
+const PINTEREST_SCHEMA = z.object({
+  title: z.string().min(1).max(100),
+  description: z.string().min(1).max(800),
+});
+
+export async function generatePinterest(
+  input: KdpMetadataInput,
+): Promise<PinterestPin> {
+  requireOpenAi();
+  const user = `Write a PINTEREST PIN for this printable PDF book.
+
+${buildBookBrief(input)}
+
+WRITE
+- title: ≤100 chars, keyword-rich, clickable. Include 1-2 strong keywords plus a benefit ("Printable", "for Kids", "Instant Download").
+- description: ≤800 chars. 2-4 short paragraphs. First line is a hook, then describe what's inside, who it's for, end with a soft CTA ("Click to download"). End with 3-5 inline hashtags (#example) after a blank line.
+
+${COMMON_AVOID}`;
+
+  const result = await generateObject({
+    model: openai(OPENAI_MODEL),
+    system: `You are a Pinterest pin copywriter. Output strictly via the schema.`,
+    schema: PINTEREST_SCHEMA,
+    prompt: user,
+  });
+
+  return {
+    title: result.object.title.slice(0, 100),
+    description: result.object.description.slice(0, 800),
+  };
+}
+
+// ---------- Instagram ----------
+
+const INSTAGRAM_SCHEMA = z.object({
+  caption: z.string().min(1).max(2200),
+  hashtags: z.array(z.string()).length(5),
+});
+
+export async function generateInstagram(
+  input: KdpMetadataInput,
+): Promise<InstagramPost> {
+  requireOpenAi();
+  const user = `Write an INSTAGRAM LAUNCH POST for this printable PDF book.
+
+${buildBookBrief(input)}
+
+WRITE
+- caption: 80-180 words. Hook in the first line (a question or vivid image), then 2-3 short paragraphs, then a soft CTA ("Tap the link in bio to grab a copy"). No hashtags in the caption itself.
+- hashtags: EXACTLY 5 hashtags, each starting with #, no spaces, mixed reach (1 broad + 2 mid + 2 niche). No banned tags.
+
+${COMMON_AVOID}`;
+
+  const result = await generateObject({
+    model: openai(OPENAI_MODEL),
+    system: `You are an Instagram copywriter for kids/parenting brands. Output strictly via the schema.`,
+    schema: INSTAGRAM_SCHEMA,
+    prompt: user,
+  });
+
+  return {
+    caption: result.object.caption,
+    hashtags: result.object.hashtags.map((h) =>
+      h.startsWith("#") ? h : `#${h}`,
+    ),
+  };
+}
+
+// ---------- Twitter / X ----------
+
+const TWITTER_SCHEMA = z.object({
+  caption: z.string().min(1).max(280),
+});
+
+export async function generateTwitter(
+  input: KdpMetadataInput,
+): Promise<TwitterPost> {
+  requireOpenAi();
+  const user = `Write a TWITTER / X LAUNCH POST for this printable PDF book.
+
+${buildBookBrief(input)}
+
+WRITE
+- caption: ≤280 chars TOTAL including hashtags. NO link (the user adds their own). Format: "[Hook sentence] [Benefit sentence] [2-3 hashtags at end]". Tight, punchy, scroll-stopping. Hashtags lowercase or CamelCase, no spaces.
+
+${COMMON_AVOID}`;
+
+  const result = await generateObject({
+    model: openai(OPENAI_MODEL),
+    system: `You are a social-media copywriter. Output strictly via the schema.`,
+    schema: TWITTER_SCHEMA,
+    prompt: user,
+  });
+
+  return {
+    caption: result.object.caption.slice(0, 280),
+  };
+}
+
+// ---------- All-in-one (back-compat) ----------
 
 export async function generateKdpMetadataHybrid(
   input: KdpMetadataInput,
 ): Promise<KdpMetadata> {
-  const hasPerplexity = !!process.env.PERPLEXITY_API_KEY;
-  const hasOpenAi = !!process.env.OPENAI_API_KEY;
-
-  if (!hasOpenAi) {
-    throw new Error(
-      "OPENAI_API_KEY is required for hybrid metadata. Add it to .env.local or pick the Gemini provider.",
-    );
-  }
-
-  // Step 1: research (graceful fallback to empty research)
-  let research: PerplexityResearch = {
-    keywords: Array(7).fill(""),
-    categories: ["", ""],
-  };
-  let researchError: string | undefined;
-  if (hasPerplexity) {
-    try {
-      research = await researchWithPerplexity(input);
-    } catch (e) {
-      researchError = e instanceof Error ? e.message : "Research failed";
-    }
-  } else {
-    researchError =
-      "PERPLEXITY_API_KEY not set — using OpenAI to invent keywords (less accurate than live Amazon data).";
-  }
-
-  // Step 2: copy
-  const copy = await writeCopyWithOpenAi(input, research);
+  const [kdp, etsy, gumroad, pinterest, instagram, twitter] =
+    await Promise.all([
+      generateKdpCore(input),
+      generateEtsy(input).catch(() => undefined),
+      generateGumroad(input).catch(() => undefined),
+      generatePinterest(input).catch(() => undefined),
+      generateInstagram(input).catch(() => undefined),
+      generateTwitter(input).catch(() => undefined),
+    ]);
 
   return {
-    title: copy.title,
-    subtitle: copy.subtitle,
-    descriptionHtml: copy.descriptionHtml,
-    descriptionText: copy.descriptionText,
-    keywords: research.keywords,
-    categories: research.categories,
-    suggestedPriceUsd: copy.suggestedPriceUsd,
-    notes: [research.notes, researchError].filter(Boolean).join(" · ") || undefined,
+    title: kdp.title,
+    subtitle: kdp.subtitle,
+    descriptionHtml: kdp.descriptionHtml,
+    descriptionText: kdp.descriptionText,
+    keywords: kdp.keywords,
+    categories: kdp.categories,
+    suggestedPriceUsd: kdp.suggestedPriceUsd,
+    notes: kdp.notes,
+    etsy,
+    gumroad,
+    pinterest,
+    instagram,
+    twitter,
   };
 }

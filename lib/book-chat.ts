@@ -81,6 +81,20 @@ export interface BookBrief {
    * legacy briefs without it still parse; consumers default to "simple".
    */
   detailLevel?: "simple" | "detailed" | "intricate";
+  // Story mode only — narrative shape the planner applies. Maps to
+  // StoryType in lib/story-book-planner.ts.
+  storyType?:
+    | "moral"
+    | "fiction"
+    | "non-fiction"
+    | "mystery"
+    | "fantasy"
+    | "comic"
+    | "fairytale"
+    | "adventure"
+    | "bedtime";
+  // Story mode only — how chatty the book is. Maps to DialogueStyle.
+  dialogueStyle?: "quiet" | "balanced" | "chatty";
   quality?: import("@/lib/book-chat-types").BookBriefQualityReport;
 }
 

@@ -62,7 +62,11 @@ import { ModelPicker } from "@/components/playground/model-picker";
 import { SelectField } from "@/components/playground/select-field";
 import { PlanReviewButton } from "@/components/playground/plan-review-panel";
 import { AspectRatioPicker } from "@/components/playground/aspect-ratio-picker";
-import type { KdpMetadata } from "@/lib/kdp-metadata";
+import type {
+  ListingDraft,
+  ListingPlatform,
+  PlatformStatus,
+} from "@/lib/kdp-metadata";
 import { type StoryType } from "@/lib/story-book-planner";
 import { StoryTypePicker } from "@/components/playground/story-type-picker";
 import { DialogueStylePicker } from "@/components/playground/dialogue-style-picker";
@@ -203,6 +207,26 @@ const AGE_LABELS: Record<AgeRange, string> = {
   kids: "Kids 6-10",
   tweens: "Tweens 10-14",
 };
+
+const LISTING_PLATFORMS: ListingPlatform[] = [
+  "kdp",
+  "etsy",
+  "gumroad",
+  "pinterest",
+  "instagram",
+  "twitter",
+];
+
+function initListingStatus(): Record<ListingPlatform, PlatformStatus> {
+  return {
+    kdp: "pending",
+    etsy: "pending",
+    gumroad: "pending",
+    pinterest: "pending",
+    instagram: "pending",
+    twitter: "pending",
+  };
+}
 
 // Stopwords stripped before noun-overlap matching. Anything 4+ chars that
 // isn't here counts as a candidate "key noun" for the chain decision.
@@ -618,48 +642,66 @@ export function BookStudio({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cover.status, cover.dataUrl, characterLock.status, mode]);
 
-  // KDP metadata
-  const [kdpMetadata, setKdpMetadata] = useState<KdpMetadata | null>(null);
-  const [kdpLoading, setKdpLoading] = useState(false);
-  const [kdpError, setKdpError] = useState<string | null>(null);
-  const generateMetadata = useCallback(async () => {
-    if (!plan) return;
-    setKdpLoading(true);
-    setKdpError(null);
-    try {
-      // Story-mode books send `kind: "story"` so the route picks the
-      // picture-book SEO branch (different keywords, categories, price
-      // bands, and copy structure than the default coloring-book branch).
-      // For story mode we also use the cover scene as the scene/plot
-      // signal because plan.scene is the per-page backdrop, not the story.
+  const [listingDraft, setListingDraft] = useState<ListingDraft>({});
+  const [listingStatus, setListingStatus] = useState<
+    Record<ListingPlatform, PlatformStatus>
+  >(() => initListingStatus());
+  const [listingErrors, setListingErrors] = useState<
+    Partial<Record<ListingPlatform, string>>
+  >({});
+  const generateMetadata = useCallback(
+    async (only?: ListingPlatform) => {
+      if (!plan) return;
       const isStory = mode === "story";
-      const res = await fetch("/api/kdp-metadata", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bookTitle: plan.coverTitle ?? plan.title,
-          scene: isStory
-            ? plan.coverScene || plan.scene
-            : plan.scene,
-          age,
-          pageCount: items.length,
-          samplePages: items.slice(0, 8).map((it) => it.subject),
-          kind: isStory ? "story" : "coloring",
-        }),
-      });
-      const json = (await res.json()) as {
-        metadata?: KdpMetadata;
-        error?: string;
+      const body = {
+        bookTitle: plan.coverTitle ?? plan.title,
+        scene: isStory ? plan.coverScene || plan.scene : plan.scene,
+        age,
+        pageCount: items.length,
+        samplePages: items.slice(0, 8).map((it) => it.subject),
+        kind: isStory ? "story" : "coloring",
       };
-      if (!res.ok || !json.metadata)
-        throw new Error(json.error ?? "Metadata generation failed");
-      setKdpMetadata(json.metadata);
-    } catch (e) {
-      setKdpError(e instanceof Error ? e.message : "Metadata generation failed");
-    } finally {
-      setKdpLoading(false);
-    }
-  }, [plan, mode, age, items]);
+      const targets = only ? [only] : LISTING_PLATFORMS;
+      setListingStatus((s) => {
+        const next = { ...s };
+        targets.forEach((p) => {
+          next[p] = "loading";
+        });
+        return next;
+      });
+      setListingErrors((prev) => {
+        const next = { ...prev };
+        targets.forEach((p) => delete next[p]);
+        return next;
+      });
+      await Promise.all(
+        targets.map(async (platform) => {
+          try {
+            const res = await fetch(`/api/listing/${platform}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+            const json = (await res.json()) as {
+              data?: unknown;
+              error?: string;
+            };
+            if (!res.ok || !json.data)
+              throw new Error(json.error ?? `${platform} failed`);
+            setListingDraft((d) => ({ ...d, [platform]: json.data }));
+            setListingStatus((s) => ({ ...s, [platform]: "done" }));
+          } catch (e) {
+            setListingStatus((s) => ({ ...s, [platform]: "error" }));
+            setListingErrors((prev) => ({
+              ...prev,
+              [platform]: e instanceof Error ? e.message : `${platform} failed`,
+            }));
+          }
+        }),
+      );
+    },
+    [plan, mode, age, items],
+  );
 
   const runPlan = useCallback(async () => {
     const trimmed = idea.trim();
@@ -1502,14 +1544,6 @@ export function BookStudio({
           await interiorBlob.arrayBuffer(),
         );
         zip.file(`${safeName}_etsy_a4.pdf`, await etsyA4Blob.arrayBuffer());
-        zip.file(`${safeName}_cover.png`, cover.dataUrl!.split(",")[1], {
-          base64: true,
-        });
-        zip.file(
-          `${safeName}_back_cover.png`,
-          backCover.dataUrl!.split(",")[1],
-          { base64: true },
-        );
         zip.file(
           "README.txt",
           [
@@ -1654,21 +1688,6 @@ export function BookStudio({
       zip.file(`${safeName}_cover_KDP.pdf`, await coverBlob.arrayBuffer());
       zip.file(`${safeName}_interior_KDP.pdf`, await interiorBlob.arrayBuffer());
       zip.file(`${safeName}_etsy_a4.pdf`, await etsyA4Blob.arrayBuffer());
-      zip.file(`${safeName}_cover.png`, cover.dataUrl!.split(",")[1], {
-        base64: true,
-      });
-      zip.file(
-        `${safeName}_back_cover.png`,
-        backCover.dataUrl!.split(",")[1],
-        { base64: true },
-      );
-      if (belongsTo.status === "done" && belongsTo.dataUrl) {
-        zip.file(
-          `${safeName}_belongs_to.png`,
-          belongsTo.dataUrl.split(",")[1],
-          { base64: true },
-        );
-      }
       zip.file(
         "README.txt",
         [
@@ -2414,10 +2433,10 @@ export function BookStudio({
         <KdpMetadataPanel
           bookName={plan.coverTitle ?? plan.title ?? "book"}
           pageCount={items.length}
-          metadata={kdpMetadata}
-          loading={kdpLoading}
-          error={kdpError}
-          onGenerate={() => void generateMetadata()}
+          draft={listingDraft}
+          status={listingStatus}
+          errors={listingErrors}
+          onGenerate={(platform) => void generateMetadata(platform)}
         />
       )}
       {plan && !allDone && (
