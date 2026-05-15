@@ -18,17 +18,8 @@ import {
  */
 export const BELONGS_TO_PROMPT_TEMPLATE = (opts: {
   bookTitle: string;
-  /** 1-3 main characters from the book — used to draw cameos in the corners. */
   characters: string;
   style: BelongsToStyle;
-  /**
-   * Optional CHARACTER LOCK block extracted from the cover. When present
-   * the corner cameos MUST use these exact descriptors so the cameos
-   * match the front cover's characters (same fat tabby cat, not a
-   * generic skinny one). Cross-page consistency is the whole point of
-   * the lock — belongs-to is the FIRST page after the cover, so any
-   * mismatch here is glaring.
-   */
   characterLock?: string;
 }): string => {
   const isColor = opts.style === "color";

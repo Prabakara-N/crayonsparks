@@ -22,7 +22,7 @@ Specifically:
   - **Reusable cross-route UI primitives** go in `components/ui/<name>.tsx` (e.g. `components/ui/image-preview-dialog.tsx`).
   - Do NOT put components inside `app/<route>/_components/`.
   - **Types** stay co-located with the code that defines them. Only extract a type to a shared file if it's duplicated across 3+ files OR will become a database row shape later.
-- **Naming:** export ONE named function per file, file name is kebab-case matching the component name (`page-detail.tsx` exports `PageDetail`). Config/constant modules get a feature-scoped name, never a generic one.
+- **Naming:** export ONE named function per file, file name is kebab-case matching the component name (`page-detail.tsx` exports `PageDetail`). Config/constant modules get a feature-scoped name, never a generic one. **Inside a feature folder the orchestrator file uses the `<feature>-main.tsx` naming** (e.g. `components/playground/book-studio/book-studio-main.tsx` exports `BookStudio`) so it stands out from sibling sub-components and avoids the visually-confusing `<folder>/<same-folder-name>.tsx` pattern; the exported component name still matches the feature name itself.
 
 When refactoring an existing large file, split it in this order: (1) data types into a co-located `types.ts` next to the consumer, (2) pure utility / config modules with feature-scoped names, (3) leaf components first (badges, status pills) into the feature folder, (4) then larger composite components, (5) the orchestrator last.
 

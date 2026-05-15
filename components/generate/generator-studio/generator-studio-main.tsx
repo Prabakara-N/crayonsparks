@@ -26,11 +26,11 @@ import {
   type CustomCategory,
 } from "@/lib/custom-categories";
 import { CreateBookModal } from "@/components/generate/create-book-modal";
-import { ImageRefineModal, type RefineContext } from "@/components/generate/image-refine-modal/image-refine-modal";
+import { ImageRefineModal, type RefineContext } from "@/components/generate/image-refine-modal/image-refine-modal-main";
 import { ReferenceImageField } from "@/components/ui/reference-image-field";
 import { MockupGenerator } from "@/components/ui/mockup-generator";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { KdpMetadataPanel } from "@/components/playground/kdp-metadata/kdp-metadata-panel";
+import { KdpMetadataPanel } from "@/components/playground/kdp-metadata/kdp-metadata-main";
 import { CoverPair } from "@/components/playground/cover-pair";
 import { useDialog } from "@/components/ui/confirm-dialog";
 import { MockupGate } from "@/components/ui/mockup-gate";
@@ -301,10 +301,7 @@ export function GeneratorStudio({ categories }: { categories: ColoringCategory[]
           backCoverDescription: description,
           coverStyle,
           coverBorder,
-          // Pass front cover as STYLE REFERENCE to lock palette/style.
           referenceDataUrl: frontCover,
-          // Back cover stays on the same model as the front cover so the
-          // user's dropdown choice applies uniformly to both surfaces.
           model: coverModel,
         }),
       });

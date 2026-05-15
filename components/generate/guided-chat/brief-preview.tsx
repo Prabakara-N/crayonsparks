@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { BookBrief } from "@/lib/book-chat";
 import { BriefQualityCard } from "@/components/generate/brief-quality-card";
-import { PlanReviewButton } from "@/components/playground/plan-review-panel/plan-review-panel";
+import { PlanReviewButton } from "@/components/playground/plan-review-panel/plan-review-panel-main";
 
 interface BriefPreviewProps {
   brief: BookBrief;

@@ -1,0 +1,831 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  BookPlus,
+  BookOpen,
+  GalleryHorizontal,
+  Play,
+  Pause,
+  Square,
+  RefreshCw,
+  Plus,
+  Lightbulb,
+} from "lucide-react";
+import { prefetchBookFlip, BookFlip } from "@/components/playground/book-flip";
+import { ImageRefineModal } from "@/components/generate/image-refine-modal/image-refine-modal-main";
+import { MockupGenerator } from "@/components/ui/mockup-generator";
+import { MockupGate } from "@/components/ui/mockup-gate";
+import { useDialog } from "@/components/ui/confirm-dialog";
+import { ImagePreviewDialog } from "@/components/ui/image-preview-dialog";
+import { useNavigationGuard } from "@/lib/use-navigation-guard";
+import { DownloadMenu } from "@/components/playground/download-menu";
+import { KdpMetadataPanel } from "@/components/playground/kdp-metadata/kdp-metadata-main";
+import { CoverPair } from "@/components/playground/cover-pair";
+import { ModelPicker } from "@/components/playground/model-picker";
+import { PlanReviewButton } from "@/components/playground/plan-review-panel/plan-review-panel-main";
+import {
+  COVER_MODEL_OPTIONS,
+  INTERIOR_MODEL_OPTIONS,
+  type ImageModel,
+} from "@/lib/constants";
+import type { AgeRange, Phase, Plan, PromptItem } from "./types";
+import { AGE_LABELS } from "./book-studio-constants";
+import { buildRefineBookContext } from "./book-studio-helpers";
+import { IdeaForm } from "./idea-form";
+import { Carousel } from "./carousel";
+import { useBookPlan } from "./hooks/use-book-plan";
+import { useCharacterLock } from "./hooks/use-character-lock";
+import { useCoverGeneration } from "./hooks/use-cover-generation";
+import { usePageGeneration } from "./hooks/use-page-generation";
+import { useRefineState } from "./hooks/use-refine-state";
+import { useBookDownload } from "./hooks/use-book-download";
+import { useListingState } from "./hooks/use-listing-state";
+
+export type {
+  StoryDialogueLine,
+  StoryCharacter,
+  StoryPalette,
+  Plan,
+} from "./types";
+
+export function BookStudio({
+  initialPlan,
+  initialAge,
+  initialReference,
+  initialMode,
+  onSwitchToChat,
+  onReset,
+}: {
+  initialPlan?: Plan;
+  initialAge?: AgeRange;
+  initialReference?: string;
+  initialMode?: "qa" | "story";
+  onSwitchToChat?: (idea: string, mode: "qa" | "story") => void;
+  onReset?: () => void;
+} = {}) {
+  const dialog = useDialog();
+  const [phase, setPhase] = useState<Phase>(initialPlan ? "review" : "idea");
+
+  useNavigationGuard(phase === "generating", () =>
+    dialog.confirm({
+      title: "Leave while generating?",
+      message:
+        "Pages are still being generated. Leaving now will stop the run and any unfinished pages will be lost. Generated pages so far will be kept if you come back.",
+      confirmText: "Leave anyway",
+      cancelText: "Keep generating",
+      variant: "danger",
+    }),
+  );
+
+  const abortRef = useRef<AbortController | null>(null);
+  const characterLockBlockRef = useRef<string | undefined>(undefined);
+  const itemsRef = useRef<PromptItem[]>([]);
+  const setItemsHandoff = useRef<((items: PromptItem[]) => void) | null>(null);
+  const setIndexHandoff = useRef<((n: number) => void) | null>(null);
+  const setCoverPendingHandoff = useRef<(() => void) | null>(null);
+
+  const [qualityCheck] = useState(false);
+  const [viewMode, setViewMode] = useState<"carousel" | "book">("carousel");
+  const [storyPreview, setStoryPreview] = useState<{
+    open: boolean;
+    src: string;
+    label: string;
+  }>({ open: false, src: "", label: "" });
+
+  const openStoryPreview = useCallback((src: string, label: string) => {
+    if (!src) return;
+    setStoryPreview({ open: true, src, label });
+  }, []);
+
+  useEffect(() => {
+    prefetchBookFlip();
+  }, []);
+
+  const bookPlan = useBookPlan({
+    initialPlan,
+    initialAge,
+    initialReference,
+    initialMode,
+    setPhase,
+    setItems: (items) => setItemsHandoff.current?.(items),
+    setCoverPending: () => setCoverPendingHandoff.current?.(),
+    setCurrentIndex: (n) => setIndexHandoff.current?.(n),
+  });
+
+  const coverGen = useCoverGeneration({
+    plan: bookPlan.plan,
+    initialPlan,
+    mode: bookPlan.mode,
+    age: bookPlan.age,
+    itemsRef,
+    qualityCheck,
+    characterLockBlockRef,
+    abortRef,
+  });
+
+  const characterLockHook = useCharacterLock({
+    plan: bookPlan.plan,
+    mode: bookPlan.mode,
+    coverStatus: coverGen.cover.status,
+    coverDataUrl: coverGen.cover.dataUrl,
+  });
+
+  characterLockBlockRef.current = characterLockHook.characterLock.block;
+
+  const pageGen = usePageGeneration({
+    plan: bookPlan.plan,
+    initialPlan,
+    mode: bookPlan.mode,
+    age: bookPlan.age,
+    aspectRatio: bookPlan.aspectRatio,
+    detailLevel: bookPlan.detailLevel,
+    reference: bookPlan.reference,
+    qualityCheck,
+    interiorModel: coverGen.interiorModel,
+    coverStyle: coverGen.coverStyle,
+    cover: coverGen.cover,
+    characterLockStatus: characterLockHook.characterLock.status,
+    characterLockBlock: characterLockHook.characterLock.block,
+    extractCharacterLock: characterLockHook.extractCharacterLock,
+    setPhase,
+    abortRef,
+    itemsRef,
+  });
+
+  setItemsHandoff.current = pageGen.setItems;
+  setIndexHandoff.current = pageGen.setCurrentIndex;
+  setCoverPendingHandoff.current = () =>
+    coverGen.setCover({ status: "pending" });
+
+  const refineState = useRefineState();
+
+  const download = useBookDownload({
+    plan: bookPlan.plan,
+    items: pageGen.items,
+    cover: coverGen.cover,
+    backCover: coverGen.backCover,
+    belongsTo: coverGen.belongsTo,
+    belongsToStyle: coverGen.belongsToStyle,
+    mode: bookPlan.mode,
+  });
+
+  const listing = useListingState({
+    plan: bookPlan.plan,
+    mode: bookPlan.mode,
+    age: bookPlan.age,
+    items: pageGen.items,
+  });
+
+  const reset = () => {
+    pageGen.cancelRef.current = true;
+    pageGen.runningRef.current = false;
+    pageGen.pausedRef.current = false;
+    setPhase("idea");
+    bookPlan.setPlan(null);
+    pageGen.setItems([]);
+    coverGen.setCover({ status: "pending" });
+    coverGen.setBackCover({ status: "pending" });
+    pageGen.setCurrentIndex(0);
+    onReset?.();
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const progress = useMemo(() => {
+    const total = pageGen.items.length;
+    const doneCount = pageGen.items.filter((i) => i.status === "done").length;
+    return { doneCount, total };
+  }, [pageGen.items]);
+
+  const allDone =
+    progress.total > 0 &&
+    progress.doneCount === progress.total &&
+    coverGen.cover.status === "done" &&
+    coverGen.backCover.status === "done";
+
+  if (phase === "idea" || phase === "planning") {
+    return (
+      <IdeaForm
+        idea={bookPlan.idea}
+        setIdea={bookPlan.setIdea}
+        pageCount={bookPlan.pageCount}
+        setPageCount={bookPlan.setPageCount}
+        age={bookPlan.age}
+        setAge={bookPlan.setAge}
+        detailLevel={bookPlan.detailLevel}
+        setDetailLevel={bookPlan.setDetailLevel}
+        aspectRatio={bookPlan.aspectRatio}
+        setAspectRatio={bookPlan.setAspectRatio}
+        reference={bookPlan.reference}
+        setReference={bookPlan.setReference}
+        planning={bookPlan.planning}
+        onPlan={bookPlan.runPlan}
+        error={bookPlan.planError}
+        bookKind={bookPlan.bookKind}
+        setBookKind={bookPlan.setBookKind}
+        storyType={bookPlan.storyType}
+        setStoryType={bookPlan.setStoryType}
+        storyCharacterNames={bookPlan.storyCharacterNames}
+        setStoryCharacterNames={bookPlan.setStoryCharacterNames}
+        dialogueStyle={bookPlan.dialogueStyle}
+        setDialogueStyle={bookPlan.setDialogueStyle}
+        onSwitchToChat={onSwitchToChat}
+      />
+    );
+  }
+
+  const { plan, mode, age, aspectRatio } = bookPlan;
+  const {
+    cover,
+    backCover,
+    belongsTo,
+    coverStyle,
+    coverBorder,
+    coverModel,
+    interiorModel,
+    belongsToStyle,
+  } = coverGen;
+  const { items } = pageGen;
+  const { characterLock } = characterLockHook;
+  const {
+    refine,
+    refineStatus,
+    refineOpenNonce,
+    openRefine,
+    closeRefine,
+    handleBackgroundChange,
+  } = refineState;
+  const { pdfBuilding, downloadPdf, downloadZip } = download;
+
+  return (
+    <div className="space-y-6">
+      {plan && (
+        <div className="rounded-3xl p-6 md:p-8 bg-linear-to-br from-violet-500 via-indigo-400 to-cyan-400 text-white shadow-xl shadow-violet-500/30 relative overflow-hidden">
+          <div className="absolute inset-0 grid-pattern opacity-20" />
+          <div className="relative">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/20 text-white mb-2">
+                  <BookPlus className="w-3 h-3" /> AI-planned · {AGE_LABELS[age]}
+                </div>
+                <h2 className="font-display text-2xl md:text-3xl font-bold leading-tight">
+                  {plan.coverTitle}
+                </h2>
+                <p className="mt-2 text-white/90 text-sm md:text-base max-w-2xl">
+                  {plan.description}
+                </p>
+                {plan.notes && (
+                  <p className="mt-2 text-[11px] text-white/70 italic">
+                    <Lightbulb className="inline w-3 h-3 mr-1 mb-0.5" />
+                    {plan.notes}
+                  </p>
+                )}
+                <p className="mt-3 text-white/80 text-xs font-mono">
+                  {progress.doneCount}/{progress.total} generated · cover{" "}
+                  {cover.status === "done" ? "✓" : "pending"}
+                  {mode !== "story" && (
+                    <>
+                      {" "}
+                      · character-lock{" "}
+                      {characterLock.status === "done"
+                        ? "✓"
+                        : characterLock.status === "extracting"
+                          ? "…"
+                          : characterLock.status === "error"
+                            ? "⚠"
+                            : "pending"}
+                    </>
+                  )}
+                </p>
+                {mode !== "story" && characterLock.status === "error" && (
+                  <button
+                    type="button"
+                    onClick={() => void characterLockHook.extractCharacterLock()}
+                    className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-white/10 text-white hover:bg-white/20 border border-white/30"
+                    title={characterLock.error}
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Retry character lock
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={reset}
+                  disabled={pdfBuilding}
+                  title={
+                    pdfBuilding
+                      ? "Wait for the download to finish"
+                      : "Start over with a new idea"
+                  }
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-full text-sm font-medium bg-white/5 text-white hover:bg-white/15 border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Start new book
+                </button>
+              </div>
+            </div>
+            <div className="mt-4 h-1.5 w-full rounded-full bg-white/15 overflow-hidden">
+              <motion.div
+                className="h-full bg-white"
+                animate={{
+                  width: `${(progress.doneCount / Math.max(1, progress.total)) * 100}%`,
+                }}
+                transition={{ duration: 0.4 }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {plan && (
+        <div className="flex flex-wrap items-center gap-2 px-1">
+          <span className="text-[11px] uppercase tracking-wider font-semibold text-neutral-500">
+            Image models
+          </span>
+          <ModelPicker
+            label="Cover"
+            value={coverModel}
+            options={COVER_MODEL_OPTIONS}
+            onChange={coverGen.setCoverModel}
+            title="Image model used for the front and back cover. Pro is the default — Amazon thumbnails reward fidelity."
+          />
+          <ModelPicker
+            label="Pages"
+            value={interiorModel}
+            options={INTERIOR_MODEL_OPTIONS}
+            onChange={coverGen.setInteriorModel}
+            title="Image model used for interior pages and the 'this book belongs to' page. 3.1 Flash is the workhorse default — keeps cost predictable on bulk runs."
+          />
+          <div className="ml-auto">
+            <PlanReviewButton
+              data={{
+                title: plan.title,
+                coverTitle: plan.coverTitle,
+                description: plan.description,
+                scene: plan.scene,
+                coverScene: plan.coverScene,
+                characters: mode === "story" ? plan.characters : undefined,
+                prompts: plan.prompts.map((p) => ({
+                  name: p.name,
+                  subject: p.subject,
+                  dialogue: p.dialogue,
+                  narration: p.narration,
+                })),
+              }}
+              modeNotice={
+                mode === "story"
+                  ? "Story-book pages render with locked characters + palette + the dialogue / narration shown per page below."
+                  : undefined
+              }
+              onSave={(next) => {
+                bookPlan.setPlan((prev) =>
+                  prev
+                    ? {
+                      ...prev,
+                      title: next.title ?? prev.title,
+                      coverTitle: next.coverTitle ?? prev.coverTitle,
+                      description: next.description ?? prev.description,
+                      scene: next.scene ?? prev.scene,
+                      coverScene: next.coverScene ?? prev.coverScene,
+                      prompts: next.prompts.map((p, i) => ({
+                        ...prev.prompts[i],
+                        name: p.name,
+                        subject: p.subject,
+                      })),
+                    }
+                    : prev,
+                );
+                pageGen.setItems((prev) =>
+                  prev.map((it, i) => {
+                    const np = next.prompts[i];
+                    if (!np) return it;
+                    return { ...it, name: np.name, subject: np.subject };
+                  }),
+                );
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {plan && (
+        <CoverPair
+          bookSlug={(plan.coverTitle ?? plan.title ?? "book")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")}
+          title={plan.coverTitle ?? plan.title ?? "Coloring book"}
+          description={plan.description ?? plan.coverScene}
+          coverAspect={mode === "story" ? "2 / 3" : "3 / 4"}
+          refineStatus={refineStatus}
+          rightExtras={
+            <MockupGate
+              frontCoverReady={!!cover.dataUrl}
+              pagesReady={progress.doneCount}
+              minPages={3}
+            >
+              <MockupGenerator
+                coverDataUrl={cover.dataUrl ?? null}
+                interiorDataUrl={
+                  items.find((it) => it.status === "done" && it.dataUrl)?.dataUrl
+                }
+                title={`${plan.coverTitle ?? "Book"} — Amazon mockups`}
+                bookName={plan.coverTitle ?? "book"}
+              />
+            </MockupGate>
+          }
+          frontCover={cover}
+          backCover={backCover}
+          coverStyle={coverStyle}
+          coverBorder={coverBorder}
+          onCoverStyleChange={coverGen.setCoverStyle}
+          onCoverBorderChange={coverGen.setCoverBorder}
+          onRegenerateFront={() => void coverGen.generateCover()}
+          onRegenerateBack={() => void coverGen.generateBackCover()}
+          frontLocked={
+            phase === "generating" ||
+            phase === "paused" ||
+            items.some((it) => it.status === "done")
+          }
+          frontLockedReason={
+            phase === "generating" || phase === "paused"
+              ? "Front cover is locked while interior pages are generating. Pages reference it for character consistency."
+              : "Front cover is locked — interior pages already reference it. Click Start new book to begin a new project."
+          }
+          onRefineFront={(dataUrl) => {
+            const coverLocked =
+              phase === "generating" ||
+              phase === "paused" ||
+              items.some((it) => it.status === "done");
+            openRefine({
+              context: mode === "story" ? "story-cover" : "cover",
+              targetId: "cover",
+              dataUrl,
+              title: "Cover",
+              subtitle: coverLocked
+                ? "Tweaks only — interior pages already reference this cover. Ask for small adjustments (text, colors, accessories); avoid full redesigns or character changes."
+                : mode === "story"
+                  ? "Describe changes. Sparky edits the painterly cover while preserving title, characters, and overlays."
+                  : "Describe changes. Gemini edits while preserving layout.",
+              downloadName: "cover.png",
+              model: cover.model ?? coverModel,
+              onRefined: (d) =>
+                coverGen.setCover({
+                  status: "done",
+                  dataUrl: d,
+                  model: cover.model ?? coverModel,
+                }),
+            });
+          }}
+          onRefineBack={(dataUrl) => {
+            openRefine({
+              context: mode === "story" ? "story-back-cover" : "back-cover",
+              targetId: "back-cover",
+              dataUrl,
+              title: "Back cover",
+              subtitle:
+                mode === "story"
+                  ? "Describe changes. The minimal tagline-only back cover stays minimal — no illustrations added."
+                  : "Describe changes. Gemini edits while preserving the tagline box and barcode safe-zone.",
+              downloadName: "back-cover.png",
+              model: backCover.model ?? coverModel,
+              onRefined: (d) =>
+                coverGen.setBackCover({
+                  status: "done",
+                  dataUrl: d,
+                  model: backCover.model ?? coverModel,
+                }),
+            });
+          }}
+          onViewFront={(dataUrl) => openStoryPreview(dataUrl, "Front cover")}
+          onViewBack={(dataUrl) => openStoryPreview(dataUrl, "Back cover")}
+          belongsTo={mode === "story" ? undefined : belongsTo}
+          belongsToStyle={mode === "story" ? undefined : belongsToStyle}
+          onBelongsToStyleChange={
+            mode === "story" ? undefined : coverGen.setBelongsToStyle
+          }
+          onRegenerateBelongsTo={
+            mode === "story"
+              ? undefined
+              : () => void coverGen.generateBelongsToPage()
+          }
+          onRefineBelongsTo={
+            mode === "story"
+              ? undefined
+              : (dataUrl) =>
+                openRefine({
+                  context: "page",
+                  targetId: "belongs-to",
+                  dataUrl,
+                  title: "This Book Belongs To",
+                  subtitle:
+                    "Page 2 — auto-generated nameplate. Refine to tweak the banner, characters, or name line.",
+                  downloadName: "belongs_to.png",
+                  model: belongsTo.model ?? interiorModel,
+                  onRefined: (d) =>
+                    coverGen.setBelongsTo({
+                      status: "done",
+                      dataUrl: d,
+                      model: belongsTo.model ?? interiorModel,
+                    }),
+                  quality: belongsTo.quality,
+                })
+          }
+        />
+      )}
+
+      {plan && cover.status === "done" && (
+        <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+          <div className="text-xs text-neutral-400 font-mono">
+            {progress.doneCount}/{progress.total} pages
+            {phase === "generating" && " · generating one by one…"}
+            {phase === "paused" && " · paused"}
+            {phase === "review" && progress.doneCount === 0 && " · ready"}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {(phase === "review" || phase === "done") && !allDone && (
+              <button
+                onClick={pageGen.startGeneration}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white hover:opacity-95 shadow-md"
+              >
+                <Play className="w-4 h-4" /> Start generating
+              </button>
+            )}
+            {phase === "generating" && !pdfBuilding && (
+              <>
+                <button
+                  onClick={pageGen.pause}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-white/10 text-white hover:bg-white/20 backdrop-blur border border-white/20"
+                >
+                  <Pause className="w-4 h-4" /> Pause
+                </button>
+                <button
+                  onClick={pageGen.cancel}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-red-500/15 text-red-200 hover:bg-red-500/25 border border-red-500/30"
+                >
+                  <Square className="w-3.5 h-3.5" /> Cancel
+                </button>
+              </>
+            )}
+            {phase === "paused" && !pdfBuilding && (
+              <>
+                <button
+                  onClick={pageGen.resume}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white hover:opacity-95 shadow-md"
+                >
+                  <Play className="w-4 h-4" /> Resume
+                </button>
+                <button
+                  onClick={pageGen.cancel}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-red-500/15 text-red-200 hover:bg-red-500/25 border border-red-500/30"
+                >
+                  <Square className="w-3.5 h-3.5" /> Cancel
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {plan && allDone && (
+        <div className="grid grid-cols-3 items-center gap-2">
+          <div aria-hidden />
+          <div className="flex justify-center">
+            <div
+              role="tablist"
+              aria-label="Page view"
+              className="inline-flex p-1 rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur"
+            >
+              <button
+                role="tab"
+                aria-selected={viewMode === "carousel"}
+                onClick={() => setViewMode("carousel")}
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${viewMode === "carousel"
+                  ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow"
+                  : "text-neutral-300 hover:text-white"
+                  }`}
+              >
+                <GalleryHorizontal className="w-4 h-4" />
+                Carousel
+              </button>
+              <button
+                role="tab"
+                aria-selected={viewMode === "book"}
+                onClick={() => setViewMode("book")}
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${viewMode === "book"
+                  ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow"
+                  : "text-neutral-300 hover:text-white"
+                  }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                Book preview
+              </button>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <DownloadMenu
+              onPdf={downloadPdf}
+              onZip={downloadZip}
+              pdfBuilding={pdfBuilding}
+            />
+          </div>
+        </div>
+      )}
+
+      {plan && (
+        <div
+          className="rounded-3xl p-4 md:p-6 bg-zinc-900/60 backdrop-blur-xl border border-white/10 relative"
+          style={{ minHeight: 620 }}
+        >
+          <AnimatePresence mode="wait" initial={false}>
+            {viewMode === "book" && allDone ? (
+              <motion.div
+                key="book-view"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="flex flex-col items-center gap-4 py-4 md:py-6"
+              >
+                <div className="text-center">
+                  <h3 className="font-display text-lg font-bold text-white">
+                    {plan.coverTitle ?? plan.title ?? "Coloring book"}
+                  </h3>
+                  <p className="text-xs text-neutral-400 mt-1">
+                    Click a page corner or swipe to flip — opens to a 2-page
+                    spread like a real book
+                  </p>
+                </div>
+                <BookFlip
+                  cover={{ imageUrl: cover.dataUrl }}
+                  backCover={{ imageUrl: backCover.dataUrl }}
+                  belongsTo={
+                    mode === "story"
+                      ? undefined
+                      : belongsTo.status === "done" && belongsTo.dataUrl
+                        ? { imageUrl: belongsTo.dataUrl }
+                        : undefined
+                  }
+                  pages={items.map((it, i) => ({
+                    imageUrl: it.dataUrl,
+                    label: `${it.name} · Page ${i + 1}`,
+                  }))}
+                  alternateBlankPages={mode !== "story"}
+                  fullBleedInterior={mode === "story"}
+                  width={mode === "story" ? 320 : 360}
+                  height={480}
+                />
+              </motion.div>
+            ) : viewMode === "carousel" ? (
+              <motion.div
+                key="carousel-view"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              >
+                <Carousel
+                  cover={cover}
+                  backCover={backCover}
+                  items={items}
+                  aspectRatio={aspectRatio}
+                  coverStyle={coverStyle}
+                  coverBorder={coverBorder}
+                  onCoverStyleChange={coverGen.setCoverStyle}
+                  onCoverBorderChange={coverGen.setCoverBorder}
+                  onEditPrompt={(id, patch) =>
+                    pageGen.updatePromptText(id, patch)
+                  }
+                  onRemove={pageGen.removeItem}
+                  onRegenerateItem={pageGen.regeneratePage}
+                  onRegenerateCover={coverGen.generateCover}
+                  onRegenerateBackCover={coverGen.generateBackCover}
+                  onOpenRefine={(kind, payload) => {
+                    const sourceModel: ImageModel | undefined =
+                      kind === "cover"
+                        ? cover.model ?? coverModel
+                        : kind === "back-cover"
+                          ? backCover.model ?? coverModel
+                          : (items.find((it) => it.id === payload.targetId)
+                            ?.model ?? interiorModel);
+                    const refineCtx =
+                      mode === "story"
+                        ? kind === "cover"
+                          ? "story-cover"
+                          : kind === "back-cover"
+                            ? "story-back-cover"
+                            : "story-page"
+                        : kind;
+                    openRefine({
+                      context: refineCtx,
+                      ...payload,
+                      model: sourceModel,
+                    });
+                  }}
+                  onSetCover={(dataUrl) =>
+                    coverGen.setCover((c) => ({
+                      status: "done",
+                      dataUrl,
+                      model: c.model ?? coverModel,
+                    }))
+                  }
+                  onSetBackCover={(dataUrl) =>
+                    coverGen.setBackCover((c) => ({
+                      status: "done",
+                      dataUrl,
+                      model: c.model ?? coverModel,
+                    }))
+                  }
+                  onSetItem={(id, dataUrl) =>
+                    pageGen.setItems((prev) =>
+                      prev.map((it) =>
+                        it.id === id
+                          ? { ...it, status: "done", dataUrl }
+                          : it,
+                      ),
+                    )
+                  }
+                  bookTitle={plan?.coverTitle ?? plan?.title}
+                  coverScene={plan?.coverScene}
+                  characterLockBlock={characterLock.block}
+                  refineStatus={refineStatus}
+                />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
+      )}
+
+      <ImageRefineModal
+        open={refine.open}
+        onClose={closeRefine}
+        context={refine.context}
+        sourceDataUrl={refine.dataUrl}
+        title={refine.title}
+        subtitle={refine.subtitle}
+        downloadName={refine.downloadName}
+        aspectRatio={aspectRatio}
+        onRefined={refine.onRefined}
+        quality={refine.quality}
+        model={refine.model}
+        openNonce={refineOpenNonce}
+        onBackgroundChange={handleBackgroundChange}
+        frontCoverDataUrl={cover.dataUrl}
+        bookTitle={plan?.coverTitle ?? plan?.title}
+        coverScene={plan?.coverScene}
+        bookDescription={plan?.description}
+        pageSubjects={items.map((it) => it.subject).filter(Boolean).slice(0, 12)}
+        pageCount={items.length}
+        bookContext={
+          plan
+            ? buildRefineBookContext({
+              plan,
+              items,
+              cover,
+              backCover,
+              age,
+              target: {
+                context: refine.context,
+                id: refine.targetId,
+                title: refine.title,
+              },
+            })
+            : undefined
+        }
+        getPageDataUrl={(pageId) => {
+          if (pageId === "cover") return cover.dataUrl ?? null;
+          if (pageId === "back-cover") return backCover.dataUrl ?? null;
+          return items.find((it) => it.id === pageId)?.dataUrl ?? null;
+        }}
+      />
+
+      <ImagePreviewDialog
+        open={storyPreview.open}
+        onClose={() => setStoryPreview((p) => ({ ...p, open: false }))}
+        src={storyPreview.src}
+        alt={storyPreview.label}
+        caption={`${storyPreview.label} — full preview. Story-book refine is coming soon. To change this image, use the regenerate button on the card.`}
+      />
+
+      {plan && allDone && (
+        <KdpMetadataPanel
+          bookName={plan.coverTitle ?? plan.title ?? "book"}
+          pageCount={items.length}
+          draft={listing.listingDraft}
+          status={listing.listingStatus}
+          errors={listing.listingErrors}
+          onGenerate={(platform) => void listing.generateMetadata(platform)}
+        />
+      )}
+      {plan && !allDone && (
+        <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 px-4 py-3 text-xs text-violet-200">
+          🔒 KDP Metadata generator unlocks once all {items.length} pages are
+          generated. Currently {progress.doneCount}/{progress.total} done.
+        </div>
+      )}
+    </div>
+  );
+}

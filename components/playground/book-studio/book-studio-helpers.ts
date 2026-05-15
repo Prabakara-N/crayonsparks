@@ -1,7 +1,7 @@
 import type {
   RefineBookContextProp,
   RefineContext,
-} from "@/components/generate/image-refine-modal/image-refine-modal";
+} from "@/components/generate/image-refine-modal/image-refine-modal-main";
 import type { PageMeta, PageStatus } from "@/lib/refine-chat";
 import type { ListingPlatform, PlatformStatus } from "@/lib/kdp-metadata";
 import { AGE_LABELS, NOUN_OVERLAP_STOPWORDS } from "./book-studio-constants";
