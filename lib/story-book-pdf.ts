@@ -20,28 +20,18 @@ import { PDFDocument, type PDFImage } from "pdf-lib";
 const INCH_TO_PT = 72;
 
 export interface StoryPageInput {
-  /** Stable id for the page (unused in the rendered PDF, kept for caller bookkeeping). */
   id: string;
-  /** Friendly label for the page (unused in the rendered PDF). */
   name: string;
-  /** Generated image as a data URL. */
   dataUrl: string;
 }
 
 export interface AssembleStoryBookOptions {
-  /** Document title written into PDF metadata. */
   title?: string;
-  /** Author / brand line written into PDF metadata. */
   author?: string;
-  /** Optional front cover — placed as the first page. */
   cover?: { dataUrl: string };
-  /** Optional back cover — placed as the last page. */
   backCover?: { dataUrl: string };
-  /** Story scenes in narrative order. */
   pages: StoryPageInput[];
-  /** Trim width in inches. Defaults to 6.0 (KDP color paperback default). */
   trimWidthInches?: number;
-  /** Trim height in inches. Defaults to 9.0 (KDP color paperback default). */
   trimHeightInches?: number;
 }
 

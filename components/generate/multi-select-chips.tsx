@@ -5,11 +5,8 @@ import { Check, Send } from "lucide-react";
 
 interface MultiSelectChipsProps {
   options: string[];
-  /** Optional per-option tooltip strings (index-aligned with `options`). */
   optionDescriptions?: string[];
-  /** Called with comma-joined picks when the user submits. */
   onSubmit: (joined: string) => void;
-  /** Resets internal state when the question changes. */
   questionKey: string;
 }
 

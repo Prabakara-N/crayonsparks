@@ -14,13 +14,8 @@ interface CoverTileProps {
   onRegenerate: () => void;
   onRefine?: (dataUrl: string) => void;
   onView?: (dataUrl: string) => void;
-  // Fully disabled — both Regenerate and Refine off. Used when a
-  // prerequisite is missing (e.g. back cover before front exists).
   disabled?: boolean;
   disabledReason?: string;
-  // Softer lock — blocks Regenerate only; Refine stays available so the
-  // user can still make small tweaks to the existing image. Used for the
-  // front cover after interior pages have started referencing it.
   regenerateOnlyLocked?: boolean;
   regenerateOnlyLockedReason?: string;
   showBarcodeZone?: boolean;

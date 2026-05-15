@@ -28,34 +28,11 @@ export interface AssembleOptions {
   category: string;
   pages: PdfPageInput[];
   cover?: { dataUrl: string };
-  /**
-   * Optional back cover image. When provided, it's added as the FINAL page
-   * of the PDF (industry-standard position for KDP paperback test prints).
-   * Renders full-bleed like the front cover.
-   */
   backCover?: { dataUrl: string };
-  /**
-   * Optional "This Book Belongs To" nameplate page — inserted as page 2
-   * (right after the cover, before the first content page). For "bw"
-   * style it gets the same border + drawable area treatment as content
-   * pages (kid colors it). For "color" style it renders full-bleed like
-   * the cover (purely decorative).
-   */
   belongsTo?: { dataUrl: string; style: "bw" | "color" };
   includeTitlePage?: boolean;
   includeBlankPages?: boolean;
-  /**
-   * When true, the cover and back cover are SKIPPED — the resulting PDF
-   * contains only the interior pages (belongs-to + numbered pages).
-   * Used by the split-PDF download flow where KDP wants the cover wrap
-   * uploaded as a separate PDF (built by lib/kdp-cover-pdf.ts).
-   */
   interiorOnly?: boolean;
-  /**
-   * Trim size in inches. Defaults to 8.5×11 (US Letter / KDP standard).
-   * Pass 8.27×11.69 for A4. Affects every page in the resulting PDF
-   * (cover, belongs-to, content pages, back cover).
-   */
   trimWidthInches?: number;
   trimHeightInches?: number;
 }

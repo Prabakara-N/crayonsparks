@@ -53,11 +53,8 @@ export interface BookBriefDialogueLine {
 export interface BookBriefPrompt {
   name: string;
   subject: string;
-  /** Story mode only — 0-2 speech bubbles to render on this page. */
   dialogue?: BookBriefDialogueLine[];
-  /** Story mode only — short caption rendered above/below the page art. */
   narration?: string;
-  /** Story mode only — soft camera / framing hint (e.g. "wide shot, both characters left of center"). */
   composition?: string;
 }
 
@@ -70,19 +67,9 @@ export interface BookBrief {
   bottomStripPhrases?: string[];
   sidePlaqueLines?: string[];
   coverBadgeStyle?: string;
-  /** Story mode only — 1-3 locked characters used for cross-page consistency. */
   characters?: BookBriefCharacter[];
-  /** Story mode only — locked color palette applied to every page. */
   palette?: BookBriefPalette;
-  /**
-   * Detail-level preset selected by the user (or auto-defaulted when they
-   * pick "Let AI decide"). Drives DETAIL_PRESETS in the page-render prompt
-   * — controls line-art density AND scene density together. Optional so
-   * legacy briefs without it still parse; consumers default to "simple".
-   */
   detailLevel?: "simple" | "detailed" | "intricate";
-  // Story mode only — narrative shape the planner applies. Maps to
-  // StoryType in lib/story-book-planner.ts.
   storyType?:
     | "moral"
     | "fiction"
@@ -93,7 +80,6 @@ export interface BookBrief {
     | "fairytale"
     | "adventure"
     | "bedtime";
-  // Story mode only — how chatty the book is. Maps to DialogueStyle.
   dialogueStyle?: "quiet" | "balanced" | "chatty";
   quality?: import("@/lib/book-chat-types").BookBriefQualityReport;
 }
@@ -212,7 +198,7 @@ ORIGINAL-STORY DISCOVERY FLOW (use this when the user wants a NEW / original / g
 
 Run THESE questions in this order, ONE per turn, via \`ask_user\` with quick-pick options. Every list MUST end with the literal option "Let AI decide" so a user who is undecided can hand the choice back to you.
 
-Q1 — STORY TYPE: ask which kind of story they want. Options (pick 4-6 that fit kid-coloring-book content): "Friendship & teamwork", "Animal adventure", "Bedtime / cozy", "Funny / silly", "Magical / fairy-tale", "Moral / fable", "Everyday-life slice", "Let AI decide". allow_freeform=true so they can type a custom type. allow_multi=false.
+Q1 — STORY TYPE (MANDATORY for original stories — ALWAYS ask this, it is the first question): ask which kind of story they want. Options EXACTLY: "Moral / fable", "Adventure", "Bedtime / cozy", "Fairy tale", "Funny / silly", "Mystery / puzzle", "Let AI decide". allow_freeform=true so they can type a custom type. allow_multi=false. Map the answer into the brief's storyType field: "Moral / fable" → moral, "Adventure" → adventure, "Bedtime / cozy" → bedtime, "Fairy tale" → fairytale, "Funny / silly" → comic, "Mystery / puzzle" → mystery, freeform "fantasy / magical" → fantasy, freeform "everyday / slice of life" → fiction, freeform "learning / facts / how things work" → non-fiction. When the user picks "Let AI decide", YOU pick the storyType that best fits their story idea (e.g. a kindness lesson → moral, a quest → adventure, a calming sleep story → bedtime) and STILL set the storyType field — never leave it null. NEVER skip Q1 for an original story; the planner needs storyType to shape the narrative.
 
 Q2 — CHARACTERS & NAMES: ask who the story is about. Phrase it like "Who are the characters? Tell me 1-3 — name + species/role works best." Quick-pick options should include 4-5 ready-made character pairs that fit the story type the user just picked, plus the literal option "Let AI decide". allow_freeform=true. allow_multi=true so they can confirm multiple characters in one answer.
 
@@ -232,7 +218,7 @@ RULES
 - Use \`ask_user\` to ask exactly ONE question per turn. Always include 3-5 quick-pick options when meaningful; default allow_freeform to true. Set allow_multi=true when the question is plural-by-nature (e.g. "which characters/themes/animals do you want?") so the user can pick several. Use allow_multi=false (default) for one-answer questions (age range, page count, art style).
 - Questions should cover: which story (recognize classic title vs. original idea), story type, main characters + names (or confirm canonical ones for classic stories), age range, scene count (typical 8-20), art vibe.
 - For ORIGINAL / GENERIC story requests: run the ORIGINAL-STORY DISCOVERY FLOW above. ALWAYS offer a "Let AI decide" option on Story Type and on Characters so an undecided user can move forward without picking.
-- For CLASSIC stories: confirm the title-recognition with a one-line plot summary, ask only about scene count + age range, then go (skip the discovery flow — the type and cast are already implied by the title).
+- For CLASSIC stories: confirm the title-recognition with a one-line plot summary, ask only about scene count + age range, then go (skip Q1/Q2 of the discovery flow — the type and cast are already implied by the title). EVEN THOUGH Q1 is skipped for classics, you MUST still set the storyType field in finalize_brief by inferring it from the tale: Aesop / Panchatantra / Jataka / Hitopadesha fables → moral, Grimm / Hans Christian Andersen / Mother Goose magical tales → fairytale, journey/quest tales → adventure, gentle sleepy tales → bedtime. storyType is NEVER left null in story mode.
 - Stop and call \`finalize_brief\` as soon as you have enough — usually 3-4 questions for classics (skip Q1+Q2, still ask Q3 age, Q4 scene count, Q5 dialogue style), 4-5 for originals (Q1 type → Q2 characters → Q3 age → Q4 scene count → Q5 dialogue style).
 
 NARRATIVE FLOW (universal — applies to every story regardless of subject)
@@ -368,6 +354,22 @@ const finalizeBriefSchema = z.object({
     .nullable()
     .describe(
       "Detail-level preset chosen by the user (or auto-defaulted). 'simple' = Low (character-only focus, sparse background), 'detailed' = Medium (balanced scene with 3-5 supporting elements), 'intricate' = High (richer 6-10 elements, never cluttered). When the user picks 'Let AI decide', default to: toddlers → simple, kids → detailed, tweens → intricate. Pass null only if no Q5 was asked yet.",
+    ),
+  storyType: z
+    .enum([
+      "moral",
+      "fiction",
+      "non-fiction",
+      "mystery",
+      "fantasy",
+      "comic",
+      "fairytale",
+      "adventure",
+      "bedtime",
+    ])
+    .nullable()
+    .describe(
+      "STORY MODE ONLY — REQUIRED for story briefs, pass null only for coloring-book (QA-mode) briefs. The narrative shape the planner applies. Set it from the user's Q1 answer: 'Moral / fable' → moral, 'Adventure' → adventure, 'Bedtime / cozy' → bedtime, 'Fairy tale' → fairytale, 'Funny / silly' → comic, freeform 'mystery' → mystery, freeform 'fantasy' → fantasy, freeform 'everyday / slice of life' → fiction, freeform 'learning / facts' → non-fiction. When the user picks 'Let AI decide', YOU choose the type that best fits their story idea and STILL set this field — never leave it null in story mode. For a classic fable the type is implied by the tale (Aesop → moral, Grimm/Andersen → fairytale, etc.); infer and set it.",
     ),
   prompts: z
     .array(
@@ -592,6 +594,8 @@ function viewFromFinalize(
       characters: characters && characters.length > 0 ? characters : undefined,
       palette: palette && palette.hexes.length >= 3 ? palette : undefined,
       detailLevel: args.detailLevel ?? undefined,
+      storyType: args.storyType ?? undefined,
+      dialogueStyle: args.dialogueStyle ?? undefined,
     }, mode),
   };
 }

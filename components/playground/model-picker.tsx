@@ -6,17 +6,11 @@ import { cn } from "@/lib/utils";
 import { MODEL_LABELS, type ImageModel } from "@/lib/constants";
 
 interface ModelPickerProps {
-  /**
-   * Visible prefix inside the trigger pill, e.g. "Cover" or "Pages". Pass
-   * an empty string when an external label is rendered next to the picker.
-   */
   label: string;
   value: ImageModel;
   options: readonly ImageModel[];
   onChange: (next: ImageModel) => void;
-  /** Disables the control during generation. */
   disabled?: boolean;
-  /** Native title for the trigger (tooltip). */
   title?: string;
 }
 

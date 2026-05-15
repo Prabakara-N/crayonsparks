@@ -8,24 +8,13 @@ import {
 } from "@/lib/extract-cover-palette";
 
 interface BackCoverRefinePanelProps {
-  /**
-   * Front cover image — the source of the color palette. When omitted
-   * the swatch row is skipped and only tagline picking is shown.
-   */
   frontCoverDataUrl?: string;
-  /** Book title — used to seed the tagline generator. */
   bookTitle: string;
-  /** Cover scene description — gives the tagline generator context. */
   coverScene?: string;
-  /** KDP description — richer context for the tagline generator. */
   bookDescription?: string;
-  /** Audience tag (toddlers/kids/etc.). */
   audience?: string;
-  /** Sample subjects from interior pages — strongest signal for taglines. */
   pageSubjects?: string[];
-  /** Number of interior coloring pages — when set, taglines may cite it. */
   pageCount?: number;
-  /** True while the parent is regenerating (so we can disable Apply). */
   busy: boolean;
   onApply: (color: string, tagline: string) => void;
   open?: boolean;

@@ -8,12 +8,6 @@ export const maxDuration = 60;
 interface Body {
   styleId?: string;
   coverDataUrl?: string;
-  /**
-   * Optional second reference image. For "open-book" and "hand-coloring"
-   * mockups this should be the user's first generated INTERIOR PAGE so
-   * Gemini composites their actual content (not a hallucinated sample) into
-   * the open-book/hand-coloring shot.
-   */
   interiorDataUrl?: string;
   extraInstruction?: string;
 }

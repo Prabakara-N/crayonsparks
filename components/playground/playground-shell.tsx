@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Wand2, Sparkles, BookPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PlaygroundStudio } from "@/components/playground/playground-studio";
-import { BookStudio, type Plan } from "@/components/playground/book-studio";
-import { GuidedChat } from "@/components/generate/guided-chat";
+import { PlaygroundStudio } from "@/components/playground/playground-studio/playground-studio";
+import { BookStudio, type Plan } from "@/components/playground/book-studio/book-studio";
+import { GuidedChat } from "@/components/generate/guided-chat/guided-chat";
 import type { BookBrief } from "@/lib/book-chat";
 import { createCustomCategory } from "@/lib/custom-categories";
 import { CATEGORIES, type ColoringCategory } from "@/lib/prompts";
@@ -92,6 +92,8 @@ function briefToPlan(brief: BookBrief): Plan {
     characters: brief.characters,
     palette: brief.palette,
     detailLevel: brief.detailLevel,
+    storyType: brief.storyType,
+    dialogueStyle: brief.dialogueStyle,
   };
 }
 

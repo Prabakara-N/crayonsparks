@@ -3,7 +3,7 @@ import { Footer } from "@/components/ui/footer";
 import { Spotlight } from "@/components/ui/spotlight";
 // import { FeatureSections, type FeatureSection } from "@/components/features/feature-sections";
 import type { FeatureSection } from "@/components/features/feature-sections";
-import { FeaturesBento } from "@/components/features/features-bento";
+import { FeaturesBento } from "@/components/features/features-bento/features-bento";
 import { FeaturesGrid } from "@/components/features/features-grid";
 import { CtaGrid } from "@/components/features/cta-grid";
 import { visualUrl } from "@/lib/visuals";

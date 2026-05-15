@@ -12,7 +12,6 @@ export interface BackCoverState {
 
 interface BackCoverDetailProps {
   back: BackCoverState;
-  /** Whether the front cover has been generated. Back cover is gated until then. */
   frontCoverReady: boolean;
   onRegenerate: () => Promise<void> | void;
   onOpenRefine: (dataUrl: string) => void;

@@ -11,7 +11,7 @@ import {
   promptsToRaw,
   type CustomCategory,
 } from "@/lib/custom-categories";
-import { GuidedChat } from "./guided-chat";
+import { GuidedChat } from "./guided-chat/guided-chat";
 import { useDialog } from "@/components/ui/confirm-dialog";
 import type { BookBrief } from "@/lib/book-chat";
 

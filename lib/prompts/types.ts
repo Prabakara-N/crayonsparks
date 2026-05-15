@@ -8,13 +8,6 @@ export interface PromptOptions {
   background?: Background;
   scene?: string;
   variantSeed?: string;
-  /**
-   * Optional CHARACTER LOCK block extracted once from the front cover by
-   * `lib/character-extractor.ts`. When present, every page enforces that
-   * recurring characters are drawn EXACTLY per these descriptors so KDP
-   * reviewers don't see a fat cat on the cover and a skinny cat on
-   * page 7. Inject as-is into the master prompt (already formatted).
-   */
   characterLock?: string;
 }
 

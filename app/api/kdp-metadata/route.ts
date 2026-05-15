@@ -15,11 +15,6 @@ interface Body {
   age?: AgeBand;
   pageCount?: number;
   samplePages?: string[];
-  /**
-   * "coloring" (default) or "story". Picks the per-product prompt branch
-   * inside the hybrid generator — coloring books and picture books have
-   * different SEO landscapes so the keywords, categories, and copy diverge.
-   */
   kind?: KdpKind;
 }
 

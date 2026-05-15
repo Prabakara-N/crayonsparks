@@ -4,14 +4,9 @@ import { RefreshCw, Loader2 } from "lucide-react";
 import type { QualityScore } from "./types";
 
 interface RegenerateCardButtonProps {
-  /** Called when the user clicks regenerate. Receives the quality reason
-   *  (if any) so the regen can target the specific flaw. */
   onClick: (improvementHint?: string) => void;
   busy?: boolean;
-  /** Optional last quality score — its reason becomes the improvement hint
-   *  ("subject too small" → regen tries to make subject larger). */
   quality?: QualityScore | null;
-  /** Disabled when there's nothing to regenerate (e.g. page not yet done). */
   disabled?: boolean;
 }
 

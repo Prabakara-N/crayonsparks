@@ -71,11 +71,8 @@ const SCORE_SCHEMA = z.object({
 export type QualityScore = z.infer<typeof SCORE_SCHEMA>;
 
 export interface QualityGateInput {
-  /** data URL like "data:image/png;base64,..." OR base64 string. */
   imageDataUrl: string;
-  /** What the page was supposed to depict (passed to the rater for on-subject check). */
   expectedSubject: string;
-  /** Whether this is a cover (different rules) vs a coloring page. */
   isCover?: boolean;
 }
 

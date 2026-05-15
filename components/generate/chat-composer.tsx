@@ -14,29 +14,17 @@ const LINE_HEIGHT_PX = 22; // matches text-[15px] leading-relaxed
 const VERTICAL_PADDING_PX = 20; // px-3.5 py-2.5 → 10px top + 10px bottom
 
 interface ChatComposerProps {
-  /** Quick-suggestion chips shown above the textarea. Click sends. */
   suggestions: string[];
-  /** Whether suggestions are still being fetched. */
   suggestionsLoading?: boolean;
-  /** Disable input while a turn is in flight. */
   busy: boolean;
-  /** Called when the user submits a turn. */
   onSend: (text: string, referenceDataUrl?: string) => void;
-  /** Called when the user clicks the Stop button (only visible while busy). */
   onStop?: () => void;
-  /**
-   * Optional controlled open-state for the quick-suggestions drawer. Lets
-   * the parent coordinate with sibling popovers (the back-cover Customize
-   * panel) so only one is open at a time. When omitted, falls back to
-   * internal open state.
-   */
   suggestionsOpen?: boolean;
   onSuggestionsOpenChange?: (open: boolean) => void;
   hideAttach?: boolean;
 }
 
 export interface ChatComposerHandle {
-  /** Repopulate the textarea (used by the Edit-message flow). */
   setText: (text: string) => void;
   focus: () => void;
 }

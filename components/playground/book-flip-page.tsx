@@ -3,30 +3,12 @@
 import { forwardRef } from "react";
 
 export interface BookFlipPageProps {
-  /** Image data URL or remote URL. Optional — page can be a blank back. */
   imageUrl?: string;
-  /** Label text, e.g. "Page 3 / 20". */
   label?: string;
-  /** Whether to render the decorative coloring border on the page. */
   showBorder?: boolean;
-  /** Variant — controls bg/style. Cover uses object-cover; interior uses object-contain. */
   variant?: "cover" | "interior" | "blank";
-  /** When true, shows page number in bottom-center. */
   pageNumber?: number;
-  /**
-   * When true, renders a small "CrayonSparks ✨" brand mark at the bottom
-   * center of this page. Applied only to the belongs-to page so the brand
-   * lives in print + preview without relying on AI text rendering (which
-   * misspells small text). Mirrors the PDF brand overlay in lib/pdf.ts.
-   */
   brandMark?: boolean;
-  /**
-   * Story-book interior pages are designed as full-bleed art (no white
-   * margin around the artwork), so the preview tile uses object-cover to
-   * fill the page edge-to-edge. Coloring-book interior pages keep the
-   * default object-contain so the printable border stays visible inside
-   * a white margin (the way it prints on KDP one-sided paper).
-   */
   fullBleed?: boolean;
 }
 

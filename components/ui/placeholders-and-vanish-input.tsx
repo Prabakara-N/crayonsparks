@@ -12,11 +12,8 @@ import {
 import { cn } from "@/lib/utils";
 
 export interface PlaceholdersAndVanishInputHandle {
-  /** Populate the input (used by chat "edit and re-send" buttons). */
   setText: (text: string) => void;
-  /** Read the current input text (parent's submit handler uses this). */
   getValue: () => string;
-  /** Move keyboard focus into the input. */
   focus: () => void;
 }
 
@@ -33,10 +30,6 @@ export interface PlaceholdersAndVanishInputProps {
   onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void;
   disabled?: boolean;
   className?: string;
-  /**
-   * When true, the send arrow swaps to a stop square button that calls
-   * onStop — used by the chat to let the user abort an in-flight reply.
-   */
   loading?: boolean;
   onStop?: () => void;
 }

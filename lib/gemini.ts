@@ -45,27 +45,8 @@ export interface GenerateImageResult {
 export interface GenerateOptions {
   aspectRatio?: AspectRatio;
   sourceImage?: { mimeType: string; data: string };
-  /**
-   * Additional reference images sent ALONGSIDE the primary source image.
-   * Useful for compositions like "open book mockup with this cover (image 1)
-   * and this interior page (image 2)". Order matters — Gemini sees them in
-   * the order provided.
-   */
   extraImages?: Array<{ mimeType: string; data: string }>;
-  /**
-   * Image model. Defaults to DEFAULT_INTERIOR_MODEL (Nano Banana 3.1 Flash) —
-   * the workhorse for bulk page generation. Callers route the request by
-   * passing one of the values exported from lib/constants.ts (the bulk-book
-   * UI exposes these via the cover and interior dropdowns).
-   */
   model?: ImageModel;
-  /**
-   * Static guardrails (rules that never change between calls) sent via
-   * Gemini's `systemInstruction` channel. Stable text in this field
-   * triggers Gemini 2.5+ implicit context caching, dropping the cost of
-   * the cached prefix by ~75% on repeat calls. Pass per-page dynamic
-   * content (subject, scene, variation) in the regular `prompt` argument.
-   */
   systemInstruction?: string;
 }
 
@@ -74,7 +55,6 @@ interface CallResult {
   image: GenerateImageResult | null;
   finishReason?: string;
   blockReason?: string;
-  /** Plain-text response when the model replied with words instead of an image. */
   textReply?: string;
 }
 

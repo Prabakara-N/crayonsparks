@@ -18,14 +18,12 @@ const ENDPOINT = "https://api.perplexity.ai/chat/completions";
 export interface PerplexityCallInput {
   system: string;
   user: string;
-  /** Override the default model. */
   model?: string;
   temperature?: number;
 }
 
 export interface PerplexityCallResult {
   text: string;
-  /** Live web sources Perplexity cited. */
   citations?: string[];
 }
 

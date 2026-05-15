@@ -8,7 +8,6 @@
  */
 
 interface ColoringBorderProps {
-  /** Optional small attribution rendered centered along the bottom edge. */
   attribution?: string;
 }
 

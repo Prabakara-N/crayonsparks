@@ -53,7 +53,6 @@ const STORY_TYPE_INFO: Record<StoryType, { emoji: string; description: string }>
 };
 
 interface StoryTypePickerProps {
-  /** Currently selected story type. `null` = "No preference (use default)". */
   value: StoryType | null;
   onChange: (value: StoryType | null) => void;
   disabled?: boolean;

@@ -15,32 +15,11 @@ interface Body {
   cover?: { dataUrl: string };
   backCover?: { dataUrl: string };
   belongsTo?: { dataUrl: string; style: "bw" | "color" };
-  /**
-   * Output mode:
-   *   "combined"    — single PDF with cover + interior + back cover
-   *                   (the legacy default; works for digital preview but
-   *                   KDP rejects it because it expects cover separately)
-   *   "interior"    — PDF with belongs-to + numbered pages only,
-   *                   no covers. Pair with a separate cover-wrap PDF.
-   *   "cover-wrap"  — single wide PDF with back + spine + front + bleed,
-   *                   sized exactly to KDP's expected dimensions.
-   * Defaults to "combined" for back-compat.
-   */
   mode?: "combined" | "interior" | "cover-wrap";
-  /** Trim size in inches (only used for cover-wrap mode). Default 8.5×11. */
   trimWidthInches?: number;
   trimHeightInches?: number;
-  /** Paper type for spine width math. Default "bw" (cheapest). */
   paper?: KdpPaperType;
-  /** Total interior page count INCLUDING blanks (drives spine width).
-   *  When omitted, falls back to (pages.length × 2 + extras). */
   interiorPageCount?: number;
-  /**
-   * When false, the assembler does NOT insert alternating blank pages
-   * between content. Used by the Etsy/Gumroad single-PDF download where
-   * the buyer prints the file directly — they want page after page of
-   * art, no in-between blanks. KDP uploads keep the default true.
-   */
   includeBlankPages?: boolean;
 }
 

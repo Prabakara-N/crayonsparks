@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 interface SelectOption<V extends string> {
   value: V;
   label: string;
-  /** Optional one-line tooltip / inline description. */
   hint?: string;
 }
 
@@ -16,11 +15,8 @@ interface SelectFieldProps<V extends string> {
   options: readonly SelectOption<V>[];
   onChange: (next: V) => void;
   disabled?: boolean;
-  /** Native title for the trigger (tooltip). */
   title?: string;
-  /** Aria-label / accessible name for the trigger. */
   ariaLabel?: string;
-  /** Tailwind class for the trigger wrapper width. Defaults to `w-full`. */
   className?: string;
 }
 

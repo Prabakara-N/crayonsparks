@@ -21,18 +21,8 @@ export interface CardData {
   title: string;
   category: string;
   content: ReactNode;
-  /**
-   * Optional custom cover ReactNode that overrides `src`. Use this for live
-   * status states (pending, generating, error) where you don't have an image.
-   */
   cover?: ReactNode;
-  /** Optional badge rendered in the top-right corner of the card front. */
   badge?: ReactNode;
-  /**
-   * Optional small action rendered in the top-LEFT corner of the card front
-   * (e.g. a Regenerate button). Click events are stopped from propagating so
-   * pressing the action doesn't also open the card.
-   */
   action?: ReactNode;
 }
 
@@ -218,14 +208,7 @@ export function Carousel({
 export interface CardProps {
   card: CardData;
   index: number;
-  /** Card width preset. */
   size?: "sm" | "md" | "lg";
-  /**
-   * If provided, clicking the card calls this instead of expanding the
-   * built-in fullscreen detail. Use this when a parent wants to open its
-   * own modal (e.g. an existing image-refine dialog) rather than the
-   * generic apple-style card expansion.
-   */
   onClick?: () => void;
 }
 

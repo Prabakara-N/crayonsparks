@@ -25,7 +25,6 @@ const VALID_STORY_TYPES: IdeaStoryType[] = [
 
 interface Body {
   audience?: IdeaAudience;
-  /** "coloring" (default) or "story" — picks the per-product idea bank. */
   kind?: IdeaKind;
   storyType?: IdeaStoryType | null;
 }

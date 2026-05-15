@@ -54,17 +54,11 @@ export const KDP_PAPER_THICKNESS = {
 export type KdpPaperType = keyof typeof KDP_PAPER_THICKNESS;
 
 export interface KdpCoverInput {
-  /** Front cover image as data URL. Will be drawn on the right half. */
   frontCover: { dataUrl: string };
-  /** Back cover image as data URL. Will be drawn on the left half. */
   backCover: { dataUrl: string };
-  /** Trim width in inches (e.g. 8.5 for 8.5×11). */
   trimWidthInches: number;
-  /** Trim height in inches (e.g. 11 for 8.5×11). */
   trimHeightInches: number;
-  /** Total interior page count INCLUDING blanks (drives spine width). */
   interiorPageCount: number;
-  /** Paper type — drives the per-page thickness multiplier. */
   paper: KdpPaperType;
 }
 

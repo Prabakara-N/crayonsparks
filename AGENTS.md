@@ -8,18 +8,23 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **ALWAYS prefer many small reusable components over large single files.**
 
+**ONE COMPONENT PER FILE — HARD RULE, NO EXCEPTIONS.** Every component gets its own file, named in kebab-case after the component, and is imported where needed. Do NOT define `Foo`, `FooHeader`, `FooRow`, `FooBadge` all in one file "because they're small" or "because they're only used here". Small + private is NOT a reason to co-locate — it is still its own file. The only thing that may share a file with a component is that component's own `Props` interface/type. If you catch yourself writing a second `function SomethingView(` in a file that already has one, stop and make a new file.
+
+**Multi-component features get a folder.** When a feature is more than ~2 components, create `components/<route>/<feature>/` and put every component inside it as its own file, plus the orchestrator. Example — the KDP metadata panel: `components/playground/kdp-metadata/` contains `kdp-metadata-panel.tsx` (orchestrator), `tab-bar.tsx`, `status-dot.tsx`, `tab-content.tsx`, `kdp-view.tsx`, `etsy-view.tsx`, `metadata-field.tsx`, `keyword-chip.tsx`, … — one component each. Shared non-component data (config arrays, constants) goes in a clearly-named module in the same folder (e.g. `kdp-metadata-tab-config.ts` — never a generic name like `tab-config.ts` or `config.ts`).
+
 Specifically:
 - **Hard cap: 400 lines per file.** If a file passes 400 lines, split it. Anything over 600 is a bug — refactor before adding more.
-- **Extract subcomponents** the moment a JSX block exceeds ~80 lines or appears more than once. Don't define `Foo`, `FooDetail`, `FooBadge`, `FooHeader` all inside `app/foo/page.tsx` — split each into its own file under `components/foo/` (route-specific) or `components/ui/` (reusable).
-- **One component per file** is the default. Co-locate small helper components in the same file ONLY if they are tiny (<30 lines), trivially private, and only used by the parent in the same file.
+- **Extract subcomponents** the moment a JSX block exceeds ~80 lines or appears more than once.
 - **Reuse before duplicate.** If a UI pattern (badge, card, modal, picker) appears in two places, extract it to `components/ui/` even if the two usages need slight prop variation. Add the variation as a prop, don't duplicate.
 - **Folder convention:**
-  - **Route-specific components** go in `components/<route>/<name>.tsx` (e.g. `components/playground/cover-pair.tsx`, `components/generate/multi-select-chips.tsx`). Do NOT put components inside `app/<route>/_components/`.
+  - **Single route-specific components** go in `components/<route>/<name>.tsx` (e.g. `components/playground/cover-pair.tsx`).
+  - **Multi-component route features** go in `components/<route>/<feature>/<name>.tsx` — one component per file inside the feature folder (see KDP metadata example above).
   - **Reusable cross-route UI primitives** go in `components/ui/<name>.tsx` (e.g. `components/ui/image-preview-dialog.tsx`).
-  - **Types** stay co-located with the code that defines them (e.g. `app/playground/types.ts`, types inline in `lib/<feature>.ts`). Only extract a type to a shared file if it's duplicated across 3+ files OR will become a database row shape later.
-- **Naming:** export ONE named function per file, file name is kebab-case matching the component name (`page-detail.tsx` exports `PageDetail`).
+  - Do NOT put components inside `app/<route>/_components/`.
+  - **Types** stay co-located with the code that defines them. Only extract a type to a shared file if it's duplicated across 3+ files OR will become a database row shape later.
+- **Naming:** export ONE named function per file, file name is kebab-case matching the component name (`page-detail.tsx` exports `PageDetail`). Config/constant modules get a feature-scoped name, never a generic one.
 
-When refactoring an existing large file, split it in this order: (1) data types into a co-located `types.ts` next to the consumer, (2) pure utility functions into `lib/<feature>-utils.ts`, (3) leaf components first (badges, status pills) into `components/<route>/`, (4) then larger composite components.
+When refactoring an existing large file, split it in this order: (1) data types into a co-located `types.ts` next to the consumer, (2) pure utility / config modules with feature-scoped names, (3) leaf components first (badges, status pills) into the feature folder, (4) then larger composite components, (5) the orchestrator last.
 
 # Comments
 

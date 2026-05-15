@@ -27,14 +27,7 @@ export interface KdpMetadataInput {
   scene: string;
   age: AgeBand;
   pageCount: number;
-  /** A few sample page subjects to give the model a sense of the content. */
   samplePages: string[];
-  /**
-   * Defaults to "coloring" for backwards compatibility with the existing
-   * coloring-book flow. Set to "story" when this book is a full-color
-   * picture book (story-mode bulk pipeline) so the prompts target
-   * picture-book SEO instead of coloring-book SEO.
-   */
   kind?: KdpKind;
 }
 

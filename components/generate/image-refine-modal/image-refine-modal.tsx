@@ -3,198 +3,35 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import {
-  X,
-  Download,
-  RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-  Trash2,
-  Sparkles,
-} from "lucide-react";
+import { X } from "lucide-react";
 import type { ModelMessage } from "ai";
-import type { QualityScore } from "@/components/playground/types";
 import type { PageMeta, PageStatus } from "@/lib/refine-chat";
 import {
   defaultRefineModelFor,
   refineModelOptionsFor,
   type ImageModel,
 } from "@/lib/constants";
-import { ModelPicker } from "@/components/playground/model-picker";
-import { ChatComposer, type ChatComposerHandle } from "./chat-composer";
-import { UserBubble, AssistantBubble } from "./chat-bubble";
+import { ChatComposer, type ChatComposerHandle } from "../chat-composer";
 import { BackCoverRefinePanel } from "@/components/playground/back-cover-refine-panel";
+import { useStateMounted } from "./use-state-mounted";
+import { fallbackSuggestions } from "./image-refine-modal-constants";
+import { RefineHeader } from "./refine-header";
+import { RefineTranscript } from "./refine-transcript";
+import { RefineFooterActions } from "./refine-footer-actions";
+import { VersionNavStrip } from "./version-nav-strip";
+import type {
+  RefineContext,
+  RefineBookContextProp,
+  ImageRefineModalProps,
+  Version,
+  Turn,
+} from "./types";
 
-function useStateMounted(): [boolean, (v: boolean) => void] {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  return [mounted, setMounted];
-}
-
-export type RefineContext =
-  | "cover"
-  | "back-cover"
-  | "page"
-  | "story-cover"
-  | "story-back-cover"
-  | "story-page"
-  | "custom";
-
-type AspectRatio = "1:1" | "3:4" | "4:3" | "2:3" | "3:2" | "9:16" | "16:9";
-
-interface Version {
-  dataUrl: string;
-  /** What instruction (if any) produced this version. */
-  instruction?: string;
-}
-
-type Turn =
-  | {
-      kind: "user";
-      id: string;
-      text: string;
-      referenceDataUrl?: string;
-    }
-  | {
-      kind: "assistant";
-      id: string;
-      reply: string;
-      /** True while waiting for the chat reply to arrive. Shows typing dots. */
-      awaitingReply?: boolean;
-      /** True while the image is generating (after chat reply, before refine returns). */
-      generatingImage?: boolean;
-      imageDataUrl?: string;
-      referenceLabels?: string[];
-    };
-
-const FALLBACK_SUGGESTIONS_COVER = [
-  "Make the title larger",
-  "Use a brighter background",
-  "Add a decorative border",
-];
-const FALLBACK_SUGGESTIONS_BACK_COVER = [
-  "Make the tagline larger",
-  "Make the top band darker",
-  "Center the tagline vertically",
-];
-const FALLBACK_SUGGESTIONS_PAGE = [
-  "Remove the sun from the scene",
-  "Thicken the outlines",
-  "Add a butterfly in the corner",
-];
-const FALLBACK_SUGGESTIONS_STORY_PAGE = [
-  "Change the character's pose to match the action",
-  "Make the background a different time of day",
-  "Move the speech bubble closer to the speaker",
-];
-
-function fallbackSuggestions(context: RefineContext): string[] {
-  if (context === "back-cover" || context === "story-back-cover")
-    return FALLBACK_SUGGESTIONS_BACK_COVER;
-  if (context === "cover" || context === "story-cover")
-    return FALLBACK_SUGGESTIONS_COVER;
-  if (context === "story-page") return FALLBACK_SUGGESTIONS_STORY_PAGE;
-  return FALLBACK_SUGGESTIONS_PAGE;
-}
-
-export interface RefineBookContextProp {
-  bookTitle: string;
-  bookScene?: string;
-  audience?: string;
-  targetId: string;
-  targetLabel: string;
-  targetSubject?: string;
-  pages: PageMeta[];
-  coverStatus: PageStatus;
-  backCoverStatus: PageStatus;
-  palette?: { name: string; hexes: string[] };
-}
-
-export interface ImageRefineModalProps {
-  open: boolean;
-  onClose: () => void;
-  sourceDataUrl?: string;
-  aspectRatio?: AspectRatio;
-  context: RefineContext;
-  title?: string;
-  subtitle?: string;
-  onRefined?: (dataUrl: string) => void;
-  downloadName?: string;
-  /**
-   * Front cover dataUrl — only used when context === "back-cover". Powers
-   * the BackCoverRefinePanel's color-swatch extractor and gets attached
-   * as a reference image when regenerating the back. Omit for non-back
-   * surfaces.
-   */
-  frontCoverDataUrl?: string;
-  /**
-   * Book title — used by the back-cover tagline generator. Optional but
-   * recommended for back-cover refines.
-   */
-  bookTitle?: string;
-  /**
-   * Cover scene description — gives the back-cover tagline generator
-   * tonal context. Optional.
-   */
-  coverScene?: string;
-  /** KDP description — extra context for the back-cover tagline generator. */
-  bookDescription?: string;
-  /** Sample of page subjects — gives the tagline generator concrete nouns. */
-  pageSubjects?: string[];
-  /** Actual interior page count — when set, taglines may cite it. */
-  pageCount?: number;
-  /**
-   * Optional AI quality score from the most recent gate run on the source
-   * image. When present, surfaces the score + reason inside the modal so
-   * the user knows why a refine is recommended.
-   */
-  quality?: QualityScore | null;
-  /**
-   * Full book context — enables Sparky to answer cross-page questions
-   * ("match page 3"), refuse references to ungenerated pages, etc.
-   * When omitted, Sparky still works but treats the source as a single
-   * standalone image with no other pages to reference.
-   */
-  bookContext?: RefineBookContextProp;
-  /**
-   * Lazy resolver invoked when Sparky asks for another page as a reference.
-   * Returns the dataUrl for the requested pageId, or null if not available.
-   */
-  getPageDataUrl?: (pageId: string) => string | null;
-  /**
-   * Image model the SOURCE image was generated with. Forwarded to
-   * /api/refine so the edit stays on the same model that produced the
-   * original — preserves line weight / detail density across versions and
-   * avoids silent cost surprises (e.g. a Flash-generated cover refining
-   * on Pro). When omitted, the server falls back to its per-context
-   * default (cover surfaces → Pro, others → Flash).
-   */
-  model?: ImageModel;
-  /**
-   * Notifies the parent when the modal enters / leaves a background-refine
-   * state. The user clicks Close while a refine is mid-flight; the modal
-   * stays mounted (visually hidden), the fetch completes, and the result
-   * auto-applies via `onRefined`. Parent uses these transitions to show a
-   * "refine in process" badge on the relevant card and a brief "refine done"
-   * toast when it finishes.
-   *   "running" → modal hidden, fetch still in flight
-   *   "done"    → fetch resolved, onRefined was called
-   *   "idle"    → no background work
-   */
-  onBackgroundChange?: (
-    state: "idle" | "running" | "done",
-    explicitTargetId?: string,
-  ) => void;
-  /**
-   * Increments every time the parent calls "open the refine modal" (card
-   * click, cover refine button, etc.). Lets the modal detect a fresh
-   * open-request even when `open` was already true — necessary so the
-   * user can re-click a card whose refine is running in the background
-   * and have the modal re-appear with the live chat + in-flight fetch
-   * still attached.
-   */
-  openNonce?: number;
-}
+export type {
+  RefineContext,
+  RefineBookContextProp,
+  ImageRefineModalProps,
+} from "./types";
 
 export function ImageRefineModal(props: ImageRefineModalProps) {
   const {
@@ -1026,129 +863,34 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
                     (per master prompt's DRAW_BORDER_RULE). No CSS overlay. */}
               </div>
               {versions.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/70 backdrop-blur border border-white/10 text-white text-xs">
-                  <button
-                    onClick={() =>
-                      setCurrentIndex((i) => Math.max(0, i - 1))
-                    }
-                    disabled={currentIndex === 0}
-                    className="p-1 rounded hover:bg-white/10 disabled:opacity-30"
-                    aria-label="Previous version"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <span className="font-mono">
-                    {currentIndex + 1} / {versions.length}
-                  </span>
-                  <button
-                    onClick={() =>
-                      setCurrentIndex((i) =>
-                        Math.min(versions.length - 1, i + 1),
-                      )
-                    }
-                    disabled={currentIndex === versions.length - 1}
-                    className="p-1 rounded hover:bg-white/10 disabled:opacity-30"
-                    aria-label="Next version"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
+                <VersionNavStrip
+                  currentIndex={currentIndex}
+                  total={versions.length}
+                  onIndexChange={setCurrentIndex}
+                />
               )}
             </div>
 
             {/* Chat pane */}
             <div className="flex flex-col max-h-[55vh] md:max-h-[92vh] bg-zinc-950 min-h-0">
-              {/* Header — title block on the left, model picker on the right.
-                  flex-wrap so a long title pushes the picker onto its own
-                  row instead of cramping it into a 60px column. */}
-              <div className="px-5 py-3 border-b border-white/10 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-                <div className="min-w-0 flex-1">
-                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-linear-to-r from-violet-500/15 to-cyan-500/15 border border-violet-500/30 text-[10px] font-semibold uppercase tracking-wider text-violet-300 mb-1.5">
-                    {context === "cover"
-                      ? "Cover"
-                      : context === "back-cover"
-                        ? "Back cover"
-                        : context === "page"
-                          ? "Page"
-                          : "Image"}{" "}
-                    · Refine chat
-                  </div>
-                  <h3 className="font-display text-base font-semibold text-white">
-                    {title ?? "Refine with Sparky"}
-                  </h3>
-                  {subtitle && (
-                    <p className="text-xs text-neutral-400 mt-0.5">{subtitle}</p>
-                  )}
-                </div>
-                <ModelPicker
-                  label="Model"
-                  value={activeModel}
-                  options={availableModels}
-                  onChange={setActiveModel}
-                  disabled={busy}
-                  title={
-                    context === "cover"
-                      ? "Front cover refines support all three Nano Banana models — Pro for premium thumbnail fidelity."
-                      : context === "back-cover"
-                        ? "Back covers are minimal layouts — Flash models render the tagline + barcode safe-zone cleanly without Pro's added cost."
-                        : "Interior surfaces use Flash to keep B&W line art clean — Pro tends to over-render with shading the quality gate rejects."
-                  }
-                />
-              </div>
+              <RefineHeader
+                context={context}
+                title={title}
+                subtitle={subtitle}
+                activeModel={activeModel}
+                availableModels={availableModels}
+                onModelChange={setActiveModel}
+                busy={busy}
+              />
 
-              {/* Transcript */}
-              <div
+              <RefineTranscript
                 ref={transcriptRef}
-                className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
-              >
-                {turns.length === 0 && (
-                  <div className="text-center text-xs text-neutral-500 py-6">
-                    <Sparkles className="w-5 h-5 mx-auto mb-2 text-violet-400" />
-                    <p className="leading-relaxed">
-                      Tell Sparky what to change.
-                      <br />
-                      Try{" "}
-                      <span className="text-violet-300">
-                        &quot;match the bear from page 3&quot;
-                      </span>
-                      {context === "story-page" ||
-                      context === "story-cover" ||
-                      context === "story-back-cover"
-                        ? "."
-                        : " or attach a reference image."}
-                    </p>
-                  </div>
-                )}
-                {turns.map((t) =>
-                  t.kind === "user" ? (
-                    <UserBubble
-                      key={t.id}
-                      text={t.text}
-                      referenceDataUrl={t.referenceDataUrl}
-                      onEdit={editLastUserMessage}
-                    />
-                  ) : (
-                    <AssistantBubble
-                      key={t.id}
-                      reply={t.reply}
-                      awaitingReply={t.awaitingReply}
-                      generatingImage={t.generatingImage}
-                      imageDataUrl={t.imageDataUrl}
-                      referenceLabels={t.referenceLabels}
-                      onBranch={
-                        t.imageDataUrl
-                          ? () => branchFrom(t.imageDataUrl!)
-                          : undefined
-                      }
-                    />
-                  ),
-                )}
-                {error && (
-                  <div className="text-[11px] text-red-300 bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2">
-                    {error}
-                  </div>
-                )}
-              </div>
+                turns={turns}
+                context={context}
+                error={error}
+                onEditUserMessage={editLastUserMessage}
+                onBranch={branchFrom}
+              />
 
               {(context === "back-cover" ||
                 context === "story-back-cover") && (
@@ -1182,7 +924,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
                 onSend={send}
                 onStop={stopInFlight}
                 suggestionsOpen={openSubpanel === "suggestions"}
-                onSuggestionsOpenChange={(open) =>
+                onSuggestionsOpenChange={(open: boolean) =>
                   setOpenSubpanel(open ? "suggestions" : "none")
                 }
                 hideAttach={
@@ -1192,41 +934,15 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
                 }
               />
 
-              {/* Footer actions */}
-              <div className="px-4 py-2.5 border-t border-white/10 flex items-center gap-2 flex-wrap">
-                {turns.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={clearChat}
-                    disabled={busy}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium text-neutral-400 hover:text-white hover:bg-white/5 disabled:opacity-50 transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    Clear chat
-                  </button>
-                )}
-                <div className="ml-auto flex items-center gap-2">
-                  {onRefined && versions.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={acceptVersion}
-                      disabled={busy}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-400 disabled:opacity-50 shadow"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      Use this version
-                    </button>
-                  )}
-                  <a
-                    href={current.dataUrl}
-                    download={downloadName}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-black hover:bg-neutral-200"
-                  >
-                    <Download className="w-3 h-3" />
-                    PNG
-                  </a>
-                </div>
-              </div>
+              <RefineFooterActions
+                hasTurns={turns.length > 0}
+                busy={busy}
+                onClearChat={clearChat}
+                showUseVersion={!!onRefined && versions.length > 1}
+                onAcceptVersion={acceptVersion}
+                downloadHref={current.dataUrl}
+                downloadName={downloadName}
+              />
             </div>
           </motion.div>
         </motion.div>

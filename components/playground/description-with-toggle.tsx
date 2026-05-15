@@ -6,11 +6,8 @@ import { cn } from "@/lib/utils";
 import { buildKdpHtmlDocument } from "@/lib/kdp-html-export";
 
 interface DescriptionWithToggleProps {
-  /** Book title — used as the &lt;h1&gt; in the full HTML document view. */
   title: string;
-  /** Plain-text version of the description (for emails, copy paste). */
   plain: string;
-  /** HTML body fragment (with &lt;p&gt;, &lt;strong&gt;, &lt;ul&gt;&lt;li&gt; tags). */
   html: string;
 }
 

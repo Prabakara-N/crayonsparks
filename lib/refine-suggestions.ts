@@ -47,15 +47,8 @@ export interface QualityHint {
 }
 
 interface SuggestionsInput {
-  /** data URL like "data:image/png;base64,..." OR raw base64. */
   imageDataUrl: string;
   context: RefineContext;
-  /**
-   * Optional AI quality assessment of the image. When provided, the system
-   * prompt instructs the suggester to PRIORITIZE refinements that fix the
-   * specific failed criteria, so users get one-click options for the actual
-   * problems the vision rater detected.
-   */
   quality?: QualityHint | null;
 }
 

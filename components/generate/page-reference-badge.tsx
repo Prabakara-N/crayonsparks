@@ -1,7 +1,6 @@
 import { Paperclip } from "lucide-react";
 
 interface PageReferenceBadgeProps {
-  /** Already-resolved label, e.g. "page 3 — Lion in savanna" or "your reference". */
   label: string;
 }
 

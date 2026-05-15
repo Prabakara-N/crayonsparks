@@ -13,15 +13,9 @@
  */
 
 export interface PaletteSwatch {
-  /** "rgb(...)"-style CSS color the swatch button can use directly. */
   cssColor: string;
-  /** Same color in hex (#rrggbb). */
   hex: string;
-  /** Plain-language hue name (e.g. "soft pastel pink") suitable for the
-   * Gemini prompt. The image model interprets named hues more reliably
-   * than hex codes — we pass this string into the back-cover prompt. */
   hueName: string;
-  /** Population count from the source image — useful for sorting. */
   population: number;
 }
 

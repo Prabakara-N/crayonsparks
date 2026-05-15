@@ -16,13 +16,9 @@ export type RefineContext = "page" | "cover" | "back-cover" | "custom";
 export type PageStatus = "pending" | "queued" | "generating" | "done" | "error";
 
 export interface PageMeta {
-  /** Stable id used to reference this page across the chat protocol. */
   id: string;
-  /** 1-based index for human-readable references ("page 3"). */
   index: number;
-  /** Short label like "Lion in savanna". */
   name: string;
-  /** Full subject prompt the page was generated from. */
   subject: string;
   status: PageStatus;
 }
@@ -31,11 +27,9 @@ export interface RefineBookContext {
   bookTitle: string;
   bookScene?: string;
   audience?: string;
-  /** Page being refined right now. */
   target: {
     kind: "page" | "cover" | "back-cover" | "custom";
     id: string;
-    /** Human-friendly label for the target shown to Sparky. */
     label: string;
     subject?: string;
     aspectRatio: string;
@@ -65,9 +59,7 @@ export type RefineAction =
   | { kind: "text_only" };
 
 export interface RefineChatTurnResult {
-  /** Updated message log to keep on the client for the next turn. */
   messages: ModelMessage[];
-  /** Sparky's free-text reply, always present. */
   reply: string;
   action: RefineAction;
 }
@@ -241,27 +233,15 @@ function normalizeExtraReferences(
 }
 
 export interface AttachedImage {
-  /** Short human-readable label sent before the image (e.g. "CURRENT (page 5 — Lion)"). */
   label: string;
-  /** data:image/...;base64,... URL — passed straight to the multimodal model. */
   dataUrl: string;
 }
 
 export interface RunRefineChatInput {
   context: RefineBookContext;
-  /** Prior turn messages (assistant + tool ack pairs from earlier turns). */
   history: ModelMessage[];
-  /** New user message text. */
   userMessage: string;
-  /** Whether the user attached a reference image to THIS message. */
   hasUserReference: boolean;
-  /**
-   * Images attached to THIS turn for Sparky to actually see. Should include
-   * the current source image (always) and, ideally, every other generated
-   * page in the book so Sparky can answer cross-page questions ("what's on
-   * page 3?"). Only attached to the latest user message — earlier turns
-   * stay text-only to control token cost.
-   */
   attachedImages?: AttachedImage[];
 }
 

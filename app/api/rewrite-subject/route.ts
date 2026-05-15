@@ -9,18 +9,9 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 interface Body {
-  /** Original page subject text the user wrote (or Sparky planned). */
   subject?: string;
-  /** Why Gemini refused — categorized error message we want to defang. */
   errorHint?: string;
-  /** Optional: mark this as the second / third request to push the rewriter
-   * to produce a DIFFERENT alternative than what it already returned. */
   variantSeed?: number;
-  /** Optional book context — without this the rewriter sees one page in
-   * isolation and can accidentally change the protagonist (e.g. swap a
-   * lion cub for a fox kit). Passing the lock + cover scene tells it
-   * which characters are the book's PROTAGONISTS that must be preserved
-   * verbatim across all pages. */
   bookTitle?: string;
   coverScene?: string;
   characterLock?: string;

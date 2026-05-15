@@ -10,7 +10,6 @@ interface ImagePreviewDialogProps {
   onClose: () => void;
   src: string;
   alt?: string;
-  /** Optional caption shown under the image. */
   caption?: string;
 }
 

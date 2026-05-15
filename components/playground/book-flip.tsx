@@ -50,25 +50,11 @@ export interface BookFlipPageInput {
 interface BookFlipProps {
   cover?: { imageUrl?: string };
   backCover?: { imageUrl?: string };
-  /**
-   * Optional "This Book Belongs To" nameplate page — slotted in as page 2,
-   * right after the front cover (matches the printed PDF order). When
-   * omitted, falls back to a blank page after the cover.
-   */
   belongsTo?: { imageUrl?: string };
   pages: BookFlipPageInput[];
-  /** Single page width in px. Book renders 2 pages side-by-side at 2× this. */
   width?: number;
   height?: number;
-  /** When true, every interior art page is followed by a blank page (KDP layout). */
   alternateBlankPages?: boolean;
-  /**
-   * Story-book interior pages are designed as full-bleed art (no white
-   * margin around the illustration), so the preview tile uses object-cover
-   * to fill the page edge-to-edge AND skips the page-number overlay (which
-   * would sit on top of the artwork). Coloring books default to the
-   * letterbox layout so the printable border + page number stay visible.
-   */
   fullBleedInterior?: boolean;
 }
 

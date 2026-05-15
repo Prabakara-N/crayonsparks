@@ -11,113 +11,9 @@ import {
   Check,
   RotateCcw,
 } from "lucide-react";
-
-/**
- * Generic shape both BookStudio's `Plan` and Sparky AI's `BookBrief`
- * can be adapted to. Keeping the modal type-loose lets one component
- * cover both review surfaces (bulk-book studio + chat handoff) with no
- * cross-package coupling.
- */
-export interface PlanReviewPagePrompt {
-  name: string;
-  subject: string;
-  /** Story-mode only — speech bubbles drawn on the page. */
-  dialogue?: Array<{ speaker: string; text: string }>;
-  /** Story-mode only — single-line caption above/below the art. */
-  narration?: string;
-}
-
-export interface PlanReviewData {
-  /** Full KDP title — shown as the secondary line below cover title. */
-  title?: string;
-  /** Short cover title — primary heading. Falls back to `title`. */
-  coverTitle?: string;
-  description?: string;
-  scene?: string;
-  coverScene?: string;
-  /**
-   * Story-mode locked characters. When present, modal shows a "Main
-   * characters" section listing each name + descriptor (e.g. "Eli — shy
-   * baby elephant").
-   */
-  characters?: Array<{ name: string; descriptor: string }>;
-  prompts: PlanReviewPagePrompt[];
-}
-
-interface PlanReviewButtonProps {
-  data: PlanReviewData;
-  /**
-   * Optional notice rendered ABOVE the page list inside the modal. Used
-   * to surface mode-specific context (e.g. "Story-book pages also receive
-   * locked characters + dialogue at render time.").
-   */
-  modeNotice?: string;
-  /** Visual size — "compact" sits inside summary cards; "wide" stretches. */
-  variant?: "compact" | "wide";
-  /**
-   * Optional save handler. When provided, the modal exposes an Edit toggle
-   * so the user can rewrite plan-level fields and per-page name/subject.
-   * Saved values flow back via this callback so the parent can update its
-   * plan/items state and the next image generation runs on the edits.
-   * Without this callback, the modal stays read-only.
-   */
-  onSave?: (next: PlanReviewData) => void;
-}
-
-/**
- * Single button that opens a modal with the structured plan review.
- * Replaces the older inline-expandable panel — the click target is now
- * deliberate (a button), and the structured document gets the full
- * viewport instead of squeezing into the summary card.
- *
- * Used by both BookStudio's plan-summary card AND Sparky AI's
- * BriefPreview, so the review experience is consistent across the
- * coloring-book and story-book flows.
- */
-export function PlanReviewButton({
-  data,
-  modeNotice,
-  variant = "compact",
-  onSave,
-}: PlanReviewButtonProps) {
-  const [open, setOpen] = useState(false);
-  const total = data.prompts.length;
-
-  // Compact variant matches the ModelPicker pill style so the button can
-  // sit next to the cover/pages model pickers as a third right-aligned
-  // control in the same row (rounded-full pill, white/10 background,
-  // white border at /20). Wide variant is the legacy stretched style.
-  const buttonClass =
-    variant === "wide"
-      ? "w-full inline-flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-black text-sm font-semibold text-white shadow-lg shadow-black/40 hover:bg-zinc-900 transition-colors"
-      : "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20 backdrop-blur transition-colors hover:bg-white/15 cursor-pointer";
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={buttonClass}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-      >
-        <ClipboardList className="w-3.5 h-3.5 text-white/80" />
-        <span className="font-semibold">Review plan</span>
-        <span className="text-white/70 font-normal">
-          {total} {total === 1 ? "page" : "pages"}
-        </span>
-      </button>
-
-      <PlanReviewModal
-        open={open}
-        onClose={() => setOpen(false)}
-        data={data}
-        modeNotice={modeNotice}
-        onSave={onSave}
-      />
-    </>
-  );
-}
+import type { PlanReviewData } from "./types";
+import { EditableField } from "./editable-field";
+import { PlanSection } from "./plan-section";
 
 interface PlanReviewModalProps {
   open: boolean;
@@ -137,10 +33,7 @@ export function PlanReviewModal({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Editable working copy. Initialised from props on open and reset
-  // whenever the source data changes underneath us. Edits stay local
-  // until the user clicks Save (which fires onSave). Cancel discards
-  // them by resetting to props.
+  // Editable working copy reset from props on open; edits stay local until Save.
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<PlanReviewData>(data);
 
@@ -440,66 +333,5 @@ export function PlanReviewModal({
       )}
     </AnimatePresence>,
     document.body,
-  );
-}
-
-function EditableField({
-  label,
-  value,
-  editing,
-  onChange,
-  multiline,
-  placeholder,
-}: {
-  label: string;
-  value: string | undefined;
-  editing: boolean;
-  onChange: (v: string) => void;
-  multiline?: boolean;
-  placeholder?: string;
-}) {
-  // In read-only mode, hide the section entirely when there's no value —
-  // matches the previous behavior of skipping empty sections.
-  if (!editing && !value?.trim()) return null;
-  return (
-    <PlanSection label={label}>
-      {editing ? (
-        multiline ? (
-          <textarea
-            className="w-full bg-black/30 border border-white/10 focus:border-violet-400 focus:outline-none rounded px-3 py-2 text-neutral-100 text-[13px] leading-relaxed resize-y"
-            value={value ?? ""}
-            onChange={(e) => onChange(e.target.value)}
-            rows={3}
-            placeholder={placeholder}
-          />
-        ) : (
-          <input
-            className="w-full bg-black/30 border border-white/10 focus:border-violet-400 focus:outline-none rounded px-3 py-2 text-neutral-100 text-[13px]"
-            value={value ?? ""}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-          />
-        )
-      ) : (
-        <p className="text-neutral-300 leading-relaxed">{value}</p>
-      )}
-    </PlanSection>
-  );
-}
-
-function PlanSection({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-300 mb-1.5">
-        {label}
-      </p>
-      {children}
-    </section>
   );
 }

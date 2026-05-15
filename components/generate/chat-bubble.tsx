@@ -6,13 +6,7 @@ import { PageReferenceBadge } from "./page-reference-badge";
 
 export interface UserBubbleProps {
   text: string;
-  /** Optional reference image the user attached to this turn. */
   referenceDataUrl?: string;
-  /**
-   * When provided, an Edit button appears under the bubble that calls
-   * this with the original text (so the parent can repopulate the
-   * composer for re-send).
-   */
   onEdit?: (text: string) => void;
 }
 
@@ -109,17 +103,11 @@ function ImageGeneratingFrame({ aspect = "aspect-3/4" }: { aspect?: string }) {
 }
 
 export interface AssistantBubbleProps {
-  /** Sparky's text reply. Empty while still waiting. */
   reply: string;
-  /** True between user-send and chat-reply arriving. Shows typing dots. */
   awaitingReply?: boolean;
-  /** True between chat-reply (refine action) and image-generation completing. */
   generatingImage?: boolean;
-  /** Result image (when the action was a refine). */
   imageDataUrl?: string;
-  /** Labels for any references attached (other pages or user upload). */
   referenceLabels?: string[];
-  /** Called when the user clicks "Branch from this version". */
   onBranch?: () => void;
 }
 

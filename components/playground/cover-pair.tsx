@@ -8,17 +8,10 @@ import { CoverTile, type CoverTileStatus } from "./cover-tile";
 
 interface CoverPairProps {
   bookSlug: string;
-  /** Book title shown at the top of the card. */
   title: string;
-  /** Book description / cover scene shown under the title. */
   description?: string;
   frontCover: CoverTileStatus;
   backCover: CoverTileStatus;
-  /**
-   * Optional "This Book Belongs To" page tile — when provided, rendered as a
-   * third tile alongside the covers and gets its own B&W/Color toggle in
-   * the right-side options column.
-   */
   belongsTo?: CoverTileStatus;
   belongsToStyle?: "bw" | "color";
   onBelongsToStyleChange?: (v: "bw" | "color") => void;
@@ -28,44 +21,16 @@ interface CoverPairProps {
   coverBorder: CoverBorder;
   onCoverStyleChange: (s: CoverStyle) => void;
   onCoverBorderChange: (b: CoverBorder) => void;
-  /**
-   * CSS aspect-ratio for both cover tiles. Defaults to "3 / 4" for the
-   * 8.5×11 coloring-book trim. Pass "2 / 3" for the 6×9 picture-book trim
-   * so the full cover fits without cropping the title at the top or the
-   * tagline at the bottom. The actual KDP PDFs are rendered at the
-   * matching trim regardless — this prop only affects the preview tile.
-   */
   coverAspect?: string;
   onRegenerateFront: () => void;
   onRegenerateBack: () => void;
   onRefineFront?: (dataUrl: string) => void;
   onRefineBack?: (dataUrl: string) => void;
-  /**
-   * View-only handler — opens the cover image in a lightbox without
-   * going through refine. Used when the cover is locked (frontLocked=true)
-   * so the user can still SEE it at full size after interior pages have
-   * started.
-   */
   onViewFront?: (dataUrl: string) => void;
   onViewBack?: (dataUrl: string) => void;
-  /**
-   * When set, disables Regenerate / Refine on the front cover and shows
-   * the given reason on hover. Used to lock the cover once interior
-   * pages have started — changing the cover after that point would
-   * desync the chain anchor + character lock from the existing pages.
-   */
   frontLocked?: boolean;
   frontLockedReason?: string;
-  /**
-   * Optional content rendered at the bottom of the right-column toggle stack
-   * (typically the Amazon mockup generator gated behind generated content).
-   */
   rightExtras?: ReactNode;
-  /**
-   * Per-tile background-refine state. Lookup keys: "cover" / "back-cover" /
-   * "belongs-to". When a tile's key is in the map, that tile shows a
-   * "Refining…" / "Refined" pill in its corner.
-   */
   refineStatus?: Record<string, "running" | "done">;
 }
 

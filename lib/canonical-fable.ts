@@ -29,9 +29,7 @@ Rules:
 - Keep total length under 220 words.`;
 
 export interface CanonicalPlotResult {
-  /** Plot summary in plain prose, ready to feed back into the chat as ground truth. */
   summary: string;
-  /** Live web sources Perplexity cited (if any). */
   citations?: string[];
 }
 

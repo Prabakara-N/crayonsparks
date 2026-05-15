@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Download,
@@ -14,32 +14,23 @@ import {
   RefreshCw,
   FileText,
   Settings2,
-  BookMarked,
   Lock,
   Pencil,
   MessageSquare,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type {
-  ColoringCategory,
-  ColoringPrompt,
-  AgeRange,
-  Detail,
-  Background,
-} from "@/lib/prompts";
+import type { ColoringCategory, ColoringPrompt, AgeRange, Detail, Background } from "@/lib/prompts";
 import {
   isCustomCategory,
   listCustomCategories,
   type CustomCategory,
 } from "@/lib/custom-categories";
 import { CreateBookModal } from "@/components/generate/create-book-modal";
-import { ImageRefineModal, type RefineContext } from "@/components/generate/image-refine-modal";
+import { ImageRefineModal, type RefineContext } from "@/components/generate/image-refine-modal/image-refine-modal";
 import { ReferenceImageField } from "@/components/ui/reference-image-field";
 import { MockupGenerator } from "@/components/ui/mockup-generator";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { KdpMetadataPanel } from "@/components/playground/kdp-metadata-panel";
+import { KdpMetadataPanel } from "@/components/playground/kdp-metadata/kdp-metadata-panel";
 import { CoverPair } from "@/components/playground/cover-pair";
 import { useDialog } from "@/components/ui/confirm-dialog";
 import { MockupGate } from "@/components/ui/mockup-gate";
@@ -56,143 +47,25 @@ import {
   DEFAULT_INTERIOR_MODEL,
   type ImageModel,
 } from "@/lib/constants";
-
-type AspectRatio = "1:1" | "3:4" | "4:3" | "2:3" | "3:2" | "9:16" | "16:9";
-type GenStatus = "idle" | "queued" | "generating" | "done" | "error";
-
-interface GenItem {
-  key: string;
-  prompt: ColoringPrompt;
-  status: GenStatus;
-  dataUrl?: string;
-  error?: string;
-}
-
-interface GenOptions {
-  age: AgeRange;
-  detail: Detail;
-  background: Background;
-  aspectRatio: AspectRatio;
-  categorySlug: string;
-  scene?: string;
-  referenceDataUrl?: string;
-  /** Image model used for interior pages. Forwarded to /api/generate. */
-  model?: ImageModel;
-}
-
-async function generateOne(
-  subject: string,
-  opts: GenOptions,
-  variantSeed?: string
-): Promise<{ dataUrl: string }> {
-  // For custom categories, pass scene explicitly (server can't look them up)
-  const { categorySlug, scene, referenceDataUrl, model, ...rest } = opts;
-  const isCustom = categorySlug.startsWith("custom-");
-  const base = isCustom
-    ? { mode: "subject", subject, ...rest, scene }
-    : { mode: "subject", subject, ...rest, categorySlug };
-  const payload = {
-    ...base,
-    ...(variantSeed ? { variantSeed } : {}),
-    ...(referenceDataUrl ? { referenceDataUrl } : {}),
-    ...(model ? { model } : {}),
-  };
-  const res = await fetch("/api/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const json = (await res.json()) as { dataUrl?: string; error?: string };
-  if (!res.ok || !json.dataUrl) {
-    throw new Error(json.error || "Generation failed");
-  }
-  return { dataUrl: json.dataUrl };
-}
-
-type CoverStyle = "flat" | "illustrated";
-type CoverBorder = "framed" | "bleed";
-
-async function generateCover(
-  category: ColoringCategory,
-  coverOpts: {
-    style: CoverStyle;
-    border: CoverBorder;
-    model?: ImageModel;
-    badgeStyle?: string;
-  },
-): Promise<{ dataUrl: string }> {
-  const isCustom = category.slug.startsWith("custom-");
-  const base = isCustom
-    ? {
-        mode: "cover",
-        coverTitle: category.coverTitle,
-        coverScene: category.coverScene,
-      }
-    : { mode: "cover", categorySlug: category.slug };
-  const trimmedBadgeStyle = coverOpts.badgeStyle?.trim();
-  const payload = {
-    ...base,
-    coverStyle: coverOpts.style,
-    coverBorder: coverOpts.border,
-    ...(coverOpts.model ? { model: coverOpts.model } : {}),
-    ...(trimmedBadgeStyle ? { coverBadgeStyle: trimmedBadgeStyle } : {}),
-  };
-  const res = await fetch("/api/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const json = (await res.json()) as { dataUrl?: string; error?: string };
-  if (!res.ok || !json.dataUrl) {
-    throw new Error(json.error || "Cover generation failed");
-  }
-  return { dataUrl: json.dataUrl };
-}
-
-const AGE_OPTIONS: { value: AgeRange; label: string; sub: string }[] = [
-  { value: "toddlers", label: "Toddlers", sub: "3-6" },
-  { value: "kids", label: "Kids", sub: "6-10" },
-  { value: "tweens", label: "Tweens", sub: "10-14" },
-];
-const DETAIL_OPTIONS: { value: Detail; label: string }[] = [
-  { value: "simple", label: "Simple" },
-  { value: "detailed", label: "Detailed" },
-  { value: "intricate", label: "Intricate" },
-];
-const BG_OPTIONS: { value: Background; label: string }[] = [
-  { value: "scene", label: "Full Scene" },
-  { value: "framed", label: "Decor Border" },
-  { value: "minimal", label: "Minimal" },
-];
-const LISTING_PLATFORMS: ListingPlatform[] = [
-  "kdp",
-  "etsy",
-  "gumroad",
-  "pinterest",
-  "instagram",
-  "twitter",
-];
-
-function initListingStatus(): Record<ListingPlatform, PlatformStatus> {
-  return {
-    kdp: "pending",
-    etsy: "pending",
-    gumroad: "pending",
-    pinterest: "pending",
-    instagram: "pending",
-    twitter: "pending",
-  };
-}
-
-const ASPECT_OPTIONS: { value: AspectRatio; label: string; sub: string }[] = [
-  { value: "3:4", label: "KDP", sub: "3:4" },
-  { value: "1:1", label: "Square", sub: "1:1" },
-  { value: "2:3", label: "Tall", sub: "2:3" },
-  { value: "4:3", label: "Landscape", sub: "4:3" },
-  { value: "3:2", label: "Wide", sub: "3:2" },
-  { value: "9:16", label: "Pin", sub: "9:16" },
-  { value: "16:9", label: "Banner", sub: "16:9" },
-];
+import type {
+  AspectRatio,
+  GenStatus,
+  GenItem,
+  GenOptions,
+  CoverStyle,
+  CoverBorder,
+} from "./types";
+import {
+  AGE_OPTIONS,
+  DETAIL_OPTIONS,
+  BG_OPTIONS,
+  LISTING_PLATFORMS,
+  ASPECT_OPTIONS,
+  initListingStatus,
+} from "./generator-studio-constants";
+import { generateOne, generateCover } from "./generator-studio-api";
+import { OptionGroup } from "./option-group";
+import { CategoryScroller } from "./category-scroller";
 
 export function GeneratorStudio({ categories }: { categories: ColoringCategory[] }) {
   const router = useRouter();
@@ -1127,121 +1000,6 @@ export function GeneratorStudio({ categories }: { categories: ColoringCategory[]
         aspectRatio={aspectRatio}
         onRefined={refine.onRefined}
       />
-    </div>
-  );
-}
-
-function OptionGroup<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: React.ReactNode;
-  options: { value: T; label: string; sub?: string }[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div>
-      <p className="text-xs font-medium text-neutral-400 mb-2">{label}</p>
-      <div className="flex gap-1.5 flex-wrap">
-        {options.map((o) => {
-          const active = o.value === value;
-          return (
-            <button
-              key={o.value}
-              type="button"
-              onClick={() => onChange(o.value)}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                active
-                  ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white border-transparent shadow"
-                  : "bg-black/40 border-white/10 text-neutral-300 hover:border-violet-500/40"
-              )}
-            >
-              {o.label}
-              {o.sub && (
-                <span
-                  className={cn(
-                    "ml-1.5 text-[10px]",
-                    active ? "text-white/70" : "text-neutral-500"
-                  )}
-                >
-                  {o.sub}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Horizontally scrollable category bar with left/right arrow buttons.
- * Arrows fade out when at the corresponding scroll boundary so the user
- * always knows whether more content lies in that direction. Mirrors the
- * apple-cards-carousel boundary logic but tighter (categories are short).
- */
-function CategoryScroller({ children }: { children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [canLeft, setCanLeft] = useState(false);
-  const [canRight, setCanRight] = useState(true);
-
-  const recompute = useCallback(() => {
-    const el = ref.current;
-    if (!el) return;
-    const max = el.scrollWidth - el.clientWidth;
-    setCanLeft(el.scrollLeft > 4);
-    setCanRight(el.scrollLeft < max - 4);
-  }, []);
-
-  useEffect(() => {
-    recompute();
-    const onResize = () => recompute();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [recompute]);
-
-  function scrollBy(amount: number) {
-    const el = ref.current;
-    if (!el) return;
-    const max = el.scrollWidth - el.clientWidth;
-    el.scrollTo({
-      left: Math.max(0, Math.min(max, el.scrollLeft + amount)),
-      behavior: "smooth",
-    });
-  }
-
-  return (
-    <div className="relative">
-      <div
-        ref={ref}
-        onScroll={recompute}
-        className="flex gap-2 overflow-x-auto pb-3 -mx-4 px-4 scrollbar-hide items-center scroll-smooth"
-      >
-        {children}
-      </div>
-      <button
-        type="button"
-        aria-label="Scroll categories left"
-        onClick={() => scrollBy(-300)}
-        disabled={!canLeft}
-        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 h-9 w-9 rounded-full bg-zinc-900 border border-white/15 flex items-center justify-center text-neutral-200 hover:bg-zinc-800 disabled:opacity-0 disabled:pointer-events-none transition-opacity shadow-lg"
-      >
-        <ChevronLeft className="w-4 h-4" />
-      </button>
-      <button
-        type="button"
-        aria-label="Scroll categories right"
-        onClick={() => scrollBy(300)}
-        disabled={!canRight}
-        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 h-9 w-9 rounded-full bg-zinc-900 border border-white/15 flex items-center justify-center text-neutral-200 hover:bg-zinc-800 disabled:opacity-0 disabled:pointer-events-none transition-opacity shadow-lg"
-      >
-        <ChevronRight className="w-4 h-4" />
-      </button>
     </div>
   );
 }
