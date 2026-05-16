@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { planBook, type BookPlanInput } from "@/lib/book-planner";
+import { requireAuth } from "@/lib/auth/server-require-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -7,6 +8,9 @@ export const maxDuration = 60;
 interface Body extends Partial<BookPlanInput> {}
 
 export async function POST(req: Request) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+
   let body: Body;
   try {
     body = (await req.json()) as Body;

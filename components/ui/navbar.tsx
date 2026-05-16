@@ -2,8 +2,10 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu, Wand2, X } from "lucide-react";
+import { AuthNavSlot } from "@/components/auth/auth-nav-slot";
 
 const links = [
   { href: "/features", label: "Features" },
@@ -13,15 +15,20 @@ const links = [
   { href: "/blog", label: "Blog" },
 ];
 
+const HIDDEN_ON = ["/login", "/signup"];
+
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  if (HIDDEN_ON.some((p) => pathname?.startsWith(p))) return null;
 
   return (
     <header
@@ -66,6 +73,7 @@ export function Navbar() {
             <Wand2 className="w-4 h-4" />
             Generate
           </Link>
+          <AuthNavSlot />
         </div>
 
         <button
@@ -103,6 +111,9 @@ export function Navbar() {
               >
                 Start Generating
               </Link>
+              <div className="mt-3 pt-3 border-t border-white/10 flex justify-center">
+                <AuthNavSlot />
+              </div>
             </div>
           </motion.div>
         )}

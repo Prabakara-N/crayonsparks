@@ -24,6 +24,7 @@ import {
   type StoryType,
 } from "@/lib/story-book-planner";
 import type { DialogueStyle } from "@/lib/prompts";
+import { requireAuth } from "@/lib/auth/server-require-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 90;
@@ -71,6 +72,9 @@ function isStoryType(value: unknown): value is StoryType {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireAuth(req);
+  if (!auth.ok) return auth.response;
+
   let body: Body;
   try {
     body = (await req.json()) as Body;

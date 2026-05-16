@@ -3,6 +3,10 @@
 import { useCallback, useState } from "react";
 import { type StoryType } from "@/lib/story-book-planner";
 import type { DialogueStyle } from "@/lib/prompts";
+import {
+  getAuthIdToken,
+  redirectToLogin,
+} from "@/lib/auth/require-auth-for-action";
 import type {
   AgeRange,
   Aspect,
@@ -71,6 +75,11 @@ export function useBookPlan({
       typeof regenerationHint === "string" && regenerationHint.trim()
         ? regenerationHint.trim()
         : undefined;
+    const idToken = await getAuthIdToken();
+    if (!idToken) {
+      redirectToLogin("/playground?tab=bulk-book");
+      return;
+    }
     setPlanError(null);
     setPlanning(true);
     setPhase("planning");
@@ -92,7 +101,10 @@ export function useBookPlan({
         : { idea: trimmed, pageCount, age, regenerationHint: hint };
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${idToken}`,
+        },
         body: JSON.stringify(body),
       });
       const json = (await res.json()) as { plan?: Plan; error?: string };

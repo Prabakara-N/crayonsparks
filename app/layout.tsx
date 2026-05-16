@@ -4,6 +4,7 @@ import "./globals.css";
 import { buildOrganization, buildWebSite } from "@/lib/seo-schema";
 import { DialogProvider } from "@/components/ui/confirm-dialog";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/components/auth/auth-provider";
 import { cn } from "@/lib/utils";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
@@ -80,7 +81,9 @@ export default function RootLayout({
             __html: JSON.stringify(buildWebSite()),
           }}
         />
-        <DialogProvider>{children}</DialogProvider>
+        <AuthProvider>
+          <DialogProvider>{children}</DialogProvider>
+        </AuthProvider>
         <Toaster position="bottom-right" richColors closeButton />
       </body>
     </html>

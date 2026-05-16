@@ -1,0 +1,89 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { LayoutDashboard } from "lucide-react";
+import type { User } from "firebase/auth";
+import { UserAvatar } from "./user-avatar";
+import { SignOutButton } from "./sign-out-button";
+
+interface UserMenuProps {
+  user: User;
+}
+
+export function UserMenu({ user }: UserMenuProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: PointerEvent) {
+      if (!containerRef.current) return;
+      if (!containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const accountLabel =
+    user.displayName?.trim() || user.email || "Account menu";
+
+  return (
+    <div ref={containerRef} className="relative inline-flex items-center">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Account menu for ${accountLabel}`}
+        className="inline-flex h-10 w-10 mt-1 items-center justify-center rounded-full ring-1 ring-white/15 hover:ring-white/40 focus:outline-none focus:ring-2 focus:ring-violet-400/60 transition"
+      >
+        <UserAvatar user={user} size={36} />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute top-full right-0 mt-2 w-64 rounded-xl border border-white/10 bg-zinc-950/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden z-50"
+        >
+          <div className="flex items-center gap-3 px-3 py-3 border-b border-white/10">
+            <UserAvatar user={user} size={40} />
+            <div className="min-w-0 flex-1">
+              {user.displayName && (
+                <p className="text-sm font-semibold text-white truncate">
+                  {user.displayName}
+                </p>
+              )}
+              <p className="text-xs text-neutral-400 truncate">{user.email}</p>
+            </div>
+          </div>
+          <div className="px-2 py-1.5">
+            <Link
+              href="/account"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-neutral-200 hover:bg-white/5 hover:text-white"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              Account dashboard
+            </Link>
+          </div>
+          <div className="border-t border-white/10 px-2 py-1.5">
+            <SignOutButton
+              onAfter={() => setOpen(false)}
+              className="w-full px-2 py-1.5 rounded-md hover:bg-red-500/10"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
