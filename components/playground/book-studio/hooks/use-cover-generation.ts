@@ -352,6 +352,8 @@ export function useCoverGeneration({
           theEndMessage: message,
           theEndPaletteLine: paletteLine,
           theEndStoryType: plan.storyType,
+          coverStyle,
+          coverBorder,
           model: interiorModel,
           chainReferenceDataUrl: cover.dataUrl,
           qualityGate: qualityCheck,
@@ -380,7 +382,15 @@ export function useCoverGeneration({
         error: e instanceof Error ? e.message : "The End page failed",
       });
     }
-  }, [plan, qualityCheck, cover.dataUrl, interiorModel, abortRef]);
+  }, [
+    plan,
+    qualityCheck,
+    cover.dataUrl,
+    interiorModel,
+    coverStyle,
+    coverBorder,
+    abortRef,
+  ]);
 
   return {
     cover,

@@ -292,13 +292,20 @@ export function Card({ card, index, size = "md", onClick }: CardProps) {
         )}
       </AnimatePresence>
 
-      <motion.button
-        type="button"
+      <motion.div
+        role="button"
+        tabIndex={0}
         onClick={handleOpen}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleOpen();
+          }
+        }}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         className={cn(
-          "rounded-3xl bg-neutral-900 border border-white/10 overflow-hidden flex flex-col items-start justify-start relative z-10 shrink-0 text-left",
+          "rounded-3xl bg-neutral-900 border border-white/10 overflow-hidden flex flex-col items-start justify-start relative z-10 shrink-0 text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400/60",
           SIZE_CLASSES[size],
         )}
       >
@@ -341,7 +348,7 @@ export function Card({ card, index, size = "md", onClick }: CardProps) {
             <div className="absolute inset-0 bg-linear-to-br from-zinc-800 to-zinc-900" />
           )}
         </div>
-      </motion.button>
+      </motion.div>
     </>
   );
 }

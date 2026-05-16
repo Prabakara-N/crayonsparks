@@ -9,12 +9,19 @@ import {
   STORY_RENDER_CHILD_SAFETY_RULE,
   STORY_RENDER_INTERIOR_NO_ATTRIBUTION_RULE,
 } from "./story-quality";
+import {
+  COVER_STYLE_DIRECTIVES,
+  COVER_BORDER_DIRECTIVES,
+} from "./cover";
+import type { CoverStyle, CoverBorder } from "./types";
 
 interface TheEndPromptInput {
   bookTitle: string;
   message: string;
   paletteLine?: string;
   storyMood?: string;
+  coverStyle?: CoverStyle;
+  coverBorder?: CoverBorder;
 }
 
 export const THE_END_PROMPT_TEMPLATE = ({
@@ -22,11 +29,16 @@ export const THE_END_PROMPT_TEMPLATE = ({
   message,
   paletteLine,
   storyMood,
+  coverStyle = "illustrated",
+  coverBorder = "bleed",
 }: TheEndPromptInput): string => {
+  const styleDirective = COVER_STYLE_DIRECTIVES[coverStyle];
+  const borderDirective = COVER_BORDER_DIRECTIVES[coverBorder];
   return [
-    NO_AI_BORDER_RULE,
-    "FINAL 'The End' page for a children's full-color picture book. Portrait 2:3 aspect ratio, FULL-BLEED FULL-COLOR illustration. CRITICAL: This is a COLOR page — NOT black-and-white line art, NOT a coloring book page. Every element is painted in vibrant color with rich filled shapes. If the rendered output is monochrome / line-art / uncolored, the render is WRONG.",
-    "Style: warm, polished children's picture-book art that visually matches the rest of this book's interior pages — soft directional lighting, friendly painterly shading, vibrant saturated palette, smooth flat fills. NO black-and-white outlines, NO crayon-ready empty interiors.",
+    coverBorder === "bleed" ? NO_AI_BORDER_RULE : "",
+    "FINAL 'The End' page for a children's full-color picture book. Portrait 2:3 aspect ratio, FULL-COLOR illustration. CRITICAL: This is a COLOR page — NOT black-and-white line art, NOT a coloring book page. Every element is painted in vibrant color with rich filled shapes. If the rendered output is monochrome / line-art / uncolored, the render is WRONG.",
+    `Style — MUST match the rest of this book's cover and interior pages: ${styleDirective}`,
+    `Border treatment — MUST match the book's cover border choice: ${borderDirective}`,
     paletteLine ? `Palette anchor: ${paletteLine}.` : "",
     storyMood
       ? `Story mood: ${storyMood}. The lettering, color choices, and decorative flourishes on this closing page should match this mood (cozy bedtime story → soft pastel sunset and rounded serif lettering; bold adventure → energetic warm palette and chunky display lettering; calm fable → muted woodland palette and elegant hand-lettering; magical fantasy → starry palette and whimsical lettering).`

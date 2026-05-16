@@ -106,6 +106,8 @@ export async function POST(req: Request) {
       message,
       paletteLine: body.theEndPaletteLine?.trim() || undefined,
       storyMood,
+      coverStyle: body.coverStyle,
+      coverBorder: body.coverBorder,
     });
     aspectRatio = "2:3";
   } else if (mode === "back-cover") {
