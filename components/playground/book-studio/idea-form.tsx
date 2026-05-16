@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, BookPlus, Lightbulb, XCircle } from "lucide-react";
+import {
+  BookOpen,
+  BookPlus,
+  ClipboardList,
+  Lightbulb,
+  XCircle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ReferenceImageField } from "@/components/ui/reference-image-field";
 import { IdeaSuggestionsPanel } from "@/components/playground/idea-suggestions-panel";
@@ -49,6 +55,10 @@ export function IdeaForm({
   dialogueStyle,
   setDialogueStyle,
   onSwitchToChat,
+  planReady,
+  planTitle,
+  planPageCount,
+  onViewPlan,
 }: {
   idea: string;
   setIdea: (v: string) => void;
@@ -74,6 +84,10 @@ export function IdeaForm({
   dialogueStyle: DialogueStyle;
   setDialogueStyle: (v: DialogueStyle) => void;
   onSwitchToChat?: (idea: string, mode: "qa" | "story") => void;
+  planReady?: boolean;
+  planTitle?: string;
+  planPageCount?: number;
+  onViewPlan?: () => void;
 }) {
   const [showIdeas, setShowIdeas] = useState(false);
   const isStory = bookKind === "story";
@@ -94,8 +108,38 @@ export function IdeaForm({
     return () => cancelAnimationFrame(id);
   }, [showIdeas]);
 
+  const showPlanReadyBanner = planReady && !!onViewPlan;
+
   return (
     <div className="rounded-3xl p-6 md:p-8 bg-zinc-900/60 backdrop-blur-xl border border-white/10 space-y-6">
+      {showPlanReadyBanner && (
+        <button
+          type="button"
+          onClick={onViewPlan}
+          className="w-full text-left flex items-center gap-3 rounded-2xl border border-violet-500/40 bg-linear-to-r from-violet-500/15 to-cyan-400/10 px-4 py-3 hover:from-violet-500/25 hover:to-cyan-400/15 transition-colors group"
+        >
+          <span className="w-9 h-9 rounded-full bg-violet-500/30 flex items-center justify-center shrink-0">
+            <ClipboardList className="w-4 h-4 text-violet-100" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] font-semibold uppercase tracking-wider text-violet-200">
+              Plan ready
+              {typeof planPageCount === "number" && (
+                <span className="opacity-70">
+                  {" "}
+                  · {planPageCount} {planPageCount === 1 ? "page" : "pages"}
+                </span>
+              )}
+            </span>
+            <span className="block text-sm font-semibold text-white truncate">
+              {planTitle ?? "Your book"}
+            </span>
+          </span>
+          <span className="text-[12px] font-semibold text-violet-100 inline-flex items-center gap-1 shrink-0 px-3 py-1.5 rounded-full bg-white/10 group-hover:bg-white/15 border border-white/15">
+            View plan
+          </span>
+        </button>
+      )}
       {/* Book-kind toggle — coloring vs story. Story redirects to Sparky AI
           chat because story books need multi-turn planning (characters,
           palette, dialogue) that this one-shot form can't capture cleanly. */}

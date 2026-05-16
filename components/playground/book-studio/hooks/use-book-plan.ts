@@ -57,7 +57,7 @@ export function useBookPlan({
   const [planError, setPlanError] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan | null>(initialPlan ?? null);
 
-  const runPlan = useCallback(async () => {
+  const runPlan = useCallback(async (regenerationHint?: unknown) => {
     const trimmed = idea.trim();
     if (trimmed.length < 10) {
       setPlanError(
@@ -67,6 +67,10 @@ export function useBookPlan({
       );
       return;
     }
+    const hint =
+      typeof regenerationHint === "string" && regenerationHint.trim()
+        ? regenerationHint.trim()
+        : undefined;
     setPlanError(null);
     setPlanning(true);
     setPhase("planning");
@@ -83,8 +87,9 @@ export function useBookPlan({
           storyType: storyType ?? undefined,
           characterNames: storyCharacterNames.trim() || undefined,
           dialogueStyle,
+          regenerationHint: hint,
         }
-        : { idea: trimmed, pageCount, age };
+        : { idea: trimmed, pageCount, age, regenerationHint: hint };
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

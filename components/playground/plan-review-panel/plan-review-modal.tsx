@@ -10,6 +10,8 @@ import {
   X,
   Check,
   RotateCcw,
+  RefreshCw,
+  Trash2,
 } from "lucide-react";
 import type { PlanReviewData } from "./types";
 import { EditableField } from "./editable-field";
@@ -21,7 +23,58 @@ interface PlanReviewModalProps {
   data: PlanReviewData;
   modeNotice?: string;
   onSave?: (next: PlanReviewData) => void;
+  onApprove?: () => void;
+  approveLabel?: string;
+  onRegenerate?: (hint?: string) => void;
+  onStartOver?: () => void;
+  regenerateChipKind?: "story" | "coloring";
 }
+
+const STORY_REGENERATE_CHIPS: ReadonlyArray<{
+  label: string;
+  phrase: string;
+}> = [
+  { label: "Different characters", phrase: "use different characters" },
+  { label: "Different setting", phrase: "set the story in a different place" },
+  { label: "More humor", phrase: "make it funnier with light, kid-safe gags" },
+  { label: "Calmer tone", phrase: "use a calmer, gentler pacing" },
+  { label: "Shorter scenes", phrase: "make each scene shorter and punchier" },
+  { label: "More dialogue", phrase: "use more speech bubbles per page" },
+  { label: "Less dialogue", phrase: "use less dialogue, lean on narration" },
+  {
+    label: "Different protagonist",
+    phrase: "use a different protagonist species",
+  },
+];
+
+const COLORING_REGENERATE_CHIPS: ReadonlyArray<{
+  label: string;
+  phrase: string;
+}> = [
+  { label: "Different theme", phrase: "use a different theme/topic" },
+  {
+    label: "Different subjects",
+    phrase: "use different per-page subjects",
+  },
+  {
+    label: "Simpler pages",
+    phrase: "make the page designs simpler with fewer elements",
+  },
+  {
+    label: "More detail",
+    phrase: "add more detail and supporting elements per page",
+  },
+  {
+    label: "More variety",
+    phrase: "use more variety across the pages — different sub-locations and props",
+  },
+  {
+    label: "Different scene",
+    phrase: "set the pages in a different world/scene",
+  },
+  { label: "Cuter style", phrase: "make the style cuter and friendlier" },
+  { label: "Bolder outlines", phrase: "use bolder, thicker outlines" },
+];
 
 export function PlanReviewModal({
   open,
@@ -29,18 +82,33 @@ export function PlanReviewModal({
   data,
   modeNotice,
   onSave,
+  onApprove,
+  approveLabel = "Looks good — start generating",
+  onRegenerate,
+  onStartOver,
+  regenerateChipKind = "story",
 }: PlanReviewModalProps) {
+  const regenerateChips =
+    regenerateChipKind === "coloring"
+      ? COLORING_REGENERATE_CHIPS
+      : STORY_REGENERATE_CHIPS;
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   // Editable working copy reset from props on open; edits stay local until Save.
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<PlanReviewData>(data);
+  const [regenerateMode, setRegenerateMode] = useState(false);
+  const [activeChipPhrases, setActiveChipPhrases] = useState<string[]>([]);
+  const [regenerateText, setRegenerateText] = useState("");
 
   useEffect(() => {
     if (open) {
       setDraft(data);
       setEditing(false);
+      setRegenerateMode(false);
+      setActiveChipPhrases([]);
+      setRegenerateText("");
     }
   }, [open, data]);
 
@@ -53,12 +121,16 @@ export function PlanReviewModal({
           setDraft(data);
           return;
         }
+        if (regenerateMode) {
+          setRegenerateMode(false);
+          return;
+        }
         onClose();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose, editing, data]);
+  }, [open, onClose, editing, regenerateMode, data]);
 
   if (!mounted) return null;
 
@@ -86,6 +158,23 @@ export function PlanReviewModal({
   function handleCancel() {
     setDraft(data);
     setEditing(false);
+  }
+  function toggleChip(phrase: string) {
+    setActiveChipPhrases((prev) =>
+      prev.includes(phrase)
+        ? prev.filter((p) => p !== phrase)
+        : [...prev, phrase],
+    );
+  }
+  function buildRegenerateHint(): string {
+    const parts = [...activeChipPhrases];
+    const typed = regenerateText.trim();
+    if (typed) parts.push(typed);
+    return parts.join("; ");
+  }
+  function submitRegenerate() {
+    const hint = buildRegenerateHint();
+    onRegenerate?.(hint || undefined);
   }
 
   return createPortal(
@@ -194,6 +283,63 @@ export function PlanReviewModal({
               </div>
             </header>
 
+            {regenerateMode ? (
+              <div className="overflow-y-auto px-6 py-5 space-y-4 text-sm">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-violet-300 inline-flex items-center gap-1.5">
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Tweak before regenerating
+                  </p>
+                  <h3 className="mt-1 text-lg font-bold text-white">
+                    What should be different?
+                  </h3>
+                  <p className="mt-1 text-[12px] text-neutral-400 leading-relaxed">
+                    Pick suggestions, type your own steer, or both. Sparky
+                    re-plans your book using the same brief plus your tweaks.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {regenerateChips.map((chip) => {
+                    const active = activeChipPhrases.includes(chip.phrase);
+                    return (
+                      <button
+                        key={chip.phrase}
+                        type="button"
+                        onClick={() => toggleChip(chip.phrase)}
+                        className={`text-[12px] px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                          active
+                            ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white border-transparent"
+                            : "bg-white/5 border-white/10 text-neutral-300 hover:border-violet-500/40 hover:text-white"
+                        }`}
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="regenerate-text"
+                    className="block text-[12px] font-semibold text-neutral-200 mb-1.5"
+                  >
+                    Or describe the change yourself
+                  </label>
+                  <textarea
+                    id="regenerate-text"
+                    value={regenerateText}
+                    onChange={(e) => setRegenerateText(e.target.value)}
+                    rows={3}
+                    placeholder="e.g. make the protagonist a girl named Maya who solves a puzzle in a library"
+                    className="w-full bg-black/30 border border-white/10 focus:border-violet-400 focus:outline-none rounded-xl px-3 py-2 text-neutral-100 text-[13px] leading-relaxed resize-y"
+                  />
+                  <p className="mt-1.5 text-[11px] text-neutral-500">
+                    Skip both to roll a fresh variation with the same brief.
+                  </p>
+                </div>
+              </div>
+            ) : (
             <div className="overflow-y-auto px-6 py-5 space-y-5 text-sm">
               <EditableField
                 label="Description"
@@ -221,6 +367,17 @@ export function PlanReviewModal({
                 onChange={(v) => patchDraft({ scene: v })}
                 placeholder="World/setting that every interior page lives in."
               />
+
+              {(draft.theEndMessage || (editing && canEdit)) && (
+                <EditableField
+                  label="Closing line (The End page)"
+                  value={draft.theEndMessage}
+                  editing={editing && canEdit}
+                  multiline
+                  onChange={(v) => patchDraft({ theEndMessage: v })}
+                  placeholder="One short kid-facing line the main characters say on the final page."
+                />
+              )}
 
               {draft.characters && draft.characters.length > 0 && (
                 <PlanSection label={`Main characters (${draft.characters.length})`}>
@@ -314,19 +471,69 @@ export function PlanReviewModal({
                 </div>
               </PlanSection>
             </div>
+            )}
 
-            <footer className="px-6 py-3 border-t border-white/10 text-[11px] text-neutral-500 flex items-center justify-between gap-3">
-              <span>
-                {editing
-                  ? "Edits apply when you click Save. Future page generations use the saved prompts."
-                  : "Press"}{" "}
-                {!editing && (
-                  <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-[10px] font-mono">
-                    Esc
-                  </kbd>
-                )}{" "}
-                {!editing && "to close"}
-              </span>
+            <footer className="px-6 py-3 border-t border-white/10 text-[11px] text-neutral-500 flex flex-wrap items-center justify-between gap-3">
+              {regenerateMode ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setRegenerateMode(false)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Back to plan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitRegenerate}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow-md shadow-violet-500/30 hover:opacity-95 transition-opacity"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Regenerate now
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {!editing && onStartOver && (
+                      <button
+                        type="button"
+                        onClick={onStartOver}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium bg-white/5 hover:bg-red-500/15 hover:text-red-200 border border-white/10 hover:border-red-500/30 text-neutral-300 transition-colors"
+                        title="Discard this plan and reset the form"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Start over
+                      </button>
+                    )}
+                    {!editing && onRegenerate && (
+                      <button
+                        type="button"
+                        onClick={() => setRegenerateMode(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold bg-violet-500/15 hover:bg-violet-500/25 border border-violet-500/40 text-violet-100 transition-colors"
+                        title="Re-plan with optional tweaks"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Regenerate plan
+                      </button>
+                    )}
+                  </div>
+                  {onApprove && !editing && (
+                    <button
+                      type="button"
+                      onClick={onApprove}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow-md shadow-violet-500/30 hover:opacity-95 transition-opacity"
+                    >
+                      <Check className="w-4 h-4" />
+                      {approveLabel}
+                    </button>
+                  )}
+                  {editing && (
+                    <span>Edits apply when you click Save.</span>
+                  )}
+                </>
+              )}
             </footer>
           </motion.div>
         </motion.div>

@@ -38,6 +38,8 @@ export {
 
 export { BELONGS_TO_PROMPT_TEMPLATE } from "./belongs-to";
 
+export { THE_END_PROMPT_TEMPLATE } from "./the-end";
+
 export {
   REFERENCE_LED_PROMPT_TEMPLATE,
   STYLE_REFERENCE_PROMPT,

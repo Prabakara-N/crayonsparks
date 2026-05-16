@@ -53,6 +53,7 @@ export interface StoryBookPlanInput {
   storyType?: StoryType;
   characterNames?: string;
   dialogueStyle?: DialogueStyle;
+  regenerationHint?: string;
 }
 
 const dialogueSchema = z.object({
@@ -132,6 +133,13 @@ const PLAN_SCHEMA = z.object({
     .describe(
       "Parent-facing one-line tagline rendered VERBATIM on the back cover (10-18 words, hard cap 18). Calm, evocative, like a Penguin Classics back. Reference one concrete noun from the story. Never include character descriptor parentheticals like '(small)' or '(stripey)' — write it as a clean human-readable sentence.",
     ),
+  theEndMessage: z
+    .string()
+    .min(5)
+    .max(120)
+    .describe(
+      "ONE short kid-facing closing line (6-14 words, hard cap 14) said BY the main characters to the reader on the final 'The End' page. Tuned to THIS story's arc and moral. Warm, calm, direct address to kids. NO descriptor parentheticals, NO author signatures, NO meta references to the book. Just a single sentence ending with terminal punctuation.",
+    ),
   bottomStripPhrases: z.array(z.string().min(3).max(28)).length(3),
   sidePlaqueLines: z.array(z.string().min(3).max(32)).length(3),
   coverBadgeStyle: z.string().max(200).nullable(),
@@ -156,6 +164,7 @@ export interface StoryBookPlan {
   coverScene: string;
   dialogueStyle: DialogueStyle;
   backCoverTagline: string;
+  theEndMessage: string;
   bottomStripPhrases: string[];
   sidePlaqueLines: string[];
   coverBadgeStyle?: string;
@@ -226,11 +235,15 @@ function buildUserPrompt(input: StoryBookPlanInput): string {
     : `The user did not specify character names. Invent 1-3 short, friendly, kid-safe names that fit the story (e.g. "Pip", "Daisy", "Miss Honey"). For a known fable, use the canonical character names if the fable has them (Aesop's "Tortoise" and "Hare", Grimm's named protagonists, etc.). Avoid copyrighted character names.`;
   const dialogueStyle = input.dialogueStyle ?? DEFAULT_DIALOGUE_STYLE;
   const dialogueStyleGuidance = `DIALOGUE STYLE — user picked "${dialogueStyle}". ${DIALOGUE_STYLE_TARGET[dialogueStyle]}`;
+  const hint = input.regenerationHint?.trim();
+  const regenSection = hint
+    ? `\nUSER REGENERATION TWEAK: ${hint}\nThis is a RE-PLAN of the same brief. Treat the tweak above as a hard constraint that OVERRIDES any conflicting default — change protagonists, settings, tone, plot beats, or dialogue density as the tweak demands. Do not keep prior characters, settings, or motifs that conflict with the tweak. Produce a noticeably different plan.\n`
+    : "";
 
   return `${headline}
 
 USER'S STORY IDEA: "${input.idea}"
-
+${regenSection}
 ${typeGuidance}
 
 ${dialogueStyleGuidance}
@@ -300,6 +313,7 @@ OUTPUT SHAPE — strict
 - "scene": shared backdrop / world for the whole book (2-3 elements max).
 - "coverScene": vivid cover description showing the locked characters together.
 - "backCoverTagline": ONE clean parent-facing tagline (10-18 words, hard cap 18) that gets rendered verbatim on the back cover. Calm, elegant, references one concrete noun from the story. Penguin-Classics back-cover energy. NEVER include character descriptor parentheticals like "(small)", "(with stripes)", or restate locked-character traits — this string is human-readable prose, NOT a re-statement of the characters list. Avoid clichés ("hours of fun", "splashing colors"). Don't claim "hand-drawn" / "hand-illustrated" / "handmade".
+- "theEndMessage": ONE short kid-facing closing line (6-14 words, hard cap 14) said BY the main characters to the reader on the final "The End" page. Tuned to THIS book's arc and emotional payoff — if the moral is courage, the line nudges courage; if it's bedtime, the line wishes sweet dreams; if it's friendship, the line celebrates friends. Warm, calm, direct address to the child reader ("you", "we'll see you", "remember"). NO descriptor parentheticals, NO author signatures, NO meta references to "this book" or "the end" or "thanks for reading" generics. End with terminal punctuation (period, exclamation, or question mark).
 - "bottomStripPhrases": EXACTLY 3 short ALL-CAPS phrases (12-22 chars each) tailored to THIS story.
 - "sidePlaqueLines": EXACTLY 3 short ALL-CAPS lines (6-22 chars each).
 - "coverBadgeStyle": ONE sentence describing the visual design language of the cover overlays.
@@ -343,6 +357,7 @@ export async function planStoryBook(
     coverScene: raw.coverScene,
     dialogueStyle: input.dialogueStyle ?? DEFAULT_DIALOGUE_STYLE,
     backCoverTagline: raw.backCoverTagline,
+    theEndMessage: raw.theEndMessage,
     bottomStripPhrases: raw.bottomStripPhrases,
     sidePlaqueLines: raw.sidePlaqueLines,
     coverBadgeStyle: raw.coverBadgeStyle ?? undefined,

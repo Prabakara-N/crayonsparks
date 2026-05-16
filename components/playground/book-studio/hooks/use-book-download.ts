@@ -16,6 +16,7 @@ interface UseBookDownloadArgs {
   backCover: CoverSlice;
   belongsTo: CoverSlice;
   belongsToStyle: "bw" | "color";
+  theEndPage?: CoverSlice;
   mode: "qa" | "story";
 }
 
@@ -26,6 +27,7 @@ export function useBookDownload({
   backCover,
   belongsTo,
   belongsToStyle,
+  theEndPage,
   mode,
 }: UseBookDownloadArgs) {
   const dialog = useDialog();
@@ -56,6 +58,15 @@ export function useBookDownload({
           base64: true,
         });
       }
+      if (
+        mode === "story" &&
+        theEndPage?.status === "done" &&
+        theEndPage.dataUrl
+      ) {
+        zip.file("zy_the_end.png", theEndPage.dataUrl.split(",")[1], {
+          base64: true,
+        });
+      }
       if (backCover.status === "done" && backCover.dataUrl) {
         zip.file("zz_back_cover.png", backCover.dataUrl.split(",")[1], {
           base64: true,
@@ -76,7 +87,7 @@ export function useBookDownload({
     } finally {
       setPdfBuilding(false);
     }
-  }, [items, cover, backCover, belongsTo, mode, plan]);
+  }, [items, cover, backCover, belongsTo, theEndPage, mode, plan]);
 
   const downloadPdf = useCallback(async () => {
     const done = items.filter((i) => i.status === "done" && i.dataUrl);
@@ -107,6 +118,13 @@ export function useBookDownload({
           name: d.name,
           dataUrl: d.dataUrl,
         }));
+        if (theEndPage?.status === "done" && theEndPage.dataUrl) {
+          storyPages.push({
+            id: "the-end",
+            name: "The End",
+            dataUrl: theEndPage.dataUrl,
+          });
+        }
         const storyBaseBody = {
           title: plan?.coverTitle ?? plan?.title,
           cover: { dataUrl: cover.dataUrl },
@@ -368,7 +386,17 @@ export function useBookDownload({
     } finally {
       setPdfBuilding(false);
     }
-  }, [items, cover, backCover, belongsTo, belongsToStyle, plan, mode, dialog]);
+  }, [
+    items,
+    cover,
+    backCover,
+    belongsTo,
+    belongsToStyle,
+    theEndPage,
+    plan,
+    mode,
+    dialog,
+  ]);
 
   return {
     pdfBuilding,

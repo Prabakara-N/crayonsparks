@@ -24,7 +24,11 @@ import { DownloadMenu } from "@/components/playground/download-menu";
 import { KdpMetadataPanel } from "@/components/playground/kdp-metadata/kdp-metadata-main";
 import { CoverPair } from "@/components/playground/cover-pair";
 import { ModelPicker } from "@/components/playground/model-picker";
-import { PlanReviewButton } from "@/components/playground/plan-review-panel/plan-review-panel-main";
+import {
+  PlanReviewButton,
+  PlanReviewModal,
+  type PlanReviewData,
+} from "@/components/playground/plan-review-panel/plan-review-panel-main";
 import {
   COVER_MODEL_OPTIONS,
   INTERIOR_MODEL_OPTIONS,
@@ -67,6 +71,9 @@ export function BookStudio({
 } = {}) {
   const dialog = useDialog();
   const [phase, setPhase] = useState<Phase>(initialPlan ? "review" : "idea");
+  const [planConfirmed, setPlanConfirmed] = useState<boolean>(!!initialPlan);
+  const [planReviewOpen, setPlanReviewOpen] = useState(false);
+  const planReviewAutoOpenedRef = useRef<boolean>(!!initialPlan);
 
   useNavigationGuard(phase === "generating", () =>
     dialog.confirm({
@@ -102,6 +109,20 @@ export function BookStudio({
   useEffect(() => {
     prefetchBookFlip();
   }, []);
+
+  useEffect(() => {
+    if (
+      phase === "review" &&
+      !planConfirmed &&
+      !planReviewAutoOpenedRef.current
+    ) {
+      planReviewAutoOpenedRef.current = true;
+      setPlanReviewOpen(true);
+    }
+    if (phase === "idea") {
+      planReviewAutoOpenedRef.current = false;
+    }
+  }, [phase, planConfirmed]);
 
   const bookPlan = useBookPlan({
     initialPlan,
@@ -168,6 +189,7 @@ export function BookStudio({
     backCover: coverGen.backCover,
     belongsTo: coverGen.belongsTo,
     belongsToStyle: coverGen.belongsToStyle,
+    theEndPage: coverGen.theEndPage,
     mode: bookPlan.mode,
   });
 
@@ -187,7 +209,11 @@ export function BookStudio({
     pageGen.setItems([]);
     coverGen.setCover({ status: "pending" });
     coverGen.setBackCover({ status: "pending" });
+    coverGen.setTheEndPage({ status: "pending" });
     pageGen.setCurrentIndex(0);
+    setPlanConfirmed(false);
+    setPlanReviewOpen(false);
+    planReviewAutoOpenedRef.current = false;
     onReset?.();
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -206,34 +232,121 @@ export function BookStudio({
     coverGen.cover.status === "done" &&
     coverGen.backCover.status === "done";
 
-  if (phase === "idea" || phase === "planning") {
+  const inUnconfirmedReview =
+    phase === "review" && !planConfirmed && !!bookPlan.plan;
+  if (phase === "idea" || phase === "planning" || inUnconfirmedReview) {
     return (
-      <IdeaForm
-        idea={bookPlan.idea}
-        setIdea={bookPlan.setIdea}
-        pageCount={bookPlan.pageCount}
-        setPageCount={bookPlan.setPageCount}
-        age={bookPlan.age}
-        setAge={bookPlan.setAge}
-        detailLevel={bookPlan.detailLevel}
-        setDetailLevel={bookPlan.setDetailLevel}
-        aspectRatio={bookPlan.aspectRatio}
-        setAspectRatio={bookPlan.setAspectRatio}
-        reference={bookPlan.reference}
-        setReference={bookPlan.setReference}
-        planning={bookPlan.planning}
-        onPlan={bookPlan.runPlan}
-        error={bookPlan.planError}
-        bookKind={bookPlan.bookKind}
-        setBookKind={bookPlan.setBookKind}
-        storyType={bookPlan.storyType}
-        setStoryType={bookPlan.setStoryType}
-        storyCharacterNames={bookPlan.storyCharacterNames}
-        setStoryCharacterNames={bookPlan.setStoryCharacterNames}
-        dialogueStyle={bookPlan.dialogueStyle}
-        setDialogueStyle={bookPlan.setDialogueStyle}
-        onSwitchToChat={onSwitchToChat}
-      />
+      <>
+        <IdeaForm
+          idea={bookPlan.idea}
+          setIdea={bookPlan.setIdea}
+          pageCount={bookPlan.pageCount}
+          setPageCount={bookPlan.setPageCount}
+          age={bookPlan.age}
+          setAge={bookPlan.setAge}
+          detailLevel={bookPlan.detailLevel}
+          setDetailLevel={bookPlan.setDetailLevel}
+          aspectRatio={bookPlan.aspectRatio}
+          setAspectRatio={bookPlan.setAspectRatio}
+          reference={bookPlan.reference}
+          setReference={bookPlan.setReference}
+          planning={bookPlan.planning}
+          onPlan={bookPlan.runPlan}
+          error={bookPlan.planError}
+          bookKind={bookPlan.bookKind}
+          setBookKind={bookPlan.setBookKind}
+          storyType={bookPlan.storyType}
+          setStoryType={bookPlan.setStoryType}
+          storyCharacterNames={bookPlan.storyCharacterNames}
+          setStoryCharacterNames={bookPlan.setStoryCharacterNames}
+          dialogueStyle={bookPlan.dialogueStyle}
+          setDialogueStyle={bookPlan.setDialogueStyle}
+          onSwitchToChat={onSwitchToChat}
+          planReady={inUnconfirmedReview}
+          planTitle={
+            bookPlan.plan?.coverTitle ?? bookPlan.plan?.title ?? undefined
+          }
+          planPageCount={bookPlan.plan?.prompts.length}
+          onViewPlan={() => setPlanReviewOpen(true)}
+        />
+        {inUnconfirmedReview && bookPlan.plan && (
+          <PlanReviewModal
+            open={planReviewOpen}
+            onClose={() => setPlanReviewOpen(false)}
+            data={{
+              title: bookPlan.plan.title,
+              coverTitle: bookPlan.plan.coverTitle,
+              description: bookPlan.plan.description,
+              scene: bookPlan.plan.scene,
+              coverScene: bookPlan.plan.coverScene,
+              theEndMessage:
+                bookPlan.mode === "story"
+                  ? bookPlan.plan.theEndMessage
+                  : undefined,
+              characters:
+                bookPlan.mode === "story"
+                  ? bookPlan.plan.characters
+                  : undefined,
+              prompts: bookPlan.plan.prompts.map((p) => ({
+                name: p.name,
+                subject: p.subject,
+                dialogue: p.dialogue,
+                narration: p.narration,
+              })),
+            }}
+            modeNotice={
+              bookPlan.mode === "story"
+                ? "Story-book pages render with locked characters + palette + the dialogue / narration shown per page below."
+                : undefined
+            }
+            onSave={(next) => {
+              bookPlan.setPlan((prev) =>
+                prev
+                  ? {
+                    ...prev,
+                    title: next.title ?? prev.title,
+                    coverTitle: next.coverTitle ?? prev.coverTitle,
+                    description: next.description ?? prev.description,
+                    scene: next.scene ?? prev.scene,
+                    coverScene: next.coverScene ?? prev.coverScene,
+                    theEndMessage:
+                      next.theEndMessage ?? prev.theEndMessage,
+                    prompts: next.prompts.map((p, i) => ({
+                      ...prev.prompts[i],
+                      name: p.name,
+                      subject: p.subject,
+                    })),
+                  }
+                  : prev,
+              );
+              pageGen.setItems((prev) =>
+                prev.map((it, i) => {
+                  const np = next.prompts[i];
+                  if (!np) return it;
+                  return { ...it, name: np.name, subject: np.subject };
+                }),
+              );
+            }}
+            onApprove={() => {
+              setPlanConfirmed(true);
+              setPlanReviewOpen(false);
+            }}
+            approveLabel="Approve & start generating"
+            onRegenerate={(hint) => {
+              setPlanReviewOpen(false);
+              planReviewAutoOpenedRef.current = false;
+              void bookPlan.runPlan(hint);
+            }}
+            onStartOver={() => {
+              setPlanReviewOpen(false);
+              reset();
+            }}
+            regenerateChipKind={
+              bookPlan.mode === "story" ? "story" : "coloring"
+            }
+          />
+        )}
+      </>
     );
   }
 
@@ -242,6 +355,7 @@ export function BookStudio({
     cover,
     backCover,
     belongsTo,
+    theEndPage,
     coverStyle,
     coverBorder,
     coverModel,
@@ -259,6 +373,57 @@ export function BookStudio({
     handleBackgroundChange,
   } = refineState;
   const { pdfBuilding, downloadPdf, downloadZip } = download;
+
+  const planReviewData: PlanReviewData | null = plan
+    ? {
+      title: plan.title,
+      coverTitle: plan.coverTitle,
+      description: plan.description,
+      scene: plan.scene,
+      coverScene: plan.coverScene,
+      theEndMessage: mode === "story" ? plan.theEndMessage : undefined,
+      characters: mode === "story" ? plan.characters : undefined,
+      prompts: plan.prompts.map((p) => ({
+        name: p.name,
+        subject: p.subject,
+        dialogue: p.dialogue,
+        narration: p.narration,
+      })),
+    }
+    : null;
+
+  const planReviewModeNotice =
+    mode === "story"
+      ? "Story-book pages render with locked characters + palette + the dialogue / narration shown per page below."
+      : undefined;
+
+  const handlePlanReviewSave = (next: PlanReviewData) => {
+    bookPlan.setPlan((prev) =>
+      prev
+        ? {
+          ...prev,
+          title: next.title ?? prev.title,
+          coverTitle: next.coverTitle ?? prev.coverTitle,
+          description: next.description ?? prev.description,
+          scene: next.scene ?? prev.scene,
+          coverScene: next.coverScene ?? prev.coverScene,
+          theEndMessage: next.theEndMessage ?? prev.theEndMessage,
+          prompts: next.prompts.map((p, i) => ({
+            ...prev.prompts[i],
+            name: p.name,
+            subject: p.subject,
+          })),
+        }
+        : prev,
+    );
+    pageGen.setItems((prev) =>
+      prev.map((it, i) => {
+        const np = next.prompts[i];
+        if (!np) return it;
+        return { ...it, name: np.name, subject: np.subject };
+      }),
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -360,55 +525,15 @@ export function BookStudio({
             onChange={coverGen.setInteriorModel}
             title="Image model used for interior pages and the 'this book belongs to' page. 3.1 Flash is the workhorse default — keeps cost predictable on bulk runs."
           />
-          <div className="ml-auto">
-            <PlanReviewButton
-              data={{
-                title: plan.title,
-                coverTitle: plan.coverTitle,
-                description: plan.description,
-                scene: plan.scene,
-                coverScene: plan.coverScene,
-                characters: mode === "story" ? plan.characters : undefined,
-                prompts: plan.prompts.map((p) => ({
-                  name: p.name,
-                  subject: p.subject,
-                  dialogue: p.dialogue,
-                  narration: p.narration,
-                })),
-              }}
-              modeNotice={
-                mode === "story"
-                  ? "Story-book pages render with locked characters + palette + the dialogue / narration shown per page below."
-                  : undefined
-              }
-              onSave={(next) => {
-                bookPlan.setPlan((prev) =>
-                  prev
-                    ? {
-                      ...prev,
-                      title: next.title ?? prev.title,
-                      coverTitle: next.coverTitle ?? prev.coverTitle,
-                      description: next.description ?? prev.description,
-                      scene: next.scene ?? prev.scene,
-                      coverScene: next.coverScene ?? prev.coverScene,
-                      prompts: next.prompts.map((p, i) => ({
-                        ...prev.prompts[i],
-                        name: p.name,
-                        subject: p.subject,
-                      })),
-                    }
-                    : prev,
-                );
-                pageGen.setItems((prev) =>
-                  prev.map((it, i) => {
-                    const np = next.prompts[i];
-                    if (!np) return it;
-                    return { ...it, name: np.name, subject: np.subject };
-                  }),
-                );
-              }}
-            />
-          </div>
+          {planReviewData && (
+            <div className="ml-auto">
+              <PlanReviewButton
+                data={planReviewData}
+                modeNotice={planReviewModeNotice}
+                onSave={handlePlanReviewSave}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -533,6 +658,42 @@ export function BookStudio({
                     }),
                   quality: belongsTo.quality,
                 })
+          }
+          theEndPage={mode === "story" ? theEndPage : undefined}
+          theEndMessage={
+            mode === "story" ? plan?.theEndMessage : undefined
+          }
+          onRegenerateTheEnd={
+            mode === "story"
+              ? () => void coverGen.generateTheEndPage()
+              : undefined
+          }
+          onRefineTheEnd={
+            mode === "story"
+              ? (dataUrl) =>
+                openRefine({
+                  context: "story-page",
+                  targetId: "the-end",
+                  dataUrl,
+                  title: "The End",
+                  subtitle:
+                    "Final story page — the locked characters say one closing line. Refine to tweak the lettering, characters, scene, or message.",
+                  downloadName: "the_end.png",
+                  model: theEndPage.model ?? interiorModel,
+                  onRefined: (d) =>
+                    coverGen.setTheEndPage({
+                      status: "done",
+                      dataUrl: d,
+                      model: theEndPage.model ?? interiorModel,
+                    }),
+                  quality: theEndPage.quality,
+                })
+              : undefined
+          }
+          onViewTheEnd={
+            mode === "story"
+              ? (dataUrl) => openStoryPreview(dataUrl, "The End page")
+              : undefined
           }
         />
       )}
@@ -668,6 +829,13 @@ export function BookStudio({
                       : belongsTo.status === "done" && belongsTo.dataUrl
                         ? { imageUrl: belongsTo.dataUrl }
                         : undefined
+                  }
+                  theEndPage={
+                    mode === "story" &&
+                      theEndPage.status === "done" &&
+                      theEndPage.dataUrl
+                      ? { imageUrl: theEndPage.dataUrl }
+                      : undefined
                   }
                   pages={items.map((it, i) => ({
                     imageUrl: it.dataUrl,

@@ -12,6 +12,7 @@ export interface PlanReviewData {
   description?: string;
   scene?: string;
   coverScene?: string;
+  theEndMessage?: string;
   characters?: Array<{ name: string; descriptor: string }>;
   prompts: PlanReviewPagePrompt[];
 }

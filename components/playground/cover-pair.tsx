@@ -17,6 +17,11 @@ interface CoverPairProps {
   onBelongsToStyleChange?: (v: "bw" | "color") => void;
   onRegenerateBelongsTo?: () => void;
   onRefineBelongsTo?: (dataUrl: string) => void;
+  theEndPage?: CoverTileStatus;
+  theEndMessage?: string;
+  onRegenerateTheEnd?: () => void;
+  onRefineTheEnd?: (dataUrl: string) => void;
+  onViewTheEnd?: (dataUrl: string) => void;
   coverStyle: CoverStyle;
   coverBorder: CoverBorder;
   onCoverStyleChange: (s: CoverStyle) => void;
@@ -54,6 +59,11 @@ export function CoverPair({
   onBelongsToStyleChange,
   onRegenerateBelongsTo,
   onRefineBelongsTo,
+  theEndPage,
+  theEndMessage,
+  onRegenerateTheEnd,
+  onRefineTheEnd,
+  onViewTheEnd,
   coverStyle,
   coverBorder,
   onCoverStyleChange,
@@ -140,20 +150,14 @@ export function CoverPair({
         </div>
       </div>
 
-      {/* Body: covers group LEFT + belongs-to group RIGHT, separated by a
-          soft-fading vertical gradient that spans the FULL height (both
-          toggles and tiles). Each section has its own internal toggle
-          row + tile row stacked vertically, so the splitter cleanly
-          separates "product packaging" from "interior nameplate". */}
       <div
         className={cn(
           "grid gap-4 md:gap-6 items-start",
-          belongsTo
+          belongsTo || theEndPage
             ? "grid-cols-1 md:grid-cols-[2fr_1px_1fr]"
             : "grid-cols-1",
         )}
       >
-        {/* LEFT GROUP — cover toggles + back/front cover tiles */}
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto">
             <SegmentedToggle
@@ -180,7 +184,6 @@ export function CoverPair({
             <div className="w-full max-w-[180px] md:max-w-[200px] shrink">
               {leftTile}
             </div>
-
             <div className="flex flex-col items-center pt-10 md:pt-12 shrink-0">
               <button
                 type="button"
@@ -195,23 +198,49 @@ export function CoverPair({
                 swap
               </span>
             </div>
-
             <div className="w-full max-w-[180px] md:max-w-[200px] shrink">
               {rightTile}
             </div>
           </div>
         </div>
 
-        {/* SPLITTER — full-height soft-fading vertical gradient. Hidden on
-            mobile where the two groups stack vertically. */}
-        {belongsTo && (
+        {(belongsTo || theEndPage) && (
           <div
             className="hidden md:block self-stretch w-px bg-linear-to-b from-transparent via-violet-400/40 to-transparent"
             aria-hidden
           />
         )}
 
-        {/* RIGHT GROUP — belongs-to toggle + belongs-to tile */}
+        {theEndPage && (
+          <div className="space-y-4">
+            {theEndMessage && (
+              <div className="max-w-[240px] mx-auto px-3 py-2 rounded-xl bg-violet-500/10 border border-violet-500/20 text-[11px] text-violet-100 text-center leading-snug">
+                <span className="block uppercase tracking-wider text-[9px] font-semibold text-violet-300 mb-1">
+                  Closing line
+                </span>
+                &ldquo;{theEndMessage}&rdquo;
+              </div>
+            )}
+            <div className="flex items-start justify-center">
+              <div className="w-full max-w-[180px] md:max-w-[200px] shrink">
+                <CoverTile
+                  key="the-end"
+                  label="The End"
+                  state={theEndPage}
+                  onRegenerate={onRegenerateTheEnd ?? (() => undefined)}
+                  onRefine={onRefineTheEnd}
+                  onView={onViewTheEnd}
+                  disabled={!frontCoverReady}
+                  disabledReason="Generate the front cover first — the closing page locks the same characters."
+                  downloadName={`the_end_${bookSlug}.png`}
+                  aspect={coverAspect}
+                  refineState={refineStatus?.["the-end"]}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {belongsTo && (
           <div className="space-y-4">
             {belongsToStyle && onBelongsToStyleChange && (

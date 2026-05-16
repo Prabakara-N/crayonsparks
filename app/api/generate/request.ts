@@ -10,7 +10,7 @@ import type {
 import type { ImageModel } from "@/lib/constants";
 
 export interface Body {
-  mode?: "subject" | "raw" | "cover" | "back-cover" | "belongs-to";
+  mode?: "subject" | "raw" | "cover" | "back-cover" | "belongs-to" | "the-end";
   subject?: string;
   prompt?: string;
   age?: AgeRange;
@@ -34,6 +34,9 @@ export interface Body {
   backCoverTagline?: string;
   belongsToCharacters?: string;
   belongsToStyle?: BelongsToStyle;
+  theEndMessage?: string;
+  theEndPaletteLine?: string;
+  theEndStoryType?: string;
   characterLock?: string;
   variantSeed?: string;
   referenceDataUrl?: string;

@@ -51,6 +51,7 @@ interface BookFlipProps {
   cover?: { imageUrl?: string };
   backCover?: { imageUrl?: string };
   belongsTo?: { imageUrl?: string };
+  theEndPage?: { imageUrl?: string };
   pages: BookFlipPageInput[];
   width?: number;
   height?: number;
@@ -62,6 +63,7 @@ export function BookFlip({
   cover,
   backCover,
   belongsTo,
+  theEndPage,
   pages,
   width = 360,
   height = 480,
@@ -123,6 +125,20 @@ export function BookFlip({
         />,
       );
     });
+    if (theEndPage?.imageUrl) {
+      if (alternateBlankPages) {
+        out.push(<BookFlipPage key="the-end-verso" variant="blank" />);
+      }
+      out.push(
+        <BookFlipPage
+          key="the-end"
+          imageUrl={theEndPage.imageUrl}
+          variant="interior"
+          label="The End"
+          fullBleed={fullBleedInterior}
+        />,
+      );
+    }
     // Ensure even total length so the back cover lands alone on the right
     // (showCover requires an even page count). If we'd otherwise close on
     // an odd index, slot a blank verso just before the back cover.
@@ -142,6 +158,7 @@ export function BookFlip({
   }, [
     cover?.imageUrl,
     backCover?.imageUrl,
+    theEndPage?.imageUrl,
     belongsTo?.imageUrl,
     pages,
     alternateBlankPages,

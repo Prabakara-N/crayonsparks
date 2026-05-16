@@ -102,7 +102,7 @@ export const AGE_PRESETS: Record<AgeRange, { label: string; note: string }> = {
 // background never crowds, repeats, or upstages them.
 export const DETAIL_PRESETS: Record<Detail, string> = {
   simple:
-    "DETAIL LEVEL — LOW. Line work: thick clean black outlines, minimal internal detail, easy to color inside. Scene density: the main character is the star and occupies AT LEAST 60% of the page area; render only 1-2 small supporting background elements that genuinely belong to this subject's setting. Background is intentionally sparse; let the character breathe. NO repetitive props. NO crowded clusters of small items.",
+    "DETAIL LEVEL — LOW (STRICT HARD CAP). Line work: thick clean black outlines, minimal internal detail, easy to color inside. Scene density: the main character is the star and occupies AT LEAST 60% of the page area; render AT MOST 2 (TWO) small supporting background elements TOTAL — count them: foreground decorations, mid-ground props, far-background scenery, sky elements, and ground props ALL count toward this cap. Anything beyond 2 is a VIOLATION. Forbidden by default at this level (do NOT add unless one of them is your single chosen element): clouds, scattered rocks, scattered mushrooms, scattered flowers, scattered leaves, multiple trees (more than 1), grass-blade ground texture, decorative pathways, fences, signs, fallen logs, bushes, hills, stars, butterflies, birds. If the page subject names a setting like 'forest', 'garden', 'park', 'meadow', 'market', or 'woods', COMPRESS it to 1-2 symbolic representative elements (one tree, one cloud) — do NOT populate a full scene. Background is intentionally sparse; let the character breathe. NO repetitive props. NO crowded clusters of small items. Before submitting, count all supporting elements; if more than 2, REMOVE the extras.",
   detailed:
     "DETAIL LEVEL — MEDIUM. Line work: medium-weight clean black outlines, moderate internal detail (gentle texture, simple pattern hints), still clearly colorable. Scene density: a balanced scene around the character — 3-5 supporting background elements that genuinely belong to the subject's environment, well-spaced so each reads cleanly. The character clearly dominates the composition (occupies 50-60% of the page area). NO repetitive props (don't repeat the same item 3+ times). Each background element serves a purpose; remove anything that isn't earning its place.",
   intricate:
@@ -198,6 +198,9 @@ export const MASTER_PROMPT_USER = (
   }
 
   parts.push(agePreset.note);
+  parts.push(
+    "FINAL CHECK BEFORE SUBMITTING (re-read these and apply): (1) Scan the four page edges and corners — if ANY straight line forms a rectangle, outline, or printer's frame near the edges, ERASE IT. The page is borderless from your side. (2) Count the supporting background elements you drew. If the detail level is LOW, the count MUST be 2 or fewer total; remove the rest. If MEDIUM, 3-5. If HIGH, 7-10. If your count exceeds the cap, REMOVE the weakest elements until you are within range. Both checks happen BEFORE you finalize the image.",
+  );
   return parts.join(" ");
 };
 

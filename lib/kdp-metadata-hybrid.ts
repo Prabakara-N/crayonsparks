@@ -163,6 +163,32 @@ function buildBookBrief(input: KdpMetadataInput): string {
 
 const COMMON_AVOID = `Avoid: copyrighted characters (Disney, Marvel, Pokemon), trademarked phrases, made-up awards.`;
 
+const DESCRIPTION_STRUCTURE = `STRUCTURE — required template (write fresh prose tailored to THIS book; do not copy the wording of the labels' contents):
+Paragraph 1 (no emoji): One short sentence stating what the book is and who it's for, then 1-2 sentences describing the experience. 2-3 sentences total.
+
+✨ What's Included:
+• [feature 1 — concrete deliverable, ≤8 words]
+• [feature 2]
+• [feature 3]
+• [feature 4]
+• [feature 5 — optional]
+• [feature 6 — optional]
+
+🎯 Perfect for:
+• [use-case 1 — ≤6 words]
+• [use-case 2]
+• [use-case 3]
+• [use-case 4]
+• [use-case 5 — optional]
+
+One sentence about the buyer (parents / teachers / homeschoolers / age band).
+
+📥 Instant Download
+🖨 Print at home anytime
+❌ No physical product will be shipped
+
+RULES — each bullet on its own line, prefixed with "• " (bullet + space). Each section heading on its own line. Blank line BETWEEN sections. Use \\n for line breaks. Plain text only — no HTML, no markdown bold/italic, no asterisks for bullets, no [brackets] in the final output. Bullet items are short noun phrases, NOT full sentences.`;
+
 // ---------- KDP core ----------
 
 const KDP_SCHEMA = z.object({
@@ -247,8 +273,10 @@ ${buildBookBrief(input)}
 
 WRITE
 - title: ≤140 chars. Front-load 2-3 strong keywords (Etsy weights first ~40 chars heaviest). Include "Printable" or "Digital Download". No emoji, no ALL CAPS.
-- description: 250-500 words plain text (no HTML, no markdown). Open with what the buyer downloads ("Instant download: 1 PDF, ${input.pageCount} pages, print at home on US Letter or A4"). Use short paragraphs separated by blank lines. End with a printing/license line.
+- description: 250-500 words. Follow the STRUCTURE template below. Open paragraph 1 by naturally working in "instant download" and "${input.pageCount} pages" while describing the experience. The "What's Included" section must mention "Printable PDF" and "Instant digital download" as two of its bullets.
 - tags: EXACTLY 13 tags, each ≤20 chars. Multi-word phrases preferred ("kids coloring book" beats "kids"). Mix broad + niche. No commas, no quotation marks, no hashtags.
+
+${DESCRIPTION_STRUCTURE}
 
 ${COMMON_AVOID}`;
 
@@ -289,26 +317,19 @@ export async function generateGumroad(
   input: KdpMetadataInput,
 ): Promise<GumroadMetadata> {
   requireOpenAi();
-  const user = `Write a GUMROAD listing for this printable PDF book. Gumroad sells digital products; the description uses emoji section headers and short paragraphs, not HTML.
+  const user = `Write a GUMROAD listing for this printable PDF book. Gumroad sells digital products; the description uses emoji section headers and short bulleted lines, not HTML.
 
 ${buildBookBrief(input)}
 
 WRITE
 - name: short product name, ≤140 chars. Buyer-friendly headline, NOT a long SEO title.
 - summary: ONE sentence, ≤280 chars, benefit at a glance. EXAMPLE shape (illustrative only, do not literally use these words unless they match this book): "Fun and beginner-friendly ABC tracing workbook for toddlers and preschoolers featuring A–Z letter practice, handwriting activities, and printable learning pages in an instant PDF download."
-- description: multi-paragraph emoji-decorated description. Use this EXACT structure (illustrative example below — write fresh prose tailored to THIS book):
-    Paragraph 1: One-sentence opener describing what the book is and who it's for (2-3 sentences max). Plain prose, no emoji here.
-    Paragraph 2 starts with "✨ What's Included:" then a line break, then 4-6 short feature lines, each on its own line. NO bullet characters.
-    Paragraph 3 starts with "Perfect for:" then a line break, then 4-6 short usage lines, each on its own line. NO bullet characters.
-    Paragraph 4: 1-2 sentences about who benefits (parents, teachers, homeschoolers, age band).
-    Final paragraph: three short standalone lines:
-      "📥 Instant Download"
-      "🖨 Print at home anytime"
-      "❌ No physical product will be shipped"
-   Use \\n for paragraph breaks. Plain text only, no HTML, no markdown bold/italic.
+- description: emoji-decorated description following the STRUCTURE template below. The "What's Included" section must include "Printable PDF workbook" and "Instant digital download" as two of its bullets.
 - additionalInfo: 5-7 key/value rows shown as "Label — Value" lines. EXAMPLES of label types (illustrative only): "Pages", "Format", "Age Range", "Language", "Usage", "File Size", "Print Size". Pick 5-7 that fit THIS book. Values are short (≤80 chars), e.g. "${input.pageCount} Printable Pages", "PDF Digital Download".
 - tags: 5-10 short Gumroad tags (each ≤30 chars). Lowercase, multi-word allowed, no commas, no hashtag prefix.
 - category: ONE Gumroad top-level category, output verbatim from this list: "Education", "Drawing & Painting", "Comics & Graphic Novels", "Fiction Books", "Audio", "Self Improvement", "Crafts & DIY", "Design", "Other". Most coloring/picture books fit "Education" or "Drawing & Painting".
+
+${DESCRIPTION_STRUCTURE}
 
 ${COMMON_AVOID}`;
 
@@ -343,13 +364,23 @@ export async function generatePinterest(
   input: KdpMetadataInput,
 ): Promise<PinterestPin> {
   requireOpenAi();
-  const user = `Write a PINTEREST PIN for this printable PDF book.
+  const user = `Write a PINTEREST PIN for this printable PDF book. Pinterest descriptions hook fast, lean visual, and use light emoji + short bulleted lines.
 
 ${buildBookBrief(input)}
 
 WRITE
 - title: ≤100 chars, keyword-rich, clickable. Include 1-2 strong keywords plus a benefit ("Printable", "for Kids", "Instant Download").
-- description: ≤800 chars. 2-4 short paragraphs. First line is a hook, then describe what's inside, who it's for, end with a soft CTA ("Click to download"). End with 3-5 inline hashtags (#example) after a blank line.
+- description: ≤800 chars total. Follow this STRUCTURE exactly (write fresh prose tailored to THIS book):
+    Line 1: One-sentence hook describing what the book is and who it's for (no emoji).
+    Blank line.
+    "✨ Inside:" on its own line, then 3-4 short bullet lines each prefixed with "• " (≤6 words each).
+    Blank line.
+    "🎯 Perfect for:" on its own line, then 3 short bullet lines each prefixed with "• " (≤5 words each).
+    Blank line.
+    One short CTA line like "📥 Click to download — print today!"
+    Blank line.
+    3-5 inline hashtags space-separated (#kidsbook #printable etc.) on the FINAL line.
+  Use \\n for line breaks. Plain text only — no HTML, no markdown.
 
 ${COMMON_AVOID}`;
 
@@ -377,12 +408,22 @@ export async function generateInstagram(
   input: KdpMetadataInput,
 ): Promise<InstagramPost> {
   requireOpenAi();
-  const user = `Write an INSTAGRAM LAUNCH POST for this printable PDF book.
+  const user = `Write an INSTAGRAM LAUNCH POST for this printable PDF book. Instagram captions use emoji section dividers and short bulleted lines so the post is scannable as the reader swipes through.
 
 ${buildBookBrief(input)}
 
 WRITE
-- caption: 80-180 words. Hook in the first line (a question or vivid image), then 2-3 short paragraphs, then a soft CTA ("Tap the link in bio to grab a copy"). No hashtags in the caption itself.
+- caption: 110-200 words. Follow this STRUCTURE exactly (write fresh prose tailored to THIS book):
+    Line 1: A vivid hook — a question or sensory image (no emoji, no hashtags).
+    Blank line.
+    One short sentence (1-2 lines) on what the book is and who it's for.
+    Blank line.
+    "✨ What's Included:" on its own line, then 3-5 short bullet lines each prefixed with "• " (≤8 words each).
+    Blank line.
+    "🎯 Perfect for:" on its own line, then 3-4 short bullet lines each prefixed with "• " (≤6 words each).
+    Blank line.
+    Soft CTA line like "📥 Tap the link in bio to grab your copy."
+  Use \\n for line breaks. Plain text only — no HTML, no markdown, NO hashtags in the caption.
 - hashtags: EXACTLY 5 hashtags, each starting with #, no spaces, mixed reach (1 broad + 2 mid + 2 niche). No banned tags.
 
 ${COMMON_AVOID}`;

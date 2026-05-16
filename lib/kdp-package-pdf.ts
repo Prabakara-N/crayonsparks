@@ -46,6 +46,27 @@ function sanitizeForWinAnsi(text: string): string {
     .replace(/[^\x00-\xFF]/g, "?"); // anything else outside Latin-1 → ?
 }
 
+const EMOJI_FALLBACKS: Array<[RegExp, string]> = [
+  [/✨/g, "***"],
+  [/\u{1F3AF}/gu, ">>>"],
+  [/\u{1F4E5}/gu, "[DOWNLOAD]"],
+  [/\u{1F5A8}️?/gu, "[PRINT]"],
+  [/❌/g, "[X]"],
+  [/✅/g, "[OK]"],
+  [/\u{1F525}/gu, "[HOT]"],
+  [/⭐/g, "[STAR]"],
+  [/\u{1F4A1}/gu, "[TIP]"],
+  [/\u{1F4DA}/gu, "[BOOK]"],
+];
+
+function sanitizeListingBlock(text: string): string {
+  let out = text;
+  for (const [re, replacement] of EMOJI_FALLBACKS) {
+    out = out.replace(re, replacement);
+  }
+  return out;
+}
+
 export async function buildKdpPackagePdf(
   input: KdpPackagePdfInput,
 ): Promise<Uint8Array> {
@@ -94,27 +115,39 @@ export async function buildKdpPackagePdf(
       y -= LINE * 1.4;
       return;
     }
-    const safe = sanitizeForWinAnsi(text);
+    const withFallbacks = sanitizeListingBlock(text);
     const font = opts.mono ? helv : helv;
     const maxWidth = PAGE_W - MARGIN * 2;
-    const words = safe.split(/\s+/);
-    let line = "";
-    for (const word of words) {
-      const test = line ? `${line} ${word}` : word;
-      if (font.widthOfTextAtSize(test, 10) > maxWidth) {
+    const paragraphs = withFallbacks.split(/\r?\n/);
+    paragraphs.forEach((rawPara, paraIdx) => {
+      const para = sanitizeForWinAnsi(rawPara);
+      if (!para.trim()) {
+        ensureSpace(LINE);
+        y -= LINE * 0.6;
+        return;
+      }
+      const words = para.split(/\s+/);
+      let line = "";
+      for (const word of words) {
+        const test = line ? `${line} ${word}` : word;
+        if (font.widthOfTextAtSize(test, 10) > maxWidth) {
+          ensureSpace(LINE);
+          page.drawText(line, { x: MARGIN, y, size: 10, font, color: black });
+          y -= LINE;
+          line = word;
+        } else {
+          line = test;
+        }
+      }
+      if (line) {
         ensureSpace(LINE);
         page.drawText(line, { x: MARGIN, y, size: 10, font, color: black });
         y -= LINE;
-        line = word;
-      } else {
-        line = test;
       }
-    }
-    if (line) {
-      ensureSpace(LINE);
-      page.drawText(line, { x: MARGIN, y, size: 10, font, color: black });
-      y -= LINE;
-    }
+      if (paraIdx < paragraphs.length - 1) {
+        y -= LINE * 0.2;
+      }
+    });
     y -= LINE * 0.5;
   }
 

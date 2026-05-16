@@ -51,6 +51,9 @@ export function useCoverGeneration({
   const [cover, setCover] = useState<CoverState>({ status: "pending" });
   const [backCover, setBackCover] = useState<CoverState>({ status: "pending" });
   const [belongsTo, setBelongsTo] = useState<CoverState>({ status: "pending" });
+  const [theEndPage, setTheEndPage] = useState<CoverState>({
+    status: "pending",
+  });
 
   const [coverStyle, setCoverStyle] = useState<CoverStyle>("illustrated");
   const [coverBorder, setCoverBorder] = useState<CoverBorder>("bleed");
@@ -329,6 +332,56 @@ export function useCoverGeneration({
     abortRef,
   ]);
 
+  const generateTheEndPage = useCallback(async () => {
+    if (!plan) return;
+    const message =
+      plan.theEndMessage?.trim() ||
+      "Thanks for reading — see you in the next story!";
+    setTheEndPage({ status: "generating" });
+    try {
+      const paletteLine = plan.palette
+        ? `${plan.palette.name} — ${plan.palette.hexes.join(", ")}`
+        : undefined;
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: abortRef.current?.signal,
+        body: JSON.stringify({
+          mode: "the-end",
+          coverTitle: plan.coverTitle,
+          theEndMessage: message,
+          theEndPaletteLine: paletteLine,
+          theEndStoryType: plan.storyType,
+          model: interiorModel,
+          chainReferenceDataUrl: cover.dataUrl,
+          qualityGate: qualityCheck,
+        }),
+      });
+      const json = (await res.json()) as {
+        dataUrl?: string;
+        error?: string;
+        quality?: QualityScore | null;
+      };
+      if (!res.ok || !json.dataUrl)
+        throw new Error(json.error || "The End page failed");
+      setTheEndPage({
+        status: "done",
+        dataUrl: json.dataUrl,
+        quality: json.quality ?? null,
+        model: interiorModel,
+      });
+    } catch (e) {
+      if (isAbortError(e)) {
+        setTheEndPage({ status: "pending" });
+        return;
+      }
+      setTheEndPage({
+        status: "error",
+        error: e instanceof Error ? e.message : "The End page failed",
+      });
+    }
+  }, [plan, qualityCheck, cover.dataUrl, interiorModel, abortRef]);
+
   return {
     cover,
     setCover,
@@ -351,5 +404,8 @@ export function useCoverGeneration({
     generateCover,
     generateBackCover,
     generateBelongsToPage,
+    theEndPage,
+    setTheEndPage,
+    generateTheEndPage,
   };
 }

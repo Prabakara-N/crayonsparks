@@ -16,6 +16,7 @@ export interface BookPlanInput {
   idea: string;
   pageCount: number;
   age?: "toddlers" | "kids" | "tweens";
+  regenerationHint?: string;
 }
 
 export interface BookPlan {
@@ -35,7 +36,12 @@ function buildPrompt({
   idea,
   pageCount,
   age = "toddlers",
+  regenerationHint,
 }: BookPlanInput): string {
+  const hint = regenerationHint?.trim();
+  const regenSection = hint
+    ? `\n\nUSER REGENERATION TWEAK: ${hint}\nThis is a RE-PLAN of the same brief. Treat the tweak above as a hard constraint that OVERRIDES any conflicting default — change protagonists, settings, tone, structure, or pacing as the tweak demands. Do not keep prior characters, settings, or motifs that conflict with the tweak. Produce a noticeably different plan.\n`
+    : "";
   const ageLabel =
     age === "tweens"
       ? "tweens aged 10-14"
@@ -45,7 +51,7 @@ function buildPrompt({
 
   return `You are a professional planner for children's coloring books sold on Amazon KDP. The user wants to make a coloring book for ${ageLabel}.
 
-User's idea: "${idea}"
+User's idea: "${idea}"${regenSection}
 
 STEP 1 — DETECT STRUCTURE FROM THE USER'S IDEA
 Read the idea and decide which structure fits the book. Both produce a black-and-white coloring book; only the per-page structure differs.

@@ -21,11 +21,16 @@ export async function POST(req: Request) {
     );
   }
   const pageCount = Math.max(5, Math.min(50, Number(body.pageCount ?? 20)));
+  const regenerationHint =
+    typeof body.regenerationHint === "string" && body.regenerationHint.trim()
+      ? body.regenerationHint.trim().slice(0, 500)
+      : undefined;
   try {
     const plan = await planBook({
       idea,
       pageCount,
       age: body.age ?? "toddlers",
+      regenerationHint,
     });
     return NextResponse.json({ plan });
   } catch (e) {

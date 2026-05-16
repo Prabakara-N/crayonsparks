@@ -35,6 +35,7 @@ interface Body {
   storyType?: StoryType;
   characterNames?: string;
   dialogueStyle?: DialogueStyle;
+  regenerationHint?: string;
 }
 
 const ALLOWED_DIALOGUE_STYLES: ReadonlyArray<DialogueStyle> = [
@@ -98,6 +99,10 @@ export async function POST(req: Request) {
   )
     ? body.dialogueStyle
     : undefined;
+  const regenerationHint =
+    typeof body.regenerationHint === "string" && body.regenerationHint.trim()
+      ? body.regenerationHint.trim().slice(0, 500)
+      : undefined;
 
   try {
     const plan = await planStoryBook({
@@ -107,6 +112,7 @@ export async function POST(req: Request) {
       storyType,
       characterNames,
       dialogueStyle,
+      regenerationHint,
     });
     return NextResponse.json({ plan });
   } catch (e) {

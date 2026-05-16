@@ -14,6 +14,7 @@ import {
   COLOR_COVER_PROMPT_TEMPLATE,
   BACK_COVER_PROMPT_TEMPLATE,
   BELONGS_TO_PROMPT_TEMPLATE,
+  THE_END_PROMPT_TEMPLATE,
   CONSISTENCY_ANCHOR_PROMPT,
   findCategory,
 } from "@/lib/prompts";
@@ -77,6 +78,36 @@ export async function POST(req: Request) {
       characterLock: body.characterLock?.trim(),
     });
     aspectRatio = "3:4";
+  } else if (mode === "the-end") {
+    const title =
+      body.coverTitle?.trim() || category?.coverTitle || "Story Book";
+    const message = body.theEndMessage?.trim();
+    if (!message) {
+      return NextResponse.json(
+        { error: "The-end mode requires theEndMessage." },
+        { status: 400 },
+      );
+    }
+    const storyTypeMoodMap: Record<string, string> = {
+      bedtime: "cozy bedtime — calm sunset / starry pastel sky, soft rounded serif lettering, wind-down quiet mood",
+      fairytale: "classic fairytale — warm storybook palette, ornamental hand-painted serif lettering, wonder + happy-ending energy",
+      fantasy: "magical fantasy — starry / twilight palette with one glow accent, sparkly whimsical lettering",
+      adventure: "warm adventure — energetic sunset palette, chunky bold display lettering, hopeful triumph energy",
+      moral: "gentle moral fable — muted woodland palette, elegant hand-lettered serif, calm reflective mood",
+      mystery: "soft kid-friendly mystery — warm puzzle / clue palette, neat playful display lettering, satisfied solved-it energy",
+      comic: "funny comic — bright cartoon palette, bold cartoon block lettering with a playful tilt, smiling silly energy",
+      fiction: "warm everyday fiction — soft natural palette, friendly hand-lettered serif, cozy emotional close",
+      "non-fiction": "calm educational close — clean natural palette, neat readable serif lettering, satisfied learned-something energy",
+    };
+    const storyType = body.theEndStoryType?.trim().toLowerCase();
+    const storyMood = storyType ? storyTypeMoodMap[storyType] : undefined;
+    text = THE_END_PROMPT_TEMPLATE({
+      bookTitle: title,
+      message,
+      paletteLine: body.theEndPaletteLine?.trim() || undefined,
+      storyMood,
+    });
+    aspectRatio = "2:3";
   } else if (mode === "back-cover") {
     const title = body.coverTitle?.trim() || category?.coverTitle;
     const scene = body.coverScene?.trim() || category?.coverScene;
@@ -265,7 +296,10 @@ export async function POST(req: Request) {
     // cameos match the front-cover style) → cover default.
     // Everything else → interior default.
     const isCoverSurface =
-      mode === "cover" || mode === "back-cover" || mode === "belongs-to";
+      mode === "cover" ||
+      mode === "back-cover" ||
+      mode === "belongs-to" ||
+      mode === "the-end";
     const fallbackModel: ImageModel = isCoverSurface
       ? DEFAULT_COVER_MODEL
       : DEFAULT_INTERIOR_MODEL;
@@ -298,13 +332,16 @@ export async function POST(req: Request) {
         const isCover =
           mode === "cover" ||
           mode === "back-cover" ||
+          mode === "the-end" ||
           (mode === "belongs-to" && body.belongsToStyle === "color");
         const expected =
           mode === "belongs-to"
             ? `'This Book Belongs To' nameplate page with a decorative banner, a blank line for the child's name, and two corner character cameos drawn from: ${body.belongsToCharacters ?? "book characters"}`
-            : isCover
-              ? body.coverScene?.trim() || category?.coverScene || "book cover"
-              : body.subject?.trim() || "coloring page subject";
+            : mode === "the-end"
+              ? `Final 'The End' page with the locked main characters waving at the reader and a speech bubble containing: "${body.theEndMessage ?? ""}"`
+              : isCover
+                ? body.coverScene?.trim() || category?.coverScene || "book cover"
+                : body.subject?.trim() || "coloring page subject";
         quality = await rateColoringPage({
           imageDataUrl: dataUrl,
           expectedSubject: expected,

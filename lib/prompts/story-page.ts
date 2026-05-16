@@ -1,10 +1,15 @@
 import {
   ANATOMY_GUARDRAIL,
   ANATOMY_COUNT_RULE,
+  ANTHRO_FACE_GUARDRAIL,
   KID_SAFE_CONTENT_RULE,
   NO_REAL_BRAND_RULE,
   COMMON_ELEMENT_STYLE,
   SIGNATURE_ELEMENT_USAGE_RULE,
+  RECURRING_ENVIRONMENT_LOCK_RULE,
+  SCENE_LOCATION_LOCK_RULE,
+  BACKGROUND_CROWD_CONTINUITY_RULE,
+  OUTFIT_VIEW_ANGLE_RULE,
   AGE_BAND_PAGE_NOTE,
   AGE_BAND_LABEL_SINGULAR,
   AGE_BAND_RANGE,
@@ -76,7 +81,7 @@ const RELATIVE_SCALE_RULE =
   "Relative-scale lock — STRICT, applies whenever 2+ named characters share the page: the height and body-mass ratio between characters MUST follow the locked descriptors above. If a descriptor calls one character small / tiny / a chick / a duckling and another large / chubby / a bear / an adult, the small one is visibly SHORTER and SMALLER on the page — typically the small character's head reaches only the larger character's chest or hip, not their shoulders or face. Adult-to-child ratio is roughly 1.6-2x. Small-creature-to-large-creature ratio (duckling to panda, mouse to lion) is roughly 3-5x. Maintain the SAME ratio on every page so the protagonists feel consistent across the book — a duckling that is hip-high to the panda on page 6 must still be hip-high to the panda on page 10, never face-high.";
 
 const CHARACTER_FIDELITY_RULE =
-  "Character fidelity (load-bearing): redraw each character so they match the locked descriptors above EXACTLY — same species, body proportions, head shape, color, accessories, and distinguishing features. Do not invent new clothing, new accessories, new species traits, or new colors. Each character appears at most ONCE per page; never duplicate the same character. Only characters explicitly named in the scene description are drawn — no extra animals, no random side characters, no human onlookers unless the scene names them.";
+  "Character fidelity (load-bearing): redraw each character so they match the locked descriptors above EXACTLY — same species, body proportions, head shape, color, accessories, and distinguishing features. Do not invent new clothing, new accessories, new species traits, or new colors. Each character appears at most ONCE per page; never duplicate the same character ANYWHERE in the frame — foreground, midground, far background, inside a window view, inside a mirror, on a poster, on a wall sticker, in a picture frame in the room. If the locked cast has ONE rabbit, the entire frame has ONE rabbit total, no second rabbit hopping past the window, no rabbit on a TV screen, no rabbit stuffed toy on a shelf. Only characters explicitly named in this page's scene description are drawn — no extra animals, no random side characters, no human onlookers unless the scene explicitly names them. Background scenery is just scenery: trees, hills, buildings, sky — no anonymous creatures populating it.";
 
 // The MOST COMMON anatomy bug in story-book pages is an extra ARM
 // appearing when a character interacts with an object — stacking blocks,
@@ -125,7 +130,11 @@ export function buildStoryPageSystem(band: AgeBand = "toddlers"): string {
     STORY_RENDER_BEAT_HONESTY_RULE,
     POSE_INDEPENDENCE_RULE,
     ACCESSORY_LOCK_RULE,
+    OUTFIT_VIEW_ANGLE_RULE,
     RELATIVE_SCALE_RULE,
+    RECURRING_ENVIRONMENT_LOCK_RULE,
+    SCENE_LOCATION_LOCK_RULE,
+    BACKGROUND_CROWD_CONTINUITY_RULE,
     SPEECH_BUBBLE_RULE,
     SPEECH_BUBBLE_OWNERSHIP_RULE,
     STORY_RENDER_TEXT_ACCURACY_RULE,
@@ -136,6 +145,7 @@ export function buildStoryPageSystem(band: AgeBand = "toddlers"): string {
     KID_SAFE_CONTENT_RULE,
     COMMON_ELEMENT_STYLE,
     SIGNATURE_ELEMENT_USAGE_RULE,
+    ANTHRO_FACE_GUARDRAIL,
     ANATOMY_GUARDRAIL,
     ANATOMY_COUNT_RULE,
     ACTION_POSE_LIMB_CHECK,

@@ -78,6 +78,7 @@ export interface Plan {
   storyType?: StoryType;
   dialogueStyle?: DialogueStyle;
   backCoverTagline?: string;
+  theEndMessage?: string;
 }
 
 export type Phase =
