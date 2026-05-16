@@ -2,6 +2,7 @@ import "server-only";
 
 import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth, type DecodedIdToken } from "firebase-admin/auth";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
 function getAdminApp() {
   if (getApps().length) return getApp();
@@ -22,6 +23,21 @@ function getAdminApp() {
 export function getAdminAuth() {
   return getAuth(getAdminApp());
 }
+
+let cachedDb: Firestore | null = null;
+export function getAdminFirestore(): Firestore {
+  if (!cachedDb) cachedDb = getFirestore(getAdminApp());
+  return cachedDb;
+}
+
+/**
+ * Shared Admin Firestore instance. Import from here instead of calling
+ * getAdminFirestore() in every consumer:
+ *
+ *   import { db } from "@/lib/firebase/admin";
+ *   const snap = await db.collection("users").doc(uid).get();
+ */
+export const db: Firestore = getAdminFirestore();
 
 export async function verifyIdToken(idToken: string): Promise<DecodedIdToken> {
   return getAdminAuth().verifyIdToken(idToken);

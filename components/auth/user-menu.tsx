@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, Shield } from "lucide-react";
 import type { User } from "firebase/auth";
+import { orpc } from "@/lib/orpc/client";
 import { UserAvatar } from "./user-avatar";
 import { SignOutButton } from "./sign-out-button";
 
@@ -13,7 +14,23 @@ interface UserMenuProps {
 
 export function UserMenu({ user }: UserMenuProps) {
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    orpc.admin.overview
+      .stats()
+      .then(() => {
+        if (!cancelled) setIsAdmin(true);
+      })
+      .catch(() => {
+        // not admin — fine, hide the link
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user.uid]);
 
   useEffect(() => {
     if (!open) return;
@@ -75,6 +92,16 @@ export function UserMenu({ user }: UserMenuProps) {
               <LayoutDashboard className="w-4 h-4" />
               Account dashboard
             </Link>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-amber-200 hover:bg-amber-500/10 hover:text-amber-100"
+              >
+                <Shield className="w-4 h-4" />
+                Admin
+              </Link>
+            )}
           </div>
           <div className="border-t border-white/10 px-2 py-1.5">
             <SignOutButton

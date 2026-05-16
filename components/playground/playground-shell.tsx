@@ -342,7 +342,12 @@ export function PlaygroundShell() {
               </div>
               <button
                 type="button"
-                onClick={() => setSeededCategory(null)}
+                onClick={() => {
+                  setSeedPlan(null);
+                  setSeedReference(null);
+                  setSeedMode(null);
+                  setSeededCategory(null);
+                }}
                 className="text-xs text-neutral-400 hover:text-white px-2 py-1 rounded-md hover:bg-white/5 shrink-0"
                 aria-label="Dismiss"
               >

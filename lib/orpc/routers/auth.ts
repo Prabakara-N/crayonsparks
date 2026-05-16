@@ -2,16 +2,16 @@ import "server-only";
 
 import { getAdminAuth } from "@/lib/firebase/admin";
 import { ensureUserDocument } from "@/lib/firebase/users";
-import { base, requireAuth } from "../base";
+import { protectedProcedure } from "../base";
 
 export const authRouter = {
-  me: base.use(requireAuth).handler(async ({ context }) => {
+  me: protectedProcedure.handler(async ({ context }) => {
     return {
       userId: context.userId,
       email: context.email,
     };
   }),
-  ensureUser: base.use(requireAuth).handler(async ({ context }) => {
+  ensureUser: protectedProcedure.handler(async ({ context }) => {
     const userId = context.userId as string;
     const record = await getAdminAuth().getUser(userId);
     const profile = await ensureUserDocument({

@@ -1,35 +1,7 @@
 import "server-only";
 
-import {
-  getFirestore,
-  FieldValue,
-  type Firestore,
-  type Timestamp,
-} from "firebase-admin/firestore";
-import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
-
-function getAdminApp() {
-  if (getApps().length) return getApp();
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY;
-  if (!projectId || !clientEmail || !privateKeyRaw) {
-    throw new Error("Firebase Admin env vars missing.");
-  }
-  return initializeApp({
-    credential: cert({
-      projectId,
-      clientEmail,
-      privateKey: privateKeyRaw.replace(/\\n/g, "\n"),
-    }),
-  });
-}
-
-let cachedDb: Firestore | null = null;
-function db(): Firestore {
-  if (!cachedDb) cachedDb = getFirestore(getAdminApp());
-  return cachedDb;
-}
+import { FieldValue, type Timestamp } from "firebase-admin/firestore";
+import { db } from "./admin";
 
 export interface UserProfileSnapshot {
   uid: string;
@@ -54,7 +26,7 @@ interface EnsureUserInput {
 export async function ensureUserDocument(
   input: EnsureUserInput,
 ): Promise<UserProfileSnapshot> {
-  const ref = db().collection("users").doc(input.uid);
+  const ref = db.collection("users").doc(input.uid);
   const snap = await ref.get();
   const now = FieldValue.serverTimestamp();
 
