@@ -4,7 +4,30 @@ import { z } from "zod";
 import { ORPCError } from "@orpc/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "@/lib/firebase/admin";
+import { getReadUrl } from "@/lib/storage/sign-url";
 import { protectedProcedure } from "../base";
+
+type StoredVariant = { key?: string; url?: string; [k: string]: unknown };
+type StoredVariants = Record<string, StoredVariant | undefined>;
+
+/**
+ * Stored presigned URLs expire (1h+ TTL). On every read we regenerate
+ * the `url` for each variant from its permanent `key` so the browser
+ * always gets a fresh, valid URL.
+ */
+async function reSignVariants(
+  variants: StoredVariants | undefined,
+): Promise<StoredVariants | undefined> {
+  if (!variants || typeof variants !== "object") return variants;
+  const out: StoredVariants = { ...variants };
+  for (const size of ["thumb", "medium", "full"] as const) {
+    const v = variants[size];
+    if (v?.key) {
+      out[size] = { ...v, url: await getReadUrl(v.key) };
+    }
+  }
+  return out;
+}
 
 const VariantSchema = z.object({
   key: z.string().min(1),
@@ -145,22 +168,24 @@ export const booksRouter = {
       .limit(input.limit)
       .get();
 
-    const items = snap.docs.map((d) => {
-      const data = d.data();
-      const mode = (data.mode as "qa" | "story") ?? "qa";
-      return {
-        bookId: d.id,
-        title: (data.title as string) ?? "",
-        coverTitle: (data.coverTitle as string) ?? "",
-        mode,
-        kind: mode === "story" ? "story" : "coloring",
-        age: (data.age as string) ?? "toddlers",
-        pageCount: (data.pageCount as number) ?? 0,
-        coverThumbUrl:
-          (data.cover?.thumb?.url as string | undefined) ?? null,
-        createdAt: data.createdAt?.toMillis() ?? null,
-      };
-    });
+    const items = await Promise.all(
+      snap.docs.map(async (d) => {
+        const data = d.data();
+        const mode = (data.mode as "qa" | "story") ?? "qa";
+        const thumbKey = data.cover?.thumb?.key as string | undefined;
+        return {
+          bookId: d.id,
+          title: (data.title as string) ?? "",
+          coverTitle: (data.coverTitle as string) ?? "",
+          mode,
+          kind: mode === "story" ? "story" : "coloring",
+          age: (data.age as string) ?? "toddlers",
+          pageCount: (data.pageCount as number) ?? 0,
+          coverThumbUrl: thumbKey ? await getReadUrl(thumbKey) : null,
+          createdAt: data.createdAt?.toMillis() ?? null,
+        };
+      }),
+    );
     return { items };
   }),
 
@@ -179,9 +204,29 @@ export const booksRouter = {
       .collection("pages")
       .orderBy("index", "asc")
       .get();
+
+    const bookData = bookSnap.data() ?? {};
+    for (const field of ["cover", "backCover", "belongsTo", "theEndPage"]) {
+      if (bookData[field]) {
+        bookData[field] = await reSignVariants(
+          bookData[field] as StoredVariants,
+        );
+      }
+    }
+
+    const pages = await Promise.all(
+      pagesSnap.docs.map(async (d) => {
+        const data = d.data();
+        if (data.image) {
+          data.image = await reSignVariants(data.image as StoredVariants);
+        }
+        return { id: d.id, ...data };
+      }),
+    );
+
     return {
-      book: { bookId: input.bookId, ...bookSnap.data() },
-      pages: pagesSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+      book: { bookId: input.bookId, ...bookData },
+      pages,
     };
   }),
 

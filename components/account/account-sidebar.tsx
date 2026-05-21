@@ -32,7 +32,6 @@ export function AccountSidebar({ user, onNavigate }: AccountSidebarProps) {
           href="/account/books"
           icon={BookOpen}
           label="My Books"
-          badge="Soon"
           onClick={onNavigate}
         />
         <AccountSidebarLink

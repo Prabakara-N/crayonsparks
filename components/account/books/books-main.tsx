@@ -1,62 +1,122 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Search, Filter, Sparkles, Wand2 } from "lucide-react";
+import { BookOpen, Loader2, Search, Wand2 } from "lucide-react";
+import { useBooks } from "@/lib/hooks/use-books";
 import { PageHeader } from "../page-header";
-import { ComingSoonTag } from "../coming-soon-tag";
+import { BookCard, type SavedBookSummary } from "./book-card";
+
+type KindFilter = "all" | "coloring" | "story";
 
 export function BooksMain() {
+  const { list } = useBooks();
+  const [books, setBooks] = useState<SavedBookSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [kind, setKind] = useState<KindFilter>("all");
+
+  useEffect(() => {
+    list(50)
+      .then((res) => setBooks(res.items as SavedBookSummary[]))
+      .catch(() => setError("Couldn't load your library."));
+  }, [list]);
+
+  const filtered = useMemo(() => {
+    if (!books) return [];
+    const q = search.trim().toLowerCase();
+    return books.filter((b) => {
+      if (kind !== "all" && b.kind !== kind) return false;
+      if (!q) return true;
+      return (
+        b.coverTitle.toLowerCase().includes(q) ||
+        b.title.toLowerCase().includes(q)
+      );
+    });
+  }, [books, search, kind]);
+
   return (
     <div>
       <PageHeader
         title="My Books"
-        description="Every coloring book and story book you've generated, ready to download and republish."
-        actions={<ComingSoonTag />}
+        description="Every coloring book and story book you've saved, ready to re-download."
       />
 
-      <div className="flex flex-wrap items-center gap-2 mb-5">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-          <input
-            type="search"
-            placeholder="Search your books…"
-            disabled
-            className="w-full pl-9 pr-3 py-2 rounded-full bg-zinc-900/60 border border-white/10 text-sm text-white placeholder:text-neutral-500 disabled:opacity-60 focus:outline-none focus:border-violet-400/40"
-          />
+      {books !== null && books.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-5">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search your books…"
+              className="w-full pl-9 pr-3 py-2 rounded-full bg-zinc-900/60 border border-white/10 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:border-violet-400/40"
+            />
+          </div>
+          <div className="inline-flex p-1 rounded-full bg-zinc-900/60 border border-white/10">
+            {(["all", "coloring", "story"] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setKind(k)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-colors ${
+                  kind === k
+                    ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
         </div>
-        <button
-          type="button"
-          disabled
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-zinc-900/60 border border-white/10 text-sm text-neutral-300 disabled:opacity-60"
-        >
-          <Filter className="w-4 h-4" />
-          All types
-        </button>
-      </div>
+      )}
 
-      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-white/10 p-8 md:p-12 text-center">
-        <span className="inline-flex w-14 h-14 rounded-2xl bg-violet-500/15 border border-violet-500/30 items-center justify-center mb-4">
-          <BookOpen className="w-6 h-6 text-violet-200" />
-        </span>
-        <h3 className="font-display text-xl font-semibold text-white">
-          Your library is empty
-        </h3>
-        <p className="mt-2 text-sm text-neutral-400 max-w-md mx-auto leading-relaxed">
-          Once you generate your first book, it will land here with covers,
-          interior pages, KDP metadata, and one-click download bundles.
-        </p>
-        <Link
-          href="/playground"
-          className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow-md shadow-violet-500/30 hover:opacity-95 transition-opacity"
-        >
-          <Wand2 className="w-4 h-4" />
-          Generate your first book
-        </Link>
-        <p className="mt-4 text-[11px] text-neutral-500 inline-flex items-center gap-1.5">
-          <Sparkles className="w-3 h-3" />
-          Library auto-saves your generations — coming with credits launch.
-        </p>
-      </div>
+      {error && <p className="text-sm text-red-300 mb-4">{error}</p>}
+
+      {books === null && !error ? (
+        <div className="flex items-center gap-2 text-sm text-neutral-400">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading your library…
+        </div>
+      ) : books && books.length === 0 ? (
+        <EmptyLibrary />
+      ) : filtered.length === 0 ? (
+        <div className="rounded-2xl bg-zinc-900/60 border border-white/10 p-8 text-center text-sm text-neutral-400">
+          No books match this search.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {filtered.map((b) => (
+            <BookCard key={b.bookId} book={b} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmptyLibrary() {
+  return (
+    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-white/10 p-8 md:p-12 text-center">
+      <span className="inline-flex w-14 h-14 rounded-2xl bg-violet-500/15 border border-violet-500/30 items-center justify-center mb-4">
+        <BookOpen className="w-6 h-6 text-violet-200" />
+      </span>
+      <h3 className="font-display text-xl font-semibold text-white">
+        Your library is empty
+      </h3>
+      <p className="mt-2 text-sm text-neutral-400 max-w-md mx-auto leading-relaxed">
+        Generate a book in the playground, then click{" "}
+        <span className="font-semibold text-violet-200">Save to library</span>{" "}
+        — it lands here with covers, interior pages, and download bundles.
+      </p>
+      <Link
+        href="/playground"
+        className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow-md shadow-violet-500/30 hover:opacity-95 transition-opacity"
+      >
+        <Wand2 className="w-4 h-4" />
+        Generate your first book
+      </Link>
     </div>
   );
 }

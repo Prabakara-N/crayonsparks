@@ -4,7 +4,7 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { r2, R2_BUCKET, R2_PUBLIC_BASE_URL } from "./r2";
 
-const DEFAULT_TTL_SECONDS = 3600; // 1 hour
+const DEFAULT_TTL_SECONDS = 86_400; // 24 hours
 
 /**
  * Returns a public read URL for an R2 object.
