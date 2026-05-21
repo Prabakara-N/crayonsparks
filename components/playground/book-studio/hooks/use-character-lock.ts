@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { extractCharacterLock as runExtract } from "@/lib/functions/client/extract-character-lock";
 import type { Plan } from "../types";
 
 interface CharacterLockState {
@@ -30,22 +31,11 @@ export function useCharacterLock({
     if (!plan || !coverDataUrl) return;
     setCharacterLock({ status: "extracting" });
     try {
-      const res = await fetch("/api/extract-characters", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          coverDataUrl,
-          bookTitle: plan.coverTitle ?? plan.title,
-        }),
+      const result = await runExtract({
+        coverDataUrl,
+        bookTitle: plan.coverTitle ?? plan.title,
       });
-      const json = (await res.json()) as {
-        lockBlock?: string;
-        error?: string;
-      };
-      if (!res.ok || !json.lockBlock) {
-        throw new Error(json.error || "Character extraction failed");
-      }
-      setCharacterLock({ status: "done", block: json.lockBlock });
+      setCharacterLock({ status: "done", block: result.block });
     } catch (e) {
       setCharacterLock({
         status: "error",

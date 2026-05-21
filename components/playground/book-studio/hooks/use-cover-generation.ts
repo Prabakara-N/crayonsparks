@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ImageModel } from "@/lib/constants";
 import { DEFAULT_COVER_MODEL, DEFAULT_INTERIOR_MODEL } from "@/lib/constants";
-import {
-  AGE_LABELS,
-} from "../book-studio-constants";
-import {
-  deriveStoryBackCoverTagline,
-  isAbortError,
-} from "../book-studio-helpers";
+import { AGE_LABELS } from "../book-studio-constants";
+import { isAbortError } from "../book-studio-helpers";
+import { generateCover as runGenerateCover } from "@/lib/functions/client/generate-cover";
+import { generateBackCover as runGenerateBackCover } from "@/lib/functions/client/generate-back-cover";
+import { generateBelongsToPage as runGenerateBelongsTo } from "@/lib/functions/client/generate-belongs-to-page";
+import { generateTheEndPage as runGenerateTheEnd } from "@/lib/functions/client/generate-the-end-page";
 import type {
   AgeRange,
   CoverBorder,
@@ -79,79 +78,20 @@ export function useCoverGeneration({
     if (!plan) return;
     setCover({ status: "generating" });
     try {
-      if (mode === "story") {
-        if (!plan.characters?.length) {
-          throw new Error(
-            "Story brief is missing locked characters. Re-run the chat to regenerate the brief.",
-          );
-        }
-        if (!plan.palette || plan.palette.hexes.length < 3) {
-          throw new Error(
-            "Story brief is missing a locked palette. Re-run the chat to regenerate the brief.",
-          );
-        }
-        const res = await fetch("/api/generate-story-cover", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: abortRef.current?.signal,
-          body: JSON.stringify({
-            ageBand: age,
-            title: plan.coverTitle,
-            coverScene: plan.coverScene,
-            characters: plan.characters,
-            palette: plan.palette,
-            audienceLabel: AGE_LABELS[age],
-            pageCount: itemsRef.current.length,
-            bottomStripPhrases: plan.bottomStripPhrases,
-            sidePlaqueLines: plan.sidePlaqueLines,
-            coverBadgeStyle: coverBadgeStyle.trim() || plan.coverBadgeStyle,
-            model: coverModel,
-            coverStyle,
-            coverBorder,
-          }),
-        });
-        const json = (await res.json()) as { dataUrl?: string; error?: string };
-        if (!res.ok || !json.dataUrl) {
-          throw new Error(json.error || "Story cover failed");
-        }
-        setCover({
-          status: "done",
-          dataUrl: json.dataUrl,
-          quality: null,
-          model: coverModel,
-        });
-        return;
-      }
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const result = await runGenerateCover({
+        plan,
+        mode,
+        age,
+        ageLabel: AGE_LABELS[age],
+        coverStyle,
+        coverBorder,
+        coverBadgeStyle,
+        pageCount: itemsRef.current.length,
+        qualityCheck,
+        coverModel,
         signal: abortRef.current?.signal,
-        body: JSON.stringify({
-          mode: "cover",
-          coverTitle: plan.coverTitle,
-          coverScene: plan.coverScene,
-          coverStyle,
-          coverBorder,
-          pageCount: itemsRef.current.length,
-          bottomStripPhrases: plan.bottomStripPhrases,
-          sidePlaqueLines: plan.sidePlaqueLines,
-          coverBadgeStyle: coverBadgeStyle.trim() || plan.coverBadgeStyle,
-          qualityGate: qualityCheck,
-          model: coverModel,
-        }),
       });
-      const json = (await res.json()) as {
-        dataUrl?: string;
-        error?: string;
-        quality?: QualityScore | null;
-      };
-      if (!res.ok || !json.dataUrl) throw new Error(json.error || "Cover failed");
-      setCover({
-        status: "done",
-        dataUrl: json.dataUrl,
-        quality: json.quality ?? null,
-        model: coverModel,
-      });
+      setCover({ status: "done", ...result });
     } catch (e) {
       if (isAbortError(e)) {
         setCover({ status: "pending" });
@@ -188,66 +128,18 @@ export function useCoverGeneration({
     }
     setBackCover({ status: "generating" });
     try {
-      if (mode === "story") {
-        if (!plan.palette || plan.palette.hexes.length < 3) {
-          throw new Error(
-            "Story brief is missing a locked palette. Re-run the chat to regenerate the brief.",
-          );
-        }
-        const res = await fetch("/api/generate-story-back-cover", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: abortRef.current?.signal,
-          body: JSON.stringify({
-            ageBand: age,
-            title: plan.coverTitle,
-            palette: plan.palette,
-            tagline: deriveStoryBackCoverTagline(plan),
-            coverReferenceDataUrl: cover.dataUrl,
-            model: coverModel,
-          }),
-        });
-        const json = (await res.json()) as { dataUrl?: string; error?: string };
-        if (!res.ok || !json.dataUrl) {
-          throw new Error(json.error || "Story back cover failed");
-        }
-        setBackCover({
-          status: "done",
-          dataUrl: json.dataUrl,
-          quality: null,
-          model: coverModel,
-        });
-        return;
-      }
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const result = await runGenerateBackCover({
+        plan,
+        mode,
+        age,
+        coverStyle,
+        coverBorder,
+        coverDataUrl: cover.dataUrl,
+        qualityCheck,
+        coverModel,
         signal: abortRef.current?.signal,
-        body: JSON.stringify({
-          mode: "back-cover",
-          coverTitle: plan.coverTitle,
-          coverScene: plan.coverScene,
-          backCoverDescription: plan.description,
-          coverStyle,
-          coverBorder,
-          referenceDataUrl: cover.dataUrl,
-          qualityGate: qualityCheck,
-          model: coverModel,
-        }),
       });
-      const json = (await res.json()) as {
-        dataUrl?: string;
-        error?: string;
-        quality?: QualityScore | null;
-      };
-      if (!res.ok || !json.dataUrl)
-        throw new Error(json.error || "Back cover failed");
-      setBackCover({
-        status: "done",
-        dataUrl: json.dataUrl,
-        quality: json.quality ?? null,
-        model: coverModel,
-      });
+      setBackCover({ status: "done", ...result });
     } catch (e) {
       if (isAbortError(e)) {
         setBackCover({ status: "pending" });
@@ -279,38 +171,17 @@ export function useCoverGeneration({
         .map((it) => it.subject)
         .filter(Boolean)
         .join("; ");
-      const characters =
-        characterSubjects ||
-        plan.coverScene ||
-        "two friendly cartoon characters from the book";
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const result = await runGenerateBelongsTo({
+        plan,
+        belongsToStyle,
+        characterSubjects,
+        characterLockBlock: characterLockBlockRef.current,
+        coverDataUrl: cover.dataUrl,
+        qualityCheck,
+        interiorModel,
         signal: abortRef.current?.signal,
-        body: JSON.stringify({
-          mode: "belongs-to",
-          coverTitle: plan.coverTitle,
-          belongsToCharacters: characters,
-          belongsToStyle,
-          model: interiorModel,
-          characterLock: characterLockBlockRef.current,
-          chainReferenceDataUrl: cover.dataUrl,
-          qualityGate: qualityCheck,
-        }),
       });
-      const json = (await res.json()) as {
-        dataUrl?: string;
-        error?: string;
-        quality?: QualityScore | null;
-      };
-      if (!res.ok || !json.dataUrl)
-        throw new Error(json.error || "Belongs-to page failed");
-      setBelongsTo({
-        status: "done",
-        dataUrl: json.dataUrl,
-        quality: json.quality ?? null,
-        model: interiorModel,
-      });
+      setBelongsTo({ status: "done", ...result });
     } catch (e) {
       if (isAbortError(e)) {
         setBelongsTo({ status: "pending" });
@@ -334,44 +205,18 @@ export function useCoverGeneration({
 
   const generateTheEndPage = useCallback(async () => {
     if (!plan) return;
-    const message =
-      plan.theEndMessage?.trim() ||
-      "Thanks for reading — see you in the next story!";
     setTheEndPage({ status: "generating" });
     try {
-      const paletteLine = plan.palette
-        ? `${plan.palette.name} — ${plan.palette.hexes.join(", ")}`
-        : undefined;
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const result = await runGenerateTheEnd({
+        plan,
+        coverStyle,
+        coverBorder,
+        coverDataUrl: cover.dataUrl,
+        qualityCheck,
+        interiorModel,
         signal: abortRef.current?.signal,
-        body: JSON.stringify({
-          mode: "the-end",
-          coverTitle: plan.coverTitle,
-          theEndMessage: message,
-          theEndPaletteLine: paletteLine,
-          theEndStoryType: plan.storyType,
-          coverStyle,
-          coverBorder,
-          model: interiorModel,
-          chainReferenceDataUrl: cover.dataUrl,
-          qualityGate: qualityCheck,
-        }),
       });
-      const json = (await res.json()) as {
-        dataUrl?: string;
-        error?: string;
-        quality?: QualityScore | null;
-      };
-      if (!res.ok || !json.dataUrl)
-        throw new Error(json.error || "The End page failed");
-      setTheEndPage({
-        status: "done",
-        dataUrl: json.dataUrl,
-        quality: json.quality ?? null,
-        model: interiorModel,
-      });
+      setTheEndPage({ status: "done", ...result });
     } catch (e) {
       if (isAbortError(e)) {
         setTheEndPage({ status: "pending" });

@@ -21,6 +21,7 @@ import { useDialog } from "@/components/ui/confirm-dialog";
 import { ImagePreviewDialog } from "@/components/ui/image-preview-dialog";
 import { useNavigationGuard } from "@/lib/use-navigation-guard";
 import { DownloadMenu } from "@/components/playground/download-menu";
+import { SaveBookButton } from "./save-book-button";
 import { KdpMetadataPanel } from "@/components/playground/kdp-metadata/kdp-metadata-main";
 import { CoverPair } from "@/components/playground/cover-pair";
 import { ModelPicker } from "@/components/playground/model-picker";
@@ -786,7 +787,27 @@ export function BookStudio({
               </button>
             </div>
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-end items-center gap-3">
+            <SaveBookButton
+              plan={plan!}
+              mode={mode}
+              age={age}
+              aspectRatio={aspectRatio}
+              coverStyle={coverStyle}
+              coverBorder={coverBorder}
+              belongsToStyle={mode === "qa" ? belongsToStyle : undefined}
+              cover={{ dataUrl: cover.dataUrl }}
+              backCover={{ dataUrl: backCover.dataUrl }}
+              belongsTo={
+                mode === "qa" ? { dataUrl: belongsTo.dataUrl } : undefined
+              }
+              theEndPage={
+                mode === "story" ? { dataUrl: theEndPage.dataUrl } : undefined
+              }
+              pages={items}
+              characterLock={characterLock.block ?? null}
+              disabled={!allDone || pdfBuilding}
+            />
             <DownloadMenu
               onPdf={downloadPdf}
               onZip={downloadZip}
