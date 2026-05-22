@@ -7,8 +7,10 @@ import { getPlanById } from "@/lib/billing/plans";
 import {
   createCheckout,
   createSubscriptionCheckout,
+  cancelSubscription as cancelLsSubscription,
 } from "@/lib/billing/lemonsqueezy";
 import { getBillingSummary } from "@/lib/firebase/users";
+import { getSubscriptionId } from "@/lib/firebase/subscriptions";
 import { protectedProcedure } from "../base";
 
 const CheckoutInput = z.object({
@@ -50,6 +52,26 @@ export const billingRouter = {
         });
       }
     }),
+
+  cancelSubscription: protectedProcedure.handler(async ({ context }) => {
+    const subscriptionId = await getSubscriptionId(context.userId as string);
+    if (!subscriptionId) {
+      throw new ORPCError("BAD_REQUEST", {
+        message: "No active subscription to cancel.",
+      });
+    }
+    try {
+      await cancelLsSubscription(subscriptionId);
+      return { ok: true };
+    } catch (e) {
+      throw new ORPCError("INTERNAL_SERVER_ERROR", {
+        message:
+          e instanceof Error
+            ? e.message
+            : "Could not cancel the subscription. Try again shortly.",
+      });
+    }
+  }),
 
   createSubscriptionCheckout: protectedProcedure
     .input(SubscriptionCheckoutInput)

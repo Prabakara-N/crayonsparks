@@ -37,15 +37,17 @@ export async function POST(req: Request) {
   const mode = body.mode ?? "subject";
   const category = body.categorySlug ? findCategory(body.categorySlug) : null;
 
-  // Credit gate — "raw" (playground freeform) is free; everything else
-  // (cover / back-cover / belongs-to / the-end / subject page) is charged.
-  let charge: Awaited<ReturnType<typeof preauthorizeCharge>> | null = null;
-  if (mode !== "raw") {
+  // Credit gate — every mode requires sign-in and costs credits.
+  // "raw" (playground freeform single image) is the cheap "single" op.
+  let charge: Awaited<ReturnType<typeof preauthorizeCharge>>;
+  if (mode === "raw") {
+    charge = await preauthorizeCharge(req, { kind: "coloring", op: "single" });
+  } else {
     const kind = mode === "the-end" ? "story" : "coloring";
     const op = mode === "cover" || mode === "back-cover" ? "cover" : "page";
     charge = await preauthorizeCharge(req, { kind, op });
-    if (!charge.ok) return charge.response;
   }
+  if (!charge.ok) return charge.response;
 
   let text: string;
   let aspectRatio: AspectRatio;
@@ -366,8 +368,10 @@ export async function POST(req: Request) {
       }
     }
 
-    if (charge?.ok) {
-      await charge.commit(`Generated ${mode}`);
+    if (charge.ok) {
+      await charge.commit(
+        mode === "raw" ? "Generated single image" : `Generated ${mode}`,
+      );
     }
 
     return NextResponse.json({

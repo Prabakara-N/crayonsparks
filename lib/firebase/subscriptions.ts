@@ -35,6 +35,13 @@ export async function updateSubscriptionState(
   await db.collection("users").doc(uid).set(patch, { merge: true });
 }
 
+export async function getSubscriptionId(
+  uid: string,
+): Promise<string | null> {
+  const snap = await db.collection("users").doc(uid).get();
+  return (snap.data()?.subscriptionId as string | undefined) ?? null;
+}
+
 export interface SubscriptionGrantResult {
   duplicate: boolean;
   granted: number;

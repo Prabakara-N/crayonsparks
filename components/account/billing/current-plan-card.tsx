@@ -1,6 +1,6 @@
 "use client";
 
-import { Coins, BadgeCheck, ExternalLink } from "lucide-react";
+import { Coins, BadgeCheck, ExternalLink, Loader2 } from "lucide-react";
 import type { Plan } from "@/lib/billing/plans";
 
 interface CurrentPlanCardProps {
@@ -10,6 +10,9 @@ interface CurrentPlanCardProps {
   balanceLoading: boolean;
   renewsAt: string | null;
   customerPortalUrl: string | null;
+  subscriptionStatus: string | null;
+  cancelling: boolean;
+  onCancel: () => void;
 }
 
 function formatRenewal(iso: string | null): string | null {
@@ -30,8 +33,13 @@ export function CurrentPlanCard({
   balanceLoading,
   renewsAt,
   customerPortalUrl,
+  subscriptionStatus,
+  cancelling,
+  onCancel,
 }: CurrentPlanCardProps) {
   const renewal = formatRenewal(renewsAt);
+  const isPaid = plan.id !== "free";
+  const isCancelled = subscriptionStatus === "cancelled";
   return (
     <div className="rounded-2xl bg-linear-to-br from-violet-500/20 via-indigo-500/10 to-cyan-400/10 border border-violet-500/30 p-5 md:p-6 mb-6">
       <div className="flex flex-wrap items-start justify-between gap-5">
@@ -59,16 +67,39 @@ export function CurrentPlanCard({
               {renewal ? ` · renews ${renewal}` : ""}.
             </p>
           )}
-          {plan.id !== "free" && customerPortalUrl && (
-            <a
-              href={customerPortalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-white/10 border border-white/15 hover:bg-white/15 transition-colors"
-            >
-              Manage subscription
-              <ExternalLink className="w-3 h-3" />
-            </a>
+          {isPaid && isCancelled && (
+            <p className="mt-2 text-xs text-amber-300">
+              Subscription cancelled — access continues
+              {renewal ? ` until ${renewal}` : " until the period ends"}, then
+              the account reverts to Free.
+            </p>
+          )}
+
+          {isPaid && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {customerPortalUrl && (
+                <a
+                  href={customerPortalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-white/10 border border-white/15 hover:bg-white/15 transition-colors"
+                >
+                  Manage subscription
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+              {!isCancelled && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  disabled={cancelling}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-red-200 bg-red-500/10 border border-red-500/30 hover:bg-red-500/15 disabled:opacity-60 transition-colors"
+                >
+                  {cancelling && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {cancelling ? "Cancelling…" : "Cancel subscription"}
+                </button>
+              )}
+            </div>
           )}
         </div>
 

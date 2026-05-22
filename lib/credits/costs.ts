@@ -16,15 +16,16 @@ export type BookKind = "coloring" | "story";
  * cover  — front cover, back cover (cover-quality model surfaces)
  * page   — one interior page, belongs-to page, or the-end page
  * refine — an edit pass on an already-generated image
+ * single — a standalone playground freeform image (not part of a book)
  */
-export type GenOp = "cover" | "page" | "refine";
+export type GenOp = "cover" | "page" | "refine" | "single";
 
 /** One-time credits granted to a brand-new account (Free tier). */
 export const SIGNUP_FREE_CREDITS = 50;
 
 const COST_TABLE: Record<BookKind, Record<GenOp, number>> = {
-  coloring: { cover: 4, page: 4, refine: 2 },
-  story: { cover: 11, page: 11, refine: 3 },
+  coloring: { cover: 4, page: 4, refine: 2, single: 2 },
+  story: { cover: 11, page: 11, refine: 3, single: 2 },
 };
 
 export function creditCost(kind: BookKind, op: GenOp): number {

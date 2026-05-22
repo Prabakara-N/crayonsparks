@@ -134,6 +134,28 @@ export async function createSubscriptionCheckout(opts: {
 }
 
 /**
+ * Cancels a subscription. Lemon Squeezy keeps it active until the end of
+ * the paid period, then fires subscription_expired (→ downgrade to Free).
+ */
+export async function cancelSubscription(
+  subscriptionId: string,
+): Promise<void> {
+  const res = await fetch(`${LS_API}/subscriptions/${subscriptionId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${env("LEMONSQUEEZY_API_KEY")}`,
+      Accept: "application/vnd.api+json",
+    },
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(
+      `Lemon Squeezy cancel failed (${res.status}): ${detail.slice(0, 200)}`,
+    );
+  }
+}
+
+/**
  * Verifies the `X-Signature` header on an incoming webhook — HMAC-SHA256
  * of the raw request body, keyed by LEMONSQUEEZY_WEBHOOK_SECRET.
  */

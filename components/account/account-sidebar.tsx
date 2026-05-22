@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   BookOpen,
   CreditCard,
+  Store,
   Settings,
 } from "lucide-react";
 import type { User } from "firebase/auth";
@@ -38,6 +39,12 @@ export function AccountSidebar({ user, onNavigate }: AccountSidebarProps) {
           href="/account/billing"
           icon={CreditCard}
           label="Billing"
+          onClick={onNavigate}
+        />
+        <AccountSidebarLink
+          href="/account/integrations"
+          icon={Store}
+          label="Integrations"
           onClick={onNavigate}
         />
         <AccountSidebarLink

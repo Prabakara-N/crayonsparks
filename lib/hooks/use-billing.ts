@@ -17,5 +17,9 @@ export function useBilling() {
         orpc.billing.createSubscriptionCheckout({ planId, cycle }),
       [],
     ),
+    cancelSubscription: useCallback(
+      () => orpc.billing.cancelSubscription(),
+      [],
+    ),
   };
 }

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useCredits } from "@/lib/hooks/use-credits";
 import { useBilling } from "@/lib/hooks/use-billing";
 import { usePlan } from "@/lib/hooks/use-plan";
+import { useDialog } from "@/components/ui/confirm-dialog";
 import { CREDIT_PACKS } from "@/lib/billing/packs";
 import type { BillingCycle, PlanId } from "@/lib/billing/plans";
 import { PageHeader } from "../page-header";
@@ -17,11 +18,20 @@ export function BillingMain() {
   const { balance, entries, loading, refresh } = useCredits({
     withLedger: true,
   });
-  const { plan, renewsAt, customerPortalUrl, loading: planLoading } =
-    usePlan();
-  const { createCheckout, createSubscriptionCheckout } = useBilling();
+  const {
+    plan,
+    renewsAt,
+    customerPortalUrl,
+    subscriptionStatus,
+    loading: planLoading,
+    refresh: refreshPlan,
+  } = usePlan();
+  const { createCheckout, createSubscriptionCheckout, cancelSubscription } =
+    useBilling();
+  const dialog = useDialog();
   // One shared key — any in-flight checkout disables every other button.
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     const clear = () => setBusyKey(null);
@@ -74,6 +84,30 @@ export function BillingMain() {
     }
   }
 
+  async function handleCancelSubscription() {
+    const ok = await dialog.confirm({
+      title: `Cancel your ${plan.name} subscription?`,
+      message:
+        "You keep full access and your credits until the end of the current paid period. After that the account reverts to the Free plan. You can resubscribe anytime.",
+      confirmText: "Cancel subscription",
+      cancelText: "Keep subscription",
+      variant: "danger",
+    });
+    if (!ok) return;
+    setCancelling(true);
+    try {
+      await cancelSubscription();
+      toast.success("Subscription cancelled — active until the period ends.");
+      await refreshPlan();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Could not cancel the subscription.",
+      );
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -88,6 +122,9 @@ export function BillingMain() {
         balanceLoading={loading}
         renewsAt={renewsAt}
         customerPortalUrl={customerPortalUrl}
+        subscriptionStatus={subscriptionStatus}
+        cancelling={cancelling}
+        onCancel={handleCancelSubscription}
       />
 
       <PlanTiers

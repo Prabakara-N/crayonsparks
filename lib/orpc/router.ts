@@ -6,6 +6,7 @@ import { booksRouter } from "./routers/books";
 import { imagesRouter } from "./routers/images";
 import { creditsRouter } from "./routers/credits";
 import { billingRouter } from "./routers/billing";
+import { integrationsRouter } from "./routers/integrations";
 
 export const router = {
   auth: authRouter,
@@ -14,6 +15,7 @@ export const router = {
   images: imagesRouter,
   credits: creditsRouter,
   billing: billingRouter,
+  integrations: integrationsRouter,
 };
 
 export type AppRouter = typeof router;
