@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCheckoutContext } from "./checkout-provider";
 import type { BillingCycle } from "./billing-toggle";
 
 export interface TierFeature {
@@ -19,6 +20,7 @@ export interface TierCardData {
   creditAllocation: string;
   features: TierFeature[];
   cta: { label: string; href: string };
+  planId?: "hobbyist" | "pro";
   highlight?: boolean;
   badge?: string;
 }
@@ -29,17 +31,15 @@ interface TierCardProps {
 }
 
 export function TierCard({ tier, billing }: TierCardProps) {
+  const { busyKey, startSubscription } = useCheckoutContext();
   const isFree = tier.monthlyPrice === 0;
+  const busy = tier.planId != null && busyKey === tier.planId;
   const annualMonthly = tier.annualPrice ? tier.annualPrice / 12 : null;
   const displayPrice =
     billing === "annual" && annualMonthly !== null
       ? annualMonthly
       : tier.monthlyPrice;
   const annualTotal = tier.annualPrice;
-  const monthlySavings =
-    billing === "annual" && annualMonthly !== null
-      ? Math.round((tier.monthlyPrice - annualMonthly) * 12)
-      : 0;
 
   return (
     <div
@@ -101,7 +101,7 @@ export function TierCard({ tier, billing }: TierCardProps) {
         {isFree
           ? "no card required"
           : billing === "annual" && annualTotal
-            ? `$${annualTotal}/yr · save $${monthlySavings}`
+            ? `$${annualTotal}/yr · save 20%`
             : "billed monthly"}
       </div>
 
@@ -137,17 +137,40 @@ export function TierCard({ tier, billing }: TierCardProps) {
         ))}
       </ul>
 
-      <Link
-        href={tier.cta.href}
-        className={cn(
-          "inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-sm font-semibold transition-all",
-          tier.highlight
-            ? "bg-white text-violet-700 hover:bg-violet-50 shadow-md"
-            : "bg-white text-zinc-900 hover:bg-neutral-100",
-        )}
-      >
-        {tier.cta.label}
-      </Link>
+      {tier.planId ? (
+        <button
+          type="button"
+          onClick={() => startSubscription(tier.planId!, billing)}
+          disabled={busyKey !== null}
+          className={cn(
+            "inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-sm font-semibold transition-all disabled:opacity-70",
+            tier.highlight
+              ? "bg-white text-violet-700 hover:bg-violet-50 shadow-md"
+              : "bg-white text-zinc-900 hover:bg-neutral-100",
+          )}
+        >
+          {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+          {busy ? "Starting checkout…" : tier.cta.label}
+        </button>
+      ) : (
+        <Link
+          href={tier.cta.href}
+          aria-disabled={busyKey !== null}
+          tabIndex={busyKey !== null ? -1 : undefined}
+          onClick={(e) => {
+            if (busyKey !== null) e.preventDefault();
+          }}
+          className={cn(
+            "inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-sm font-semibold transition-all",
+            busyKey !== null && "opacity-60 pointer-events-none",
+            tier.highlight
+              ? "bg-white text-violet-700 hover:bg-violet-50 shadow-md"
+              : "bg-white text-zinc-900 hover:bg-neutral-100",
+          )}
+        >
+          {tier.cta.label}
+        </Link>
+      )}
     </div>
   );
 }

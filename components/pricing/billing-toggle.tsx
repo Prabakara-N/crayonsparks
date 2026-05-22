@@ -45,7 +45,7 @@ export function BillingToggle({ value, onChange }: BillingToggleProps) {
               : "bg-emerald-500/15 text-emerald-300",
           )}
         >
-          Save 17%
+          Save 20%
         </span>
       </button>
     </div>

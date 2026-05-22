@@ -10,11 +10,13 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useUser } from "@/lib/hooks/use-user";
+import { useCredits } from "@/lib/hooks/use-credits";
 import { PageHeader } from "../page-header";
 import { ComingSoonTag } from "../coming-soon-tag";
 
 export function DashboardMain() {
   const { user } = useUser();
+  const { balance, loading: creditsLoading } = useCredits();
   const greeting = user?.displayName?.split(" ")[0] || "there";
 
   return (
@@ -37,8 +39,8 @@ export function DashboardMain() {
         <StatCard
           icon={Coins}
           label="Credits balance"
-          value="—"
-          hint="Buy credits to start generating"
+          value={creditsLoading ? "…" : (balance ?? 0)}
+          hint="Spent per page generated"
         />
         <StatCard
           icon={BookOpen}
@@ -98,7 +100,7 @@ function StatCard({
 }: {
   icon: typeof Coins;
   label: string;
-  value: string;
+  value: string | number;
   hint: string;
 }) {
   return (

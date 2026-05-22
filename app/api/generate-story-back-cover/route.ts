@@ -3,6 +3,7 @@
 
 import { NextResponse } from "next/server";
 import { generateImageByModel } from "@/lib/image-providers";
+import { preauthorizeCharge } from "@/lib/credits/charge";
 import {
   DEFAULT_COVER_MODEL,
   isImageModel,
@@ -104,6 +105,12 @@ export async function POST(req: Request) {
     );
   }
 
+  const charge = await preauthorizeCharge(req, {
+    kind: "story",
+    op: "cover",
+  });
+  if (!charge.ok) return charge.response;
+
   const systemInstruction = buildStoryBackCoverSystem(band);
   const userText = buildStoryBackCoverUser({
     ageBand: band,
@@ -138,6 +145,7 @@ export async function POST(req: Request) {
       systemInstruction,
       extraImages: extraImages.length ? extraImages : undefined,
     });
+    await charge.commit("Generated story back cover");
     return NextResponse.json({
       dataUrl: `data:${image.mimeType};base64,${image.data}`,
       model: resolvedModel,

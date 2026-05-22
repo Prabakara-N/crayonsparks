@@ -2,9 +2,9 @@ import "server-only";
 
 import { z } from "zod";
 import { ORPCError } from "@orpc/server";
-import { FieldValue } from "firebase-admin/firestore";
 import { getAdminAuth, db } from "@/lib/firebase/admin";
 import { writeAuditLog } from "@/lib/firebase/audit";
+import { adjustCredits, InsufficientCreditsError } from "@/lib/firebase/credits";
 import { adminProcedure } from "../base";
 
 const UsersListInput = z.object({
@@ -122,35 +122,23 @@ export const adminRouter = {
     grantCredits: adminProcedure
       .input(GrantCreditsInput)
       .handler(async ({ input, context }) => {
-        const userRef = db.collection("users").doc(input.uid);
-        const newBalance = await db.runTransaction(async (tx) => {
-          const snap = await tx.get(userRef);
-          if (!snap.exists) {
-            throw new ORPCError("NOT_FOUND", { message: "User not found." });
-          }
-          const data = snap.data() ?? {};
-          const current = (data.creditsBalance as number | undefined) ?? 0;
-          const after = current + input.delta;
-          if (after < 0) {
+        let newBalance: number;
+        try {
+          newBalance = await adjustCredits({
+            uid: input.uid,
+            delta: input.delta,
+            reason: input.reason,
+            createdByUid: context.userId as string,
+            createdByEmail: context.email,
+          });
+        } catch (e) {
+          if (e instanceof InsufficientCreditsError) {
             throw new ORPCError("BAD_REQUEST", {
-              message: `Cannot bring balance below 0 (current ${current}, delta ${input.delta}).`,
+              message: `Cannot bring balance below 0 (have ${e.current}, delta ${input.delta}).`,
             });
           }
-          tx.update(userRef, {
-            creditsBalance: after,
-            updatedAt: FieldValue.serverTimestamp(),
-          });
-          tx.set(userRef.collection("credits").doc(), {
-            delta: input.delta,
-            balanceAfter: after,
-            reason: input.reason,
-            refKind: "grant",
-            createdByUid: context.userId,
-            createdByEmail: context.email,
-            createdAt: FieldValue.serverTimestamp(),
-          });
-          return after;
-        });
+          throw new ORPCError("NOT_FOUND", { message: "User not found." });
+        }
 
         await writeAuditLog({
           adminUid: context.userId as string,

@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { Coins, Zap, Plus } from "lucide-react";
+import { Coins, Zap, Plus, Loader2 } from "lucide-react";
+import { useCheckoutContext } from "./checkout-provider";
 
 interface TopupPack {
+  id: string;
   name: string;
   price: number;
   credits: number;
@@ -14,6 +15,7 @@ interface TopupPack {
 
 const PACKS: ReadonlyArray<TopupPack> = [
   {
+    id: "topup-s",
     name: "Top-up S",
     price: 10,
     credits: 400,
@@ -21,6 +23,7 @@ const PACKS: ReadonlyArray<TopupPack> = [
     description: "Two extra books when you've nearly hit your monthly cap.",
   },
   {
+    id: "topup-m",
     name: "Top-up M",
     price: 30,
     credits: 1500,
@@ -31,6 +34,7 @@ const PACKS: ReadonlyArray<TopupPack> = [
 ];
 
 export function TopupPacks() {
+  const { busyKey, startPack } = useCheckoutContext();
   return (
     <div className="rounded-3xl bg-linear-to-br from-zinc-900/80 via-zinc-900/70 to-zinc-900/80 border border-white/10 p-6 md:p-8">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
@@ -80,12 +84,17 @@ export function TopupPacks() {
                 <p className="text-xs text-neutral-400 leading-relaxed">
                   {pack.description}
                 </p>
-                <Link
-                  href="/account/billing"
-                  className="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-violet-300 hover:text-violet-200"
+                <button
+                  type="button"
+                  onClick={() => startPack(pack.id)}
+                  disabled={busyKey !== null}
+                  className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white bg-linear-to-r from-violet-500 to-cyan-400 hover:opacity-95 disabled:opacity-60 transition-opacity"
                 >
-                  Buy this pack →
-                </Link>
+                  {busyKey === pack.id && (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  )}
+                  {busyKey === pack.id ? "Starting checkout…" : "Buy this pack"}
+                </button>
               </div>
             </div>
           </div>

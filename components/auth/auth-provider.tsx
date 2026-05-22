@@ -39,12 +39,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsub = onIdTokenChanged(firebaseAuth, (nextUser) => {
       setUser(nextUser);
       setLoading(false);
-      if (nextUser && lastEnsuredUidRef.current !== nextUser.uid) {
-        lastEnsuredUidRef.current = nextUser.uid;
-        void ensureUser();
-      }
-      if (!nextUser) {
+      if (nextUser) {
+        // Keep the server-side session cookie fresh (sign-in + hourly refresh).
+        void nextUser
+          .getIdToken()
+          .then((idToken) =>
+            fetch("/api/auth/session", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ idToken }),
+            }),
+          )
+          .catch(() => {
+            // Non-fatal — server routes also accept an Authorization header.
+          });
+        if (lastEnsuredUidRef.current !== nextUser.uid) {
+          lastEnsuredUidRef.current = nextUser.uid;
+          void ensureUser();
+        }
+      } else {
         lastEnsuredUidRef.current = null;
+        void fetch("/api/auth/session", { method: "DELETE" }).catch(() => {
+          // Non-fatal.
+        });
       }
     });
     return () => unsub();

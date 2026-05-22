@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { Menu, Wand2, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { AuthNavSlot } from "@/components/auth/auth-nav-slot";
 
 const links = [
@@ -66,13 +66,6 @@ export function Navbar() {
         </ul>
 
         <div className="hidden md:flex items-center gap-3">
-          <Link
-            href="/playground"
-            className="relative inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-linear-to-r from-violet-500 via-indigo-400 to-cyan-400 hover:shadow-lg hover:shadow-violet-500/40 transition-all"
-          >
-            <Wand2 className="w-4 h-4" />
-            Generate
-          </Link>
           <AuthNavSlot />
         </div>
 
@@ -104,13 +97,6 @@ export function Navbar() {
                   {l.label}
                 </Link>
               ))}
-              <Link
-                href="/playground"
-                onClick={() => setOpen(false)}
-                className="block mt-2 px-3 py-2 text-sm font-semibold text-center rounded-md text-white bg-linear-to-r from-violet-500 via-indigo-400 to-cyan-400"
-              >
-                Start Generating
-              </Link>
               <div className="mt-3 pt-3 border-t border-white/10 flex justify-center">
                 <AuthNavSlot />
               </div>

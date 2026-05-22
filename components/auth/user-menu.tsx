@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Shield } from "lucide-react";
+import { LayoutDashboard, Shield, Coins } from "lucide-react";
 import type { User } from "firebase/auth";
 import { orpc } from "@/lib/orpc/client";
+import { getPlanById } from "@/lib/billing/plans";
 import { UserAvatar } from "./user-avatar";
 import { SignOutButton } from "./sign-out-button";
 
@@ -15,17 +16,36 @@ interface UserMenuProps {
 export function UserMenu({ user }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [credits, setCredits] = useState<number | null>(null);
+  const [planName, setPlanName] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    orpc.admin.overview
-      .stats()
-      .then(() => {
-        if (!cancelled) setIsAdmin(true);
+    orpc.auth
+      .me()
+      .then((res) => {
+        if (!cancelled) setIsAdmin(res.isAdmin);
       })
       .catch(() => {
-        // not admin — fine, hide the link
+        // signed-out / error — hide the admin link
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user.uid]);
+
+  useEffect(() => {
+    let cancelled = false;
+    orpc.billing
+      .summary()
+      .then((res) => {
+        if (cancelled) return;
+        setCredits(res.creditsBalance);
+        setPlanName(getPlanById(res.planId).name);
+      })
+      .catch(() => {
+        // leave as null — the row shows a dash
       });
     return () => {
       cancelled = true;
@@ -83,7 +103,25 @@ export function UserMenu({ user }: UserMenuProps) {
               <p className="text-xs text-neutral-400 truncate">{user.email}</p>
             </div>
           </div>
-          <div className="px-2 py-1.5">
+
+          <Link
+            href="/account/billing"
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-between gap-2 mx-2 my-2 px-2.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+          >
+            <span className="inline-flex items-center gap-1.5 text-sm text-neutral-300">
+              <Coins className="w-4 h-4 text-amber-300" />
+              <span className="font-semibold text-white">
+                {credits === null ? "—" : credits.toLocaleString()}
+              </span>
+              credits
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-violet-500/20 border border-violet-500/40 text-violet-100">
+              {planName ?? "—"}
+            </span>
+          </Link>
+
+          <div className="px-2 py-1.5 border-t border-white/10">
             <Link
               href="/account"
               onClick={() => setOpen(false)}

@@ -4,6 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { generateImageByModel } from "@/lib/image-providers";
+import { preauthorizeCharge } from "@/lib/credits/charge";
 import {
   DEFAULT_COVER_MODEL,
   isImageModel,
@@ -181,6 +182,12 @@ export async function POST(req: Request) {
     );
   }
 
+  const charge = await preauthorizeCharge(req, {
+    kind: "story",
+    op: "page",
+  });
+  if (!charge.ok) return charge.response;
+
   const rawDialogue = Array.isArray(body.dialogue)
     ? body.dialogue.filter(isDialogueLine)
     : [];
@@ -273,6 +280,7 @@ export async function POST(req: Request) {
       extraImages: extraImages.length ? extraImages : undefined,
     });
     const dataUrl = `data:${image.mimeType};base64,${image.data}`;
+    await charge.commit("Generated story page");
     return NextResponse.json({
       dataUrl,
       model: resolvedModel,

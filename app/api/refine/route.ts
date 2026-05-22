@@ -8,6 +8,7 @@ import {
   type ImageModel,
 } from "@/lib/constants";
 import { NO_AI_BORDER_RULE } from "@/lib/prompts";
+import { preauthorizeCharge } from "@/lib/credits/charge";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -109,6 +110,12 @@ export async function POST(req: Request) {
       : "custom";
   const guardrails = CONTEXT_GUARDRAILS[context];
 
+  const charge = await preauthorizeCharge(req, {
+    kind: context.startsWith("story-") ? "story" : "coloring",
+    op: "refine",
+  });
+  if (!charge.ok) return charge.response;
+
   const extraImages: Array<{ mimeType: string; data: string }> = [];
   if (body.extraReferenceDataUrls?.length) {
     for (const url of body.extraReferenceDataUrls) {
@@ -147,6 +154,7 @@ ${guardrails}${consistencyDirective}${swapBubbleOverride}`;
       extraImages: extraImages.length ? extraImages : undefined,
       model: resolvedModel,
     });
+    await charge.commit("Refined image");
     return NextResponse.json({
       mimeType: image.mimeType,
       data: image.data,

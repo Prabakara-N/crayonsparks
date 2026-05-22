@@ -6,6 +6,7 @@ import { FaqAccordion } from "@/components/pricing/faq-accordion";
 import { TierGrid } from "@/components/pricing/tier-grid";
 import { CreditExplainer } from "@/components/pricing/credit-explainer";
 import { TopupPacks } from "@/components/pricing/topup-packs";
+import { CheckoutProvider } from "@/components/pricing/checkout-provider";
 import type { TierCardData } from "@/components/pricing/tier-card";
 import { buildFaqPage } from "@/lib/seo-schema";
 
@@ -34,7 +35,7 @@ const TIERS: ReadonlyArray<TierCardData> = [
   {
     name: "Hobbyist",
     monthlyPrice: 19,
-    annualPrice: 190,
+    annualPrice: 180,
     icon: <Zap className="w-5 h-5" />,
     blurb: "For creators publishing a few books a month.",
     creditAllocation: "800 credits / month",
@@ -47,14 +48,15 @@ const TIERS: ReadonlyArray<TierCardData> = [
       { text: "Credits roll over (up to 1,500)" },
       { text: "Email support" },
     ],
-    cta: { label: "Choose Hobbyist", href: "/account/billing?plan=hobbyist" },
+    cta: { label: "Choose Hobbyist", href: "#" },
+    planId: "hobbyist",
     highlight: true,
     badge: "Most popular",
   },
   {
     name: "Pro",
     monthlyPrice: 49,
-    annualPrice: 490,
+    annualPrice: 468,
     icon: <Rocket className="w-5 h-5" />,
     blurb: "For active KDP sellers shipping every week.",
     creditAllocation: "3,500 credits / month",
@@ -67,7 +69,8 @@ const TIERS: ReadonlyArray<TierCardData> = [
       { text: "Credits roll over (up to 6,000)" },
       { text: "Faster support response" },
     ],
-    cta: { label: "Choose Pro", href: "/account/billing?plan=pro" },
+    cta: { label: "Choose Pro", href: "#" },
+    planId: "pro",
   },
 ];
 
@@ -117,6 +120,7 @@ export default function PricingPage() {
       />
       <Navbar />
       <main className="flex-1 pt-28 pb-20 bg-linear-to-b from-black via-violet-950/15 to-black text-white">
+        <CheckoutProvider returnTo="/pricing">
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Hero />
           <div className="mt-12">
@@ -145,6 +149,7 @@ export default function PricingPage() {
             <FaqAccordion faqs={FAQS} />
           </section>
         </section>
+        </CheckoutProvider>
       </main>
       <Footer />
     </>

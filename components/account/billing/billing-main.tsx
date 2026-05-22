@@ -1,117 +1,175 @@
 "use client";
 
-import { Coins, Receipt, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Receipt } from "lucide-react";
+import { toast } from "sonner";
+import { useCredits } from "@/lib/hooks/use-credits";
+import { useBilling } from "@/lib/hooks/use-billing";
+import { usePlan } from "@/lib/hooks/use-plan";
+import { CREDIT_PACKS } from "@/lib/billing/packs";
+import type { BillingCycle, PlanId } from "@/lib/billing/plans";
 import { PageHeader } from "../page-header";
-import { ComingSoonTag } from "../coming-soon-tag";
-
-const PACKS = [
-  {
-    credits: 50,
-    price: "$9",
-    perCredit: "$0.18 / credit",
-    label: "Starter",
-  },
-  {
-    credits: 200,
-    price: "$29",
-    perCredit: "$0.14 / credit",
-    label: "Popular",
-    highlight: true,
-  },
-  {
-    credits: 500,
-    price: "$59",
-    perCredit: "$0.11 / credit",
-    label: "Pro",
-  },
-];
+import { CreditPackCard } from "./credit-pack-card";
+import { CurrentPlanCard } from "./current-plan-card";
+import { PlanTiers } from "./plan-tiers";
 
 export function BillingMain() {
+  const { balance, entries, loading, refresh } = useCredits({
+    withLedger: true,
+  });
+  const { plan, renewsAt, customerPortalUrl, loading: planLoading } =
+    usePlan();
+  const { createCheckout, createSubscriptionCheckout } = useBilling();
+  // One shared key — any in-flight checkout disables every other button.
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    const clear = () => setBusyKey(null);
+    window.addEventListener("pageshow", clear);
+    return () => window.removeEventListener("pageshow", clear);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("purchase") === "success") {
+      toast.success(
+        "Payment received — your credits will appear here shortly.",
+      );
+      window.history.replaceState(null, "", "/account/billing");
+      void refresh();
+      const t = setTimeout(() => void refresh(), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [refresh]);
+
+  async function handleBuy(packId: string) {
+    if (busyKey) return;
+    setBusyKey(packId);
+    try {
+      const { url } = await createCheckout(packId);
+      window.location.href = url;
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Could not start checkout.",
+      );
+      setBusyKey(null);
+    }
+  }
+
+  async function handleUpgrade(
+    planId: "hobbyist" | "pro",
+    cycle: BillingCycle,
+  ) {
+    if (busyKey) return;
+    setBusyKey(planId);
+    try {
+      const { url } = await createSubscriptionCheckout(planId, cycle);
+      window.location.href = url;
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Could not start checkout.",
+      );
+      setBusyKey(null);
+    }
+  }
+
   return (
     <div>
       <PageHeader
         title="Billing"
         description="Top up credits, see your transactions, manage your plan."
-        actions={<ComingSoonTag />}
       />
 
-      <div className="rounded-2xl bg-linear-to-br from-violet-500/20 via-indigo-500/10 to-cyan-400/10 border border-violet-500/30 p-5 md:p-6 mb-6">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] uppercase tracking-wider font-semibold text-violet-200">
-              Credits balance
-            </p>
-            <p className="mt-2 font-display text-4xl font-bold text-white">
-              —
-            </p>
-            <p className="mt-1 text-xs text-neutral-300">
-              1 credit covers 1 page generation
-            </p>
-          </div>
-          <span className="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center">
-            <Coins className="w-6 h-6 text-white" />
-          </span>
-        </div>
-      </div>
+      <CurrentPlanCard
+        plan={plan}
+        planLoading={planLoading}
+        balance={balance}
+        balanceLoading={loading}
+        renewsAt={renewsAt}
+        customerPortalUrl={customerPortalUrl}
+      />
+
+      <PlanTiers
+        currentPlanId={plan.id as PlanId}
+        busyPlanId={busyKey}
+        onUpgrade={handleUpgrade}
+      />
 
       <div className="mb-6">
         <h2 className="font-display text-lg font-semibold text-white mb-3">
-          Credit packs
+          Top up credits
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {PACKS.map((p) => (
-            <div
-              key={p.credits}
-              className={`relative rounded-2xl border p-4 ${
-                p.highlight
-                  ? "bg-violet-500/10 border-violet-500/40"
-                  : "bg-zinc-900/60 border-white/10"
-              }`}
-            >
-              {p.highlight && (
-                <span className="absolute -top-2.5 left-4 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider text-white bg-linear-to-r from-violet-500 to-cyan-400">
-                  {p.label}
-                </span>
-              )}
-              <div className="flex items-baseline justify-between">
-                <p className="font-display text-2xl font-bold text-white">
-                  {p.credits}
-                </p>
-                <Zap className="w-4 h-4 text-violet-300" />
-              </div>
-              <p className="text-xs text-neutral-400">credits</p>
-              <p className="mt-3 font-display text-xl font-semibold text-white">
-                {p.price}
-              </p>
-              <p className="text-[11px] text-neutral-500">{p.perCredit}</p>
-              <button
-                type="button"
-                disabled
-                className="mt-4 w-full px-3 py-2 rounded-full text-sm font-semibold text-white bg-white/10 border border-white/15 disabled:opacity-60"
-              >
-                Coming soon
-              </button>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {CREDIT_PACKS.map((pack) => (
+            <CreditPackCard
+              key={pack.id}
+              pack={pack}
+              busy={busyKey === pack.id}
+              disabled={busyKey !== null}
+              onBuy={handleBuy}
+            />
           ))}
         </div>
+        <p className="mt-2 text-[11px] text-neutral-500">
+          Secure checkout by Lemon Squeezy. Credits land in your account the
+          moment payment clears.
+        </p>
       </div>
 
       <div className="rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-white/10 p-5">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="font-display text-lg font-semibold text-white">
-              Transactions
+              Credit ledger
             </h2>
             <p className="text-sm text-neutral-400 mt-1">
-              Purchase history and credit ledger.
+              Every grant, purchase, and spend on your account.
             </p>
           </div>
           <Receipt className="w-5 h-5 text-neutral-500" />
         </div>
-        <div className="rounded-xl border border-dashed border-white/10 py-10 text-center text-sm text-neutral-500">
-          No transactions yet. Once credit purchases ship, your invoices appear
-          here.
-        </div>
+        {loading ? (
+          <div className="rounded-xl border border-dashed border-white/10 py-10 text-center text-sm text-neutral-500">
+            Loading ledger…
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-white/10 py-10 text-center text-sm text-neutral-500">
+            No transactions yet.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {entries.map((e) => {
+              const positive = e.delta > 0;
+              return (
+                <li
+                  key={e.id}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-black/30 border border-white/5 px-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm text-neutral-200 truncate">
+                      {e.reason}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono mt-0.5">
+                      {e.refKind}
+                      {e.createdAt
+                        ? ` · ${new Date(e.createdAt).toLocaleString()}`
+                        : ""}
+                    </p>
+                  </div>
+                  <span
+                    className={`font-mono text-sm font-semibold shrink-0 ${
+                      positive ? "text-emerald-300" : "text-red-300"
+                    }`}
+                  >
+                    {positive ? "+" : ""}
+                    {e.delta}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );

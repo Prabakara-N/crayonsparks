@@ -9,6 +9,7 @@ export const authRouter = {
     return {
       userId: context.userId,
       email: context.email,
+      isAdmin: context.isAdmin,
     };
   }),
   ensureUser: protectedProcedure.handler(async ({ context }) => {

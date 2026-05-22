@@ -38,7 +38,6 @@ export function AccountSidebar({ user, onNavigate }: AccountSidebarProps) {
           href="/account/billing"
           icon={CreditCard}
           label="Billing"
-          badge="Soon"
           onClick={onNavigate}
         />
         <AccountSidebarLink

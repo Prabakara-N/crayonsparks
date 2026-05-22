@@ -21,6 +21,7 @@ import {
 import { rateColoringPage, type QualityScore } from "@/lib/quality-gate";
 import { extractStyleFromReference } from "@/lib/style-extractor";
 import { parseDataUrl, type Body } from "./request";
+import { preauthorizeCharge } from "@/lib/credits/charge";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -35,6 +36,16 @@ export async function POST(req: Request) {
 
   const mode = body.mode ?? "subject";
   const category = body.categorySlug ? findCategory(body.categorySlug) : null;
+
+  // Credit gate — "raw" (playground freeform) is free; everything else
+  // (cover / back-cover / belongs-to / the-end / subject page) is charged.
+  let charge: Awaited<ReturnType<typeof preauthorizeCharge>> | null = null;
+  if (mode !== "raw") {
+    const kind = mode === "the-end" ? "story" : "coloring";
+    const op = mode === "cover" || mode === "back-cover" ? "cover" : "page";
+    charge = await preauthorizeCharge(req, { kind, op });
+    if (!charge.ok) return charge.response;
+  }
 
   let text: string;
   let aspectRatio: AspectRatio;
@@ -353,6 +364,10 @@ export async function POST(req: Request) {
         // Don't fail the request if rating fails — just omit it.
         quality = null;
       }
+    }
+
+    if (charge?.ok) {
+      await charge.commit(`Generated ${mode}`);
     }
 
     return NextResponse.json({
