@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { useBooks } from "@/lib/hooks/use-books";
 import { useDialog } from "@/components/ui/confirm-dialog";
+import { LoadingState } from "@/components/ui/loading-state";
 import { BookFlip, prefetchBookFlip } from "@/components/playground/book-flip";
 import {
   ImageCarouselModal,
@@ -177,11 +178,7 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
   }, [book, deleteBook, dialog, router]);
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-neutral-400">
-        <Loader2 className="w-4 h-4 animate-spin" /> Loading book…
-      </div>
-    );
+    return <LoadingState label="Loading book…" />;
   }
   if (error || !book) {
     return (

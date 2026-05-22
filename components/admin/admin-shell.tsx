@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { Menu } from "lucide-react";
 import { useRequireAdmin } from "@/lib/hooks/use-require-admin";
+import { LoadingState } from "@/components/ui/loading-state";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminMobileDrawer } from "./admin-mobile-drawer";
 import { AdminAuditBanner } from "./admin-audit-banner";
@@ -17,8 +18,8 @@ export function AdminShell({ children }: AdminShellProps) {
 
   if (loading || !user || !isAdmin) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center text-neutral-400">
-        Verifying admin access…
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <LoadingState label="Verifying admin access…" />
       </div>
     );
   }

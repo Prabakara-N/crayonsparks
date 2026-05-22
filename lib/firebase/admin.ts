@@ -31,13 +31,21 @@ export function getAdminFirestore(): Firestore {
 }
 
 /**
- * Shared Admin Firestore instance. Import from here instead of calling
- * getAdminFirestore() in every consumer:
+ * Shared Admin Firestore handle. Lazy by design — a Proxy that only
+ * initializes Firestore on first property access at RUNTIME, never at
+ * import time. This keeps `next build` from initializing Firebase (and
+ * crashing when build-time env vars are absent).
  *
  *   import { db } from "@/lib/firebase/admin";
  *   const snap = await db.collection("users").doc(uid).get();
  */
-export const db: Firestore = getAdminFirestore();
+export const db: Firestore = new Proxy({} as Firestore, {
+  get(_target, prop, receiver) {
+    const real = getAdminFirestore();
+    const value = Reflect.get(real, prop, receiver);
+    return typeof value === "function" ? value.bind(real) : value;
+  },
+});
 
 export async function verifyIdToken(idToken: string): Promise<DecodedIdToken> {
   return getAdminAuth().verifyIdToken(idToken);

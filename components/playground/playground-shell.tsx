@@ -10,6 +10,11 @@ import { GuidedChat } from "@/components/generate/guided-chat/guided-chat-main";
 import type { BookBrief } from "@/lib/book-chat";
 import { createCustomCategory } from "@/lib/custom-categories";
 import { CATEGORIES, type ColoringCategory } from "@/lib/prompts";
+import { useAuthContext } from "@/components/auth/auth-provider";
+import {
+  savePendingAction,
+  consumePendingAction,
+} from "@/lib/auth/pending-action";
 
 /**
  * Maps a built-in ColoringCategory (the 14 ready-made themes from the
@@ -111,6 +116,8 @@ export function PlaygroundShell() {
   // if React re-runs the effect, we never re-seed and clobber the user's
   // in-progress edits.
   const consumedCategoryRef = useRef(false);
+  const consumedChatPlanRef = useRef(false);
+  const { user } = useAuthContext();
 
   const activeTab: TabSlug = useMemo(() => {
     const raw = searchParams.get("tab");
@@ -230,14 +237,43 @@ export function PlaygroundShell() {
         setError(e instanceof Error ? e.message : "Could not save book.");
         return;
       }
-      // Hand off to inline bulk-book carousel — no redirect.
-      setSeedPlan(briefToPlan(brief));
+      const plan = briefToPlan(brief);
+      // Logged out — stash the plan so it survives the login round-trip,
+      // then send the user to sign in. They return straight to bulk-book.
+      if (!user) {
+        savePendingAction({
+          type: "chat-plan",
+          returnTo: "/playground?tab=bulk-book",
+          payload: { plan, mode },
+        });
+        router.push(
+          `/login?next=${encodeURIComponent("/playground?tab=bulk-book")}`,
+        );
+        return;
+      }
+      // Signed in — hand off to the inline bulk-book carousel, no redirect.
+      setSeedPlan(plan);
       setSeedReference(referenceDataUrl ?? null);
       setSeedMode(mode);
       setTab("bulk-book");
     },
-    [setTab],
+    [setTab, user, router],
   );
+
+  // After a login round-trip from the chat, restore the approved plan and
+  // drop the user straight onto the bulk-book tab.
+  useEffect(() => {
+    if (consumedChatPlanRef.current) return;
+    consumedChatPlanRef.current = true;
+    const action = consumePendingAction("chat-plan");
+    const p = action?.payload as
+      | { plan?: Plan; mode?: "qa" | "story" }
+      | undefined;
+    if (!p?.plan) return;
+    setSeedPlan(p.plan);
+    if (p.mode) setSeedMode(p.mode);
+    setTab("bulk-book");
+  }, [setTab]);
 
   // While the Sparky AI chat is in an active conversation (mode picked),
   // hide the page hero and the per-tab description band so the chat panel

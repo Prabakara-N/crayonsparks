@@ -1,12 +1,17 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type StoryType } from "@/lib/story-book-planner";
 import type { DialogueStyle } from "@/lib/prompts";
 import {
   getAuthIdToken,
   redirectToLogin,
 } from "@/lib/auth/require-auth-for-action";
+import { useAuthContext } from "@/components/auth/auth-provider";
+import {
+  savePendingAction,
+  consumePendingAction,
+} from "@/lib/auth/pending-action";
 import type {
   AgeRange,
   Aspect,
@@ -61,6 +66,10 @@ export function useBookPlan({
   const [planError, setPlanError] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan | null>(initialPlan ?? null);
 
+  const { user, loading: authLoading } = useAuthContext();
+  const [pendingPlan, setPendingPlan] = useState(false);
+  const restoredRef = useRef(false);
+
   const runPlan = useCallback(async (regenerationHint?: unknown) => {
     const trimmed = idea.trim();
     if (trimmed.length < 10) {
@@ -77,6 +86,22 @@ export function useBookPlan({
         : undefined;
     const idToken = await getAuthIdToken();
     if (!idToken) {
+      savePendingAction({
+        type: "bulk-book",
+        returnTo: "/playground?tab=bulk-book",
+        payload: {
+          idea: trimmed,
+          pageCount,
+          age,
+          detailLevel,
+          aspectRatio,
+          mode,
+          bookKind,
+          storyType,
+          storyCharacterNames,
+          dialogueStyle,
+        },
+      });
       redirectToLogin("/playground?tab=bulk-book");
       return;
     }
@@ -139,11 +164,57 @@ export function useBookPlan({
     storyType,
     storyCharacterNames,
     dialogueStyle,
+    detailLevel,
+    aspectRatio,
+    mode,
     setPhase,
     setItems,
     setCoverPending,
     setCurrentIndex,
   ]);
+
+  // Restore a bulk-book draft saved before a login redirect; auto-run the
+  // plan if the user has since signed in.
+  useEffect(() => {
+    if (authLoading || restoredRef.current) return;
+    restoredRef.current = true;
+    const action = consumePendingAction("bulk-book");
+    const p = action?.payload as
+      | Partial<{
+          idea: string;
+          pageCount: number;
+          age: AgeRange;
+          detailLevel: DetailLevel;
+          aspectRatio: Aspect;
+          mode: "qa" | "story";
+          bookKind: "coloring" | "story";
+          storyType: StoryType | null;
+          storyCharacterNames: string;
+          dialogueStyle: DialogueStyle;
+        }>
+      | undefined;
+    if (!p) return;
+    if (p.idea) setIdea(p.idea);
+    if (p.pageCount) setPageCount(p.pageCount);
+    if (p.age) setAge(p.age);
+    if (p.detailLevel) setDetailLevel(p.detailLevel);
+    if (p.aspectRatio) setAspectRatio(p.aspectRatio);
+    if (p.mode) setMode(p.mode);
+    if (p.bookKind) setBookKind(p.bookKind);
+    if (p.storyType !== undefined) setStoryType(p.storyType);
+    if (typeof p.storyCharacterNames === "string") {
+      setStoryCharacterNames(p.storyCharacterNames);
+    }
+    if (p.dialogueStyle) setDialogueStyle(p.dialogueStyle);
+    if (user) setPendingPlan(true);
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (pendingPlan && idea.trim().length >= 10) {
+      setPendingPlan(false);
+      void runPlan();
+    }
+  }, [pendingPlan, idea, runPlan]);
 
   return {
     idea,

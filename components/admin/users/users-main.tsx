@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Search, Users as UsersIcon } from "lucide-react";
+import { Search, Users as UsersIcon } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAdmin } from "@/lib/hooks/use-admin";
 import { PageHeader } from "@/components/account/page-header";
 import { UserRow, type AdminUserSummary } from "./user-row";
@@ -61,8 +62,19 @@ export function UsersMain() {
       {error && <p className="text-sm text-red-300 mb-4">{error}</p>}
 
       {loading && users === null ? (
-        <div className="flex items-center gap-2 text-sm text-neutral-400">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading users…
+        <div className="space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-xl bg-zinc-900/60 border border-white/10 px-4 py-3 flex items-center gap-3"
+            >
+              <Skeleton className="w-9 h-9 rounded-full shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-1/3" />
+                <Skeleton className="h-2.5 w-1/4" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : users && users.length === 0 ? (
         <div className="rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-white/10 p-8 text-center">

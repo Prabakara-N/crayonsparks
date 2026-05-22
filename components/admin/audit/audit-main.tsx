@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ScrollText } from "lucide-react";
+import { ScrollText } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAdmin } from "@/lib/hooks/use-admin";
 import { PageHeader } from "@/components/account/page-header";
 
@@ -41,8 +42,16 @@ export function AuditMain() {
       />
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-neutral-400">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-xl bg-zinc-900/60 border border-white/10 px-4 py-3 space-y-2"
+            >
+              <Skeleton className="h-3.5 w-1/2" />
+              <Skeleton className="h-2.5 w-1/3" />
+            </div>
+          ))}
         </div>
       ) : error ? (
         <p className="text-sm text-red-300">{error}</p>

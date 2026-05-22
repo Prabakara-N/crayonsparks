@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Coins, Loader2 } from "lucide-react";
+import { ArrowLeft, Coins } from "lucide-react";
+import { LoadingState } from "@/components/ui/loading-state";
 import { useAdmin } from "@/lib/hooks/use-admin";
 import { PageHeader } from "@/components/account/page-header";
 import { CreditGrantForm } from "./credit-grant-form";
@@ -63,11 +64,7 @@ export function UserDetailMain({ uid }: { uid: string }) {
   }, [reload]);
 
   if (loading && !profile) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-neutral-400">
-        <Loader2 className="w-4 h-4 animate-spin" /> Loading user…
-      </div>
-    );
+    return <LoadingState label="Loading user…" />;
   }
   if (error) {
     return <p className="text-sm text-red-300">{error}</p>;

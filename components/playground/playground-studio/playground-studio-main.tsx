@@ -1,8 +1,14 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Wand2, Loader2, Sparkles, X, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuthContext } from "@/components/auth/auth-provider";
+import {
+  savePendingAction,
+  consumePendingAction,
+} from "@/lib/auth/pending-action";
 import { ReferenceImageField } from "@/components/ui/reference-image-field";
 import { ModelPicker } from "@/components/playground/model-picker";
 import { AspectRatioPicker } from "@/components/playground/aspect-ratio-picker";
@@ -61,6 +67,11 @@ export function PlaygroundStudio() {
   const [reference, setReference] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
 
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuthContext();
+  const [pendingGenerate, setPendingGenerate] = useState(false);
+  const restoredRef = useRef(false);
+
   const current = versions[currentIndex];
 
   const fetchIdeas = useCallback(
@@ -95,6 +106,15 @@ export function PlaygroundStudio() {
   const runGenerate = useCallback(async () => {
     const text = prompt.trim();
     if (!text) return;
+    if (!user) {
+      savePendingAction({
+        type: "single-image",
+        returnTo: "/playground",
+        payload: { prompt: text, aspectRatio, category, model },
+      });
+      router.push("/login?next=/playground");
+      return;
+    }
     setStatus("generating");
     setError(null);
     requestAnimationFrame(() => {
@@ -140,7 +160,7 @@ export function PlaygroundStudio() {
       setStatus("error");
       setError(e instanceof Error ? e.message : "Generation failed");
     }
-  }, [prompt, aspectRatio, reference, coloringBookMode, model]);
+  }, [prompt, aspectRatio, reference, coloringBookMode, model, category, user, router]);
 
   const runRefine = useCallback(async () => {
     const text = instruction.trim();
@@ -178,6 +198,35 @@ export function PlaygroundStudio() {
       setError(e instanceof Error ? e.message : "Refinement failed");
     }
   }, [instruction, current, currentIndex, aspectRatio, model]);
+
+  // Restore a draft saved before a login redirect. If the user is now
+  // signed in, queue an auto-generate; otherwise just refill the form.
+  useEffect(() => {
+    if (authLoading || restoredRef.current) return;
+    restoredRef.current = true;
+    const action = consumePendingAction("single-image");
+    const p = action?.payload as
+      | {
+          prompt?: string;
+          aspectRatio?: AspectRatio;
+          category?: ImageCategory;
+          model?: ImageModel;
+        }
+      | undefined;
+    if (!p) return;
+    if (p.prompt) setPrompt(p.prompt);
+    if (p.aspectRatio) setAspectRatio(p.aspectRatio);
+    if (p.category) setCategory(p.category);
+    if (p.model) setModel(p.model);
+    if (user) setPendingGenerate(true);
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (pendingGenerate && prompt.trim() && status === "idle") {
+      setPendingGenerate(false);
+      void runGenerate();
+    }
+  }, [pendingGenerate, prompt, status, runGenerate]);
 
   const nav = (delta: number) => {
     setCurrentIndex((i) => Math.max(0, Math.min(versions.length - 1, i + delta)));

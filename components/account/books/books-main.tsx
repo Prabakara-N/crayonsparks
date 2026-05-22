@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Loader2, Search, Wand2 } from "lucide-react";
+import { BookOpen, Search, Wand2 } from "lucide-react";
 import { useBooks } from "@/lib/hooks/use-books";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "../page-header";
 import { BookCard, type SavedBookSummary } from "./book-card";
 
@@ -76,8 +77,19 @@ export function BooksMain() {
       {error && <p className="text-sm text-red-300 mb-4">{error}</p>}
 
       {books === null && !error ? (
-        <div className="flex items-center gap-2 text-sm text-neutral-400">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading your library…
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-2xl bg-zinc-900/60 border border-white/10 overflow-hidden"
+            >
+              <Skeleton className="aspect-3/4 rounded-none" />
+              <div className="p-3 space-y-2">
+                <Skeleton className="h-3.5 w-3/4" />
+                <Skeleton className="h-2.5 w-1/2" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : books && books.length === 0 ? (
         <EmptyLibrary />
