@@ -78,12 +78,24 @@ type View = "draggable" | "carousel";
 
 export function BooksShowcase() {
   const [view, setView] = useState<View>("draggable");
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Drag-to-move is awkward on touch — mobile always uses the carousel.
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  const effectiveView: View = isMobile ? "carousel" : view;
 
   return (
     <section className="relative bg-black overflow-hidden">
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
-        {/* Toggle — top right of section */}
-        <div className="absolute top-6 right-4 sm:right-6 lg:right-8 z-30 flex items-center gap-1 p-1 rounded-full bg-white/5 border border-white/10 backdrop-blur">
+        {/* Toggle — desktop only; mobile is carousel-only */}
+        <div className="hidden sm:flex absolute top-6 right-4 sm:right-6 lg:right-8 z-30 items-center gap-1 p-1 rounded-full bg-white/5 border border-white/10 backdrop-blur">
           <ToggleButton
             active={view === "draggable"}
             onClick={() => setView("draggable")}
@@ -113,7 +125,7 @@ export function BooksShowcase() {
         </div>
       </div>
 
-      {view === "draggable" ? <DraggableView /> : <CarouselView />}
+      {effectiveView === "draggable" ? <DraggableView /> : <CarouselView />}
     </section>
   );
 }

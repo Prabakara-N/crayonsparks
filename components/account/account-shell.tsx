@@ -5,6 +5,7 @@ import { Menu } from "lucide-react";
 import { useRequireAuth } from "@/lib/hooks/use-require-auth";
 import { AccountSidebar } from "./account-sidebar";
 import { AccountMobileDrawer } from "./account-mobile-drawer";
+import { AccountShellSkeleton } from "./account-shell-skeleton";
 
 interface AccountShellProps {
   children: ReactNode;
@@ -15,11 +16,7 @@ export function AccountShell({ children }: AccountShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   if (loading || !user) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center text-neutral-400">
-        Loading…
-      </div>
-    );
+    return <AccountShellSkeleton />;
   }
 
   return (

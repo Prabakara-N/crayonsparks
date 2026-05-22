@@ -109,11 +109,6 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,black_70%)]" />
 
         <div className="relative z-10 max-w-6xl mx-auto px-4 py-20 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-linear-to-r from-violet-500/10 to-cyan-500/10 border border-violet-500/20 text-xs font-medium text-violet-300 mb-6 backdrop-blur">
-            <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-            Powered by Gemini Nano Banana — 280 curated prompts ready
-          </div>
-
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white">
             Generate coloring books
             <br />
@@ -144,13 +139,13 @@ export default function HomePage() {
             and drive sales with auto-scheduled Pinterest pins.
           </p>
 
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
             <HeroPrimaryCta />
             <Link
-              href="/gallery"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm md:text-base font-medium text-white/90 bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur transition-colors"
+              href="/features"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full text-sm md:text-base font-medium text-white/90 bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur transition-colors"
             >
-              View Gallery
+              See features
             </Link>
           </div>
 
@@ -449,24 +444,24 @@ export default function HomePage() {
             Try the generator with your own Gemini API key. 20 pages, full
             KDP-ready PDF, no account required.
           </p>
-          <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="mt-9 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
             <Link
               href="/playground"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-sm md:text-base font-semibold text-white bg-linear-to-r from-violet-500 via-indigo-400 to-cyan-400 shadow-lg shadow-violet-500/40 hover:shadow-xl hover:shadow-violet-500/50 hover:scale-105 transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-sm md:text-base font-semibold text-white bg-linear-to-r from-violet-500 via-indigo-400 to-cyan-400 shadow-lg shadow-violet-500/40 hover:shadow-xl hover:shadow-violet-500/50 hover:scale-105 transition-all"
             >
               <Sparkles className="w-4 h-4" />
               Start generating
             </Link>
             <Link
               href="/pricing"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-sm md:text-base font-medium text-white bg-white/5 hover:bg-white/10 border border-white/15 backdrop-blur transition-colors"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-sm md:text-base font-medium text-white bg-white/5 hover:bg-white/10 border border-white/15 backdrop-blur transition-colors"
             >
               View pricing
             </Link>
           </div>
 
           <p className="mt-10 text-[11px] uppercase tracking-wider text-neutral-500">
-            CrayonSparks · 280 prompts · 14 themes · ~3 min per book
+            CrayonSparks · 14 themes · ~3 min per book
           </p>
         </div>
       </section>

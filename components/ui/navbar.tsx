@@ -3,14 +3,13 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import { AuthNavSlot } from "@/components/auth/auth-nav-slot";
+import { MobileNavDrawer } from "./mobile-nav-drawer";
 
 const links = [
   { href: "/features", label: "Features" },
   { href: "/playground", label: "Playground" },
-  { href: "/gallery", label: "Gallery" },
   { href: "/pricing", label: "Pricing" },
   { href: "/blog", label: "Blog" },
 ];
@@ -71,39 +70,18 @@ export function Navbar() {
 
         <button
           className="md:hidden p-2 rounded-md hover:bg-neutral-100 dark:hover:bg-white/5"
-          onClick={() => setOpen(!open)}
-          aria-label="Toggle menu"
+          onClick={() => setOpen(true)}
+          aria-label="Open menu"
         >
-          {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          <Menu className="w-5 h-5" />
         </button>
       </nav>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden overflow-hidden bg-black border-t border-white/10 shadow-2xl"
-          >
-            <div className="px-4 py-4 space-y-1">
-              {links.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setOpen(false)}
-                  className="block px-3 py-2 text-sm font-medium rounded-md hover:bg-neutral-100 dark:hover:bg-white/5"
-                >
-                  {l.label}
-                </Link>
-              ))}
-              <div className="mt-3 pt-3 border-t border-white/10 flex justify-center">
-                <AuthNavSlot />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <MobileNavDrawer
+        open={open}
+        onClose={() => setOpen(false)}
+        links={links}
+      />
     </header>
   );
 }

@@ -150,7 +150,7 @@ export function IdeaForm({
         <div
           role="radiogroup"
           aria-label="Book type"
-          className="inline-flex p-1.5 rounded-xl border border-white/10 bg-black/40"
+          className="flex w-full sm:inline-flex sm:w-auto p-1.5 rounded-xl border border-white/10 bg-black/40"
         >
           <button
             type="button"
@@ -159,7 +159,7 @@ export function IdeaForm({
             onClick={() => setBookKind("coloring")}
             disabled={planning}
             className={cn(
-              "inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors",
+              "flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors",
               !isStory
                 ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow"
                 : "text-neutral-400 hover:text-white",
@@ -175,7 +175,7 @@ export function IdeaForm({
             onClick={() => setBookKind("story")}
             disabled={planning}
             className={cn(
-              "inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors",
+              "flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors",
               isStory
                 ? "bg-linear-to-r from-cyan-500 to-emerald-400 text-white shadow"
                 : "text-neutral-400 hover:text-white",

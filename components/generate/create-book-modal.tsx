@@ -317,12 +317,8 @@ Planet: smiling planet with rings
                   className="w-full px-4 py-3 rounded-xl border border-white/10 bg-black/50 text-white text-sm font-mono focus:outline-none focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20 resize-y min-h-[180px]"
                 />
                 <p className="mt-2 text-[11px] text-neutral-500">
-                  Tip: start lines with <code>#</code> to leave comments. The 280
-                  curated prompts from{" "}
-                  <code className="font-mono text-violet-300">
-                    Coloring_Book_Prompts_Kids.pdf
-                  </code>{" "}
-                  paste directly.
+                  Tip: start lines with <code>#</code> to leave comments. Paste
+                  one prompt per line — each becomes a page.
                 </p>
               </label>
 

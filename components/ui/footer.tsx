@@ -33,11 +33,6 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/playground" className="hover:text-violet-400">
-                  Playground
-                </Link>
-              </li>
-              <li>
                 <Link href="/playground?tab=chat-book" className="hover:text-violet-400">
                   Sparky AI
                 </Link>
@@ -64,13 +59,8 @@ export function Footer() {
             <h4 className="font-semibold text-sm mb-3 text-white">Resources</h4>
             <ul className="space-y-2 text-sm text-neutral-400">
               <li>
-                <Link href="/gallery" className="hover:text-violet-400">
-                  Gallery
-                </Link>
-              </li>
-              <li>
                 <Link href="/free/farm-animals" className="hover:text-violet-400">
-                  Free Pages
+                  Free Coloring Pages
                 </Link>
               </li>
               <li>

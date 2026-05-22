@@ -5,7 +5,7 @@ import { SKELETON_FOUR_PLATFORMS } from "./features-bento-constants";
 export function SkeletonFour() {
   return (
     <div className="relative flex h-full flex-col items-start justify-start gap-5 px-2 py-6">
-      <p className="text-base md:text-lg leading-relaxed text-neutral-300 max-w-md">
+      <div className="text-base md:text-lg leading-relaxed text-neutral-300 max-w-md">
         Same source, four revenue streams.{" "}
         <LinkPreview
           url="https://kdp.amazon.com"
@@ -35,7 +35,7 @@ export function SkeletonFour() {
           Pinterest
         </LinkPreview>{" "}
         as the always-on traffic engine.
-      </p>
+      </div>
 
       <ul className="space-y-3 w-full max-w-md">
         {SKELETON_FOUR_PLATFORMS.map((p) => (

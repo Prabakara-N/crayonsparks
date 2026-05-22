@@ -12,7 +12,7 @@ import {
 
 const features = [
   {
-    title: "280 curated prompts",
+    title: "Curated prompt library",
     description:
       "Battle-tested prompts across 14 categories — from farm animals to unicorns. Pick a niche, ship a book.",
     icon: <IconWand />,

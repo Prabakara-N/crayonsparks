@@ -168,13 +168,13 @@ export function ReferenceImageField({
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
         className={cn(
-          "w-full group relative rounded-xl border-2 border-dashed transition-all flex items-center gap-4 p-4 text-left",
+          "w-full group relative rounded-xl border-2 border-dashed transition-all flex items-center gap-3 sm:gap-4 p-3.5 sm:p-4 text-left",
           dragOver
             ? "border-violet-400 bg-violet-500/10"
             : "border-white/15 bg-black/30 hover:border-violet-500/50 hover:bg-violet-500/5"
         )}
       >
-        <div className="shrink-0 w-12 h-12 rounded-lg bg-linear-to-br from-violet-500/20 to-cyan-500/20 border border-violet-500/30 flex items-center justify-center text-violet-300">
+        <div className="shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-linear-to-br from-violet-500/20 to-cyan-500/20 border border-violet-500/30 flex items-center justify-center text-violet-300">
           <ImagePlus className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
@@ -184,11 +184,11 @@ export function ReferenceImageField({
           <p className="text-xs text-neutral-400 mt-0.5 leading-relaxed">
             {helper}
           </p>
-          <div className="mt-1.5 flex items-center gap-3 text-[10px] text-neutral-500">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-neutral-500">
             <span className="inline-flex items-center gap-1">
               <Upload className="w-3 h-3" /> PNG, JPG, WebP · up to 6 MB
             </span>
-            <span className="inline-flex items-center gap-1">
+            <span className="hidden sm:inline-flex items-center gap-1">
               <Clipboard className="w-3 h-3" /> ⌘/Ctrl+V supported
             </span>
           </div>

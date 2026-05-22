@@ -82,7 +82,7 @@ export default function NotFound() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-xl">
             {[
-              { href: "/gallery", icon: <Search className="w-4 h-4" />, label: "Prompt library", sub: "14 categories" },
+              { href: "/playground", icon: <Search className="w-4 h-4" />, label: "Playground", sub: "Start creating" },
               { href: "/blog", icon: <BookMarked className="w-4 h-4" />, label: "Blog", sub: "KDP guides" },
               { href: "/pricing", icon: <Sparkles className="w-4 h-4" />, label: "Pricing", sub: "Start free" },
             ].map((l) => (

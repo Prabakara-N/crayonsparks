@@ -127,7 +127,7 @@ export default async function OGImage() {
               letterSpacing: -0.5,
             }}
           >
-            280 prompts · 14 categories · Powered by Gemini Nano Banana
+            14 categories · Powered by Gemini Nano Banana
           </div>
         </div>
 

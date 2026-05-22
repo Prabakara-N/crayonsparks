@@ -305,7 +305,7 @@ export function PlaygroundShell() {
         <div
           role="tablist"
           aria-label="Playground mode"
-          className="inline-flex p-1.5 rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur shadow-lg shadow-black/40"
+          className="flex w-full sm:inline-flex sm:w-auto p-1.5 rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur shadow-lg shadow-black/40"
         >
           {TABS.map((t) => {
             const Icon = t.icon;
@@ -316,12 +316,12 @@ export function PlaygroundShell() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setTab(t.slug)}
-                className={`inline-flex items-center gap-2.5 px-5 md:px-7 py-3 rounded-xl text-base font-semibold transition-colors ${active
+                className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 sm:gap-2.5 px-2 sm:px-5 md:px-7 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold whitespace-nowrap transition-colors ${active
                   ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow-lg shadow-violet-500/30"
                   : "text-neutral-300 hover:text-white"
                   }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="hidden sm:block w-5 h-5" />
                 {t.label}
               </button>
             );

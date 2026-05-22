@@ -21,9 +21,9 @@ export function AuthNavSlot() {
   return (
     <Link
       href={`/login?next=${next}`}
-      className="px-4 py-1.5 text-sm font-semibold text-white rounded-full bg-white/10 hover:bg-white/15 border border-white/15 transition-colors"
+      className="px-4 py-1.5 text-sm font-semibold text-white rounded-full bg-linear-to-r from-violet-500 to-cyan-400 hover:opacity-95 transition-opacity"
     >
-      Sign in
+      Get Started
     </Link>
   );
 }

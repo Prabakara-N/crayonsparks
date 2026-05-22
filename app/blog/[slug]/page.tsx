@@ -47,7 +47,7 @@ const HOW_TO_BY_SLUG: Record<
       },
       {
         name: "Upload and publish on Amazon KDP",
-        text: "In KDP: paste SEO title, use the description template from /gallery, tick 'Not Low Content'. Upload interior.pdf and cover.pdf, preview, set price ($6.99 US start), enable expanded distribution. Approval takes 24-72 hours.",
+        text: "In KDP: paste your SEO title, use the KDP metadata CrayonSparks generates with each book, tick 'Not Low Content'. Upload interior.pdf and cover.pdf, preview, set price ($6.99 US start), enable expanded distribution. Approval takes 24-72 hours.",
       },
       {
         name: "Seed traffic on day 1",
