@@ -5,7 +5,10 @@ import { buildOrganization, buildWebSite } from "@/lib/seo-schema";
 import { Analytics } from "@vercel/analytics/next";
 import { DialogProvider } from "@/components/ui/confirm-dialog";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { ReferralSurvey } from "@/components/onboarding/referral-survey";
+import { FeedbackWidget } from "@/components/feedback/feedback-widget";
 import { cn } from "@/lib/utils";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
@@ -83,7 +86,11 @@ export default function RootLayout({
           }}
         />
         <AuthProvider>
-          <DialogProvider>{children}</DialogProvider>
+          <TooltipProvider delayDuration={150}>
+            <DialogProvider>{children}</DialogProvider>
+            <ReferralSurvey />
+            <FeedbackWidget />
+          </TooltipProvider>
         </AuthProvider>
         <Toaster position="bottom-right" richColors closeButton />
         <Analytics />

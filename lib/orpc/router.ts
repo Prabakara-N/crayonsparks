@@ -7,6 +7,7 @@ import { imagesRouter } from "./routers/images";
 import { creditsRouter } from "./routers/credits";
 import { billingRouter } from "./routers/billing";
 import { integrationsRouter } from "./routers/integrations";
+import { feedbackRouter } from "./routers/feedback";
 
 export const router = {
   auth: authRouter,
@@ -16,6 +17,7 @@ export const router = {
   credits: creditsRouter,
   billing: billingRouter,
   integrations: integrationsRouter,
+  feedback: feedbackRouter,
 };
 
 export type AppRouter = typeof router;

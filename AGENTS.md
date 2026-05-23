@@ -62,3 +62,48 @@ Prompt-builder modules live under `lib/prompts/`. Conventions:
 - **Every prompt category is its own file.** When adding a new coloring-book category (e.g. `space`, `holidays`, `ocean-deep`), create `lib/prompts/categories/<slug>.ts` exporting a single `ColoringCategory` object. The aggregator in `lib/prompts/categories.ts` (or `categories/index.ts`) imports each per-slug file and assembles the `CATEGORIES` array. Do NOT keep growing a single multi-thousand-line array literal.
 - **Barrel-only public API.** External code imports from `@/lib/prompts` (which resolves to `lib/prompts/index.ts`). The submodules (`./guardrails`, `./master-page`, etc.) are internal — only other files inside `lib/prompts/` import from them directly.
 - **Guardrail constants are exported from `guardrails.ts` and imported by every template that needs them.** Do not duplicate a guardrail string into a template file. Tuning a kid-safe / anatomy / KDP-quality rule once should propagate to every prompt that uses it.
+
+# oRPC routers and client hooks
+
+**Every router in `lib/orpc/routers/<name>.ts` MUST have a matching client hook at `lib/hooks/use-<name>.ts`.** Don't lump procedures from router B into hook A just because they're called from the same UI surface.
+
+The mapping is 1:1:
+- `lib/orpc/routers/feedback.ts` → `lib/hooks/use-feedback.ts`
+- `lib/orpc/routers/billing.ts`  → `lib/hooks/use-billing.ts`
+- `lib/orpc/routers/images.ts`   → `lib/hooks/use-images.ts`
+- …etc.
+
+Admin-scoped procedures of a feature (e.g. `admin.feedback.list/get/update` defined in `lib/orpc/routers/admin.ts`) belong in the **feature's** hook, not in `use-admin.ts`. Name them with an `Admin` suffix on the method (e.g. `listAdmin`, `getAdmin`, `updateAdmin`) so the surface stays organized by feature, not by who can call it.
+
+When adding a new router, in the same change:
+1. Create the router file under `lib/orpc/routers/`
+2. Add it to the central registry in `lib/orpc/router.ts`
+3. Create the matching `lib/hooks/use-<name>.ts` hook even if it only wraps one procedure
+4. Use the hook from components — don't call `orpc.<name>.*` directly from a component
+
+# Firestore indexes
+
+**Whenever you write a Firestore query that needs a composite or collection-group index, update `firestore.indexes.json` in the SAME change.** Don't leave it for "later" — it always gets forgotten and breaks prod the moment that query runs.
+
+A query needs an index if it does any of:
+- `collectionGroup("X").orderBy(field)` — needs single-field exemption (collection-group scope)
+- `.where("A", "==", x).orderBy("B")` — needs composite index (A ASC, B DESC)
+- Multiple `.where()` clauses combined with an `.orderBy()`
+
+A query does NOT need an extra index if it does:
+- `.collection("X").orderBy(field)` on a single collection or subcollection — auto-indexed
+- `.where("A", "==", x)` only, no orderBy — auto-indexed
+- `.doc(id).get()` — no index needed
+
+`firestore.indexes.json` is the single source of truth. Two npm scripts deploy it:
+
+- `npm run fb:indexes:deploy`      → dev project (`crayon-spark`)
+- `npm run fb:indexes:deploy:prod` → prod project (`crayonsparks`)
+
+After adding an index to the JSON file, always tell the user to run **both** deploys. Dev first to confirm the query works on the dev database; then prod once verified. Skipping the prod deploy means the moment that code runs on production, the admin/user-facing page throws "missing index" 500s.
+
+Existing indexes for reference (all in `firestore.indexes.json`):
+- Composite: `credits` `refKind ASC + createdAt DESC` (collection group) — admin credits + costs pages
+- Composite: `feedback` `status ASC + createdAt DESC` (collection) — admin feedback list with status filter
+- Single-field exemption: `books / createdAt` DESC (collection group) — admin generations
+- Single-field exemption: `credits / createdAt` DESC (collection group) — admin credits unfiltered

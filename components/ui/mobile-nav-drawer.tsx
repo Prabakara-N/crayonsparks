@@ -78,15 +78,26 @@ export function MobileNavDrawer({
       {open && (
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          animate={{
+            opacity: 1,
+            transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
+          }}
+          exit={{
+            opacity: 0,
+            transition: { duration: 0.35, ease: [0.7, 0, 0.84, 0] },
+          }}
           className="fixed inset-0 z-[100] md:hidden"
         >
           <motion.div
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "tween", duration: 0.25 }}
+            initial={{ x: "100%" }}
+            animate={{
+              x: 0,
+              transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] },
+            }}
+            exit={{
+              x: "100%",
+              transition: { duration: 0.4, ease: [0.7, 0, 0.84, 0] },
+            }}
             className="absolute inset-0 w-full bg-zinc-950 flex flex-col"
           >
             <div className="flex items-center justify-between px-4 h-16 border-b border-white/10 shrink-0">

@@ -1,11 +1,13 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
-/** A pulsing placeholder block — compose these into content-shaped layouts. */
-export function Skeleton({ className }: { className?: string }) {
+function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      aria-hidden
-      className={cn("animate-pulse rounded-md bg-white/8", className)}
+      data-slot="skeleton"
+      className={cn("animate-pulse rounded-md bg-muted", className)}
+      {...props}
     />
-  );
+  )
 }
+
+export { Skeleton }

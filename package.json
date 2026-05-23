@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "render:assets": "node scripts/brand-assets/render.js",
-    "fb:indexes:deploy": "firebase deploy --only firestore:indexes"
+    "fb:indexes:deploy": "firebase deploy --only firestore:indexes",
+    "fb:indexes:deploy:prod": "firebase deploy --only firestore:indexes --project prod"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.53",

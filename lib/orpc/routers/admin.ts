@@ -2,10 +2,12 @@ import "server-only";
 
 import { z } from "zod";
 import { ORPCError } from "@orpc/server";
+import { FieldValue } from "firebase-admin/firestore";
 import { getAdminAuth, db } from "@/lib/firebase/admin";
 import { writeAuditLog } from "@/lib/firebase/audit";
 import { adjustCredits, InsufficientCreditsError } from "@/lib/firebase/credits";
 import { getReadUrl } from "@/lib/storage/sign-url";
+import { FEEDBACK_STATUSES, FEEDBACK_KINDS } from "@/lib/feedback/types";
 import { adminProcedure } from "../base";
 
 const UsersListInput = z.object({
@@ -333,6 +335,144 @@ export const adminRouter = {
           })),
         };
       }),
+  },
+
+  feedback: {
+    list: adminProcedure
+      .input(
+        z.object({
+          status: z
+            .enum(["all", ...FEEDBACK_STATUSES])
+            .default("all"),
+          kind: z.enum(["all", ...FEEDBACK_KINDS]).default("all"),
+          limit: z.number().int().min(1).max(200).default(100),
+        }),
+      )
+      .handler(async ({ input }) => {
+        let query = db
+          .collection("feedback")
+          .orderBy("createdAt", "desc")
+          .limit(input.limit * 2);
+        if (input.status !== "all") {
+          query = db
+            .collection("feedback")
+            .where("status", "==", input.status)
+            .orderBy("createdAt", "desc")
+            .limit(input.limit);
+        }
+        const snap = await query.get();
+        const items = snap.docs
+          .map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              userId: (data.userId as string) ?? "",
+              userEmail: (data.userEmail as string | null) ?? null,
+              kind: (data.kind as string) ?? "feedback",
+              title: (data.title as string) ?? "",
+              body: (data.body as string) ?? "",
+              page: (data.page as string | null) ?? null,
+              status: (data.status as string) ?? "open",
+              hasScreenshot: Boolean(data.screenshotKey),
+              createdAt: data.createdAt?.toMillis?.() ?? null,
+            };
+          })
+          .filter(
+            (it) => input.kind === "all" || it.kind === input.kind,
+          )
+          .slice(0, input.limit);
+        return { items };
+      }),
+
+    get: adminProcedure
+      .input(z.object({ id: z.string().min(1) }))
+      .handler(async ({ input }) => {
+        const snap = await db.collection("feedback").doc(input.id).get();
+        if (!snap.exists) {
+          throw new ORPCError("NOT_FOUND", { message: "Feedback not found." });
+        }
+        const data = snap.data() ?? {};
+        const screenshotKey = (data.screenshotKey as string | null) ?? null;
+        const screenshotUrl = screenshotKey
+          ? await getReadUrl(screenshotKey, 3600)
+          : null;
+        return {
+          id: snap.id,
+          userId: (data.userId as string) ?? "",
+          userEmail: (data.userEmail as string | null) ?? null,
+          kind: (data.kind as string) ?? "feedback",
+          title: (data.title as string) ?? "",
+          body: (data.body as string) ?? "",
+          page: (data.page as string | null) ?? null,
+          userAgent: (data.userAgent as string | null) ?? null,
+          status: (data.status as string) ?? "open",
+          adminNotes: (data.adminNotes as string | null) ?? "",
+          screenshotUrl,
+          createdAt: data.createdAt?.toMillis?.() ?? null,
+          updatedAt: data.updatedAt?.toMillis?.() ?? null,
+          respondedAt: data.respondedAt?.toMillis?.() ?? null,
+        };
+      }),
+
+    update: adminProcedure
+      .input(
+        z.object({
+          id: z.string().min(1),
+          status: z.enum(FEEDBACK_STATUSES).optional(),
+          adminNotes: z.string().max(4000).optional(),
+        }),
+      )
+      .handler(async ({ input }) => {
+        const ref = db.collection("feedback").doc(input.id);
+        const patch: Record<string, unknown> = {
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        if (input.status) {
+          patch.status = input.status;
+          if (input.status === "resolved") {
+            patch.respondedAt = FieldValue.serverTimestamp();
+          }
+        }
+        if (input.adminNotes !== undefined) {
+          patch.adminNotes = input.adminNotes;
+        }
+        await ref.set(patch, { merge: true });
+        return { ok: true };
+      }),
+  },
+
+  referrals: {
+    summary: adminProcedure.handler(async () => {
+      const snap = await db.collection("users").get();
+      const counts = new Map<string, number>();
+      let answered = 0;
+      let unanswered = 0;
+      const otherTexts: Array<{ uid: string; text: string }> = [];
+      for (const doc of snap.docs) {
+        const data = doc.data();
+        const source = (data.referralSource as string | null | undefined) ?? null;
+        if (!source) {
+          unanswered += 1;
+          continue;
+        }
+        answered += 1;
+        counts.set(source, (counts.get(source) ?? 0) + 1);
+        if (source === "other") {
+          const text = (data.referralSourceOther as string | null) ?? null;
+          if (text) otherTexts.push({ uid: doc.id, text });
+        }
+      }
+      const items = Array.from(counts.entries())
+        .map(([source, count]) => ({ source, count }))
+        .sort((a, b) => b.count - a.count);
+      return {
+        total: snap.size,
+        answered,
+        unanswered,
+        items,
+        otherTexts: otherTexts.slice(0, 50),
+      };
+    }),
   },
 
   costs: {

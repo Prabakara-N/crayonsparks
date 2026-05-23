@@ -68,5 +68,6 @@ export function useAdmin() {
       (days?: number) => orpc.admin.costs.daily({ days: days ?? 30 }),
       [],
     ),
+    referralsSummary: useCallback(() => orpc.admin.referrals.summary(), []),
   };
 }

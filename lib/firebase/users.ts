@@ -12,6 +12,7 @@ export interface UserProfileSnapshot {
   creditsBalance: number;
   plan: string;
   signInProvider: string | null;
+  referralSource: string | null;
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
   lastSignInAt: Timestamp | null;
@@ -82,10 +83,33 @@ export async function ensureUserDocument(
     creditsBalance: (data.creditsBalance as number | undefined) ?? 0,
     plan: (data.plan as string | undefined) ?? "free",
     signInProvider: (data.signInProvider as string | null) ?? null,
+    referralSource: (data.referralSource as string | null) ?? null,
     createdAt: (data.createdAt as Timestamp | undefined) ?? null,
     updatedAt: (data.updatedAt as Timestamp | undefined) ?? null,
     lastSignInAt: (data.lastSignInAt as Timestamp | undefined) ?? null,
   };
+}
+
+interface SetReferralSourceArgs {
+  uid: string;
+  source: string;
+  other?: string | null;
+}
+
+export async function setReferralSource(
+  args: SetReferralSourceArgs,
+): Promise<void> {
+  await db
+    .collection("users")
+    .doc(args.uid)
+    .set(
+      {
+        referralSource: args.source,
+        referralSourceOther: args.other?.trim() || null,
+        referralSourceAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 }
 
 export interface BillingSummary {

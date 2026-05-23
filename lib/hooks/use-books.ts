@@ -22,10 +22,5 @@ export function useBooks() {
       (bookId: string) => orpc.books.delete({ bookId }),
       [],
     ),
-    uploadImage: useCallback(
-      (bookId: string, role: string, base64: string) =>
-        orpc.images.upload({ bookId, role, base64 }),
-      [],
-    ),
   };
 }
