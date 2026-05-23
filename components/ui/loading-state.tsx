@@ -8,7 +8,7 @@ export function LoadingState({
   label?: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+    <div className="max-h-[80vh] flex flex-col items-center justify-center gap-3 py-20 text-center">
       <Loader2 className="w-6 h-6 animate-spin text-violet-300" />
       <p className="text-sm text-neutral-400">{label}</p>
     </div>
