@@ -40,23 +40,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextUser);
       setLoading(false);
       if (nextUser) {
-        // Keep the server-side session cookie fresh (sign-in + hourly refresh).
-        void nextUser
-          .getIdToken()
-          .then((idToken) =>
-            fetch("/api/auth/session", {
+        // Serialize: set the server session cookie FIRST, then call
+        // ensureUser. Running them in parallel races — ensureUser fires
+        // before the cookie exists, the oRPC protectedProcedure rejects
+        // as unauthenticated, and the Firestore user doc never gets
+        // created (no credits, no billing).
+        void (async () => {
+          try {
+            const idToken = await nextUser.getIdToken();
+            await fetch("/api/auth/session", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ idToken }),
-            }),
-          )
-          .catch(() => {
-            // Non-fatal — server routes also accept an Authorization header.
-          });
-        if (lastEnsuredUidRef.current !== nextUser.uid) {
-          lastEnsuredUidRef.current = nextUser.uid;
-          void ensureUser();
-        }
+            });
+          } catch {
+            // Non-fatal — Authorization header is the fallback.
+          }
+          if (lastEnsuredUidRef.current !== nextUser.uid) {
+            lastEnsuredUidRef.current = nextUser.uid;
+            void ensureUser();
+          }
+        })();
       } else {
         lastEnsuredUidRef.current = null;
         void fetch("/api/auth/session", { method: "DELETE" }).catch(() => {
