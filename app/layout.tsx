@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Space_Grotesk, JetBrains_Mono, Geist } from "next/font/google";
 import "./globals.css";
 import { buildOrganization, buildWebSite } from "@/lib/seo-schema";
+import { Analytics } from "@vercel/analytics/next";
 import { DialogProvider } from "@/components/ui/confirm-dialog";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/components/auth/auth-provider";
@@ -85,6 +86,7 @@ export default function RootLayout({
           <DialogProvider>{children}</DialogProvider>
         </AuthProvider>
         <Toaster position="bottom-right" richColors closeButton />
+        <Analytics />
       </body>
     </html>
   );
