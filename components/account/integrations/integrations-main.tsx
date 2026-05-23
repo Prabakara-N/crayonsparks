@@ -8,30 +8,57 @@ import { PageHeader } from "../page-header";
 import { INTEGRATION_PLATFORMS } from "./integration-platforms";
 import { IntegrationCard } from "./integration-card";
 
-const GUMROAD_RESULT_MESSAGES: Record<string, [string, "ok" | "err"]> = {
-  connected: ["Gumroad connected — you can now publish to it.", "ok"],
-  denied: ["Gumroad connection was cancelled.", "err"],
-  badstate: ["Gumroad connection failed a security check. Try again.", "err"],
-  notconfigured: [
-    "Gumroad isn't configured yet — the API credentials are missing.",
-    "err",
-  ],
-  error: ["Couldn't finish connecting Gumroad. Try again.", "err"],
+const PLATFORM_LABELS: Record<string, string> = {
+  gumroad: "Gumroad",
+  pinterest: "Pinterest",
+  etsy: "Etsy",
 };
+
+function resultMessage(
+  platform: string,
+  result: string,
+): [string, "ok" | "err"] | null {
+  const label = PLATFORM_LABELS[platform] ?? platform;
+  switch (result) {
+    case "connected":
+      return [`${label} connected — you can now publish to it.`, "ok"];
+    case "denied":
+      return [`${label} connection was cancelled.`, "err"];
+    case "badstate":
+      return [`${label} connection failed a security check. Try again.`, "err"];
+    case "notconfigured":
+      return [
+        `${label} isn't configured yet — the API credentials are missing.`,
+        "err",
+      ];
+    case "error":
+      return [`Couldn't finish connecting ${label}. Try again.`, "err"];
+    default:
+      return null;
+  }
+}
+
+const TRACKED_PLATFORMS = ["gumroad", "pinterest", "etsy"] as const;
 
 export function IntegrationsMain() {
   const { items, error, refresh, disconnect } = useIntegrations();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const result = new URLSearchParams(window.location.search).get("gumroad");
-    if (!result) return;
-    const message = GUMROAD_RESULT_MESSAGES[result];
-    if (message) {
-      const [text, kind] = message;
-      if (kind === "ok") toast.success(text);
-      else toast.error(text);
+    const params = new URLSearchParams(window.location.search);
+    let toasted = false;
+    for (const platform of TRACKED_PLATFORMS) {
+      const result = params.get(platform);
+      if (!result) continue;
+      const message = resultMessage(platform, result);
+      if (message) {
+        const [text, kind] = message;
+        if (kind === "ok") toast.success(text);
+        else toast.error(text);
+      }
+      toasted = true;
     }
+    if (!toasted) return;
     window.history.replaceState(null, "", "/account/integrations");
     void refresh();
   }, [refresh]);

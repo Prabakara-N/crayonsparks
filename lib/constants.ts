@@ -87,6 +87,20 @@ export const ALL_IMAGE_MODELS: readonly ImageModel[] = [
   GPT_IMAGE_1_5,
 ] as const;
 
+/**
+ * Premium image models gated behind paid plans (Hobbyist / Pro). Free-tier
+ * users see these in pickers as locked, with an "upgrade to unlock" tooltip.
+ * Admins always have access regardless of plan.
+ */
+export const PRO_TIER_MODELS: readonly ImageModel[] = [
+  NANO_BANANA_PRO,
+  GPT_IMAGE_1_5,
+] as const;
+
+export function isProTierModel(model: ImageModel): boolean {
+  return (PRO_TIER_MODELS as readonly ImageModel[]).includes(model);
+}
+
 export function isGeminiImageModel(v: unknown): v is GeminiImageModel {
   return v === NANO_BANANA_25 || v === NANO_BANANA_31 || v === NANO_BANANA_PRO;
 }

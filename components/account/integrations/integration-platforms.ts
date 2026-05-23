@@ -20,13 +20,14 @@ export const INTEGRATION_PLATFORMS: IntegrationPlatformMeta[] = [
     id: "pinterest",
     name: "Pinterest",
     description:
-      "Auto-pin your covers and mockups to drive traffic to your listings.",
-    available: false,
+      "Auto-pin your covers and sample pages to drive traffic to your listings.",
+    available: true,
   },
   {
     id: "etsy",
     name: "Etsy",
-    description: "List your coloring and story books in your Etsy shop.",
-    available: false,
+    description:
+      "Auto-create draft + active listings in your Etsy shop, with cover, PDF and tags.",
+    available: true,
   },
 ];

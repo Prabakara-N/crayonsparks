@@ -58,24 +58,63 @@ interface SaveIntegrationArgs {
   scopes: string;
   accountId: string | null;
   accountHandle: string | null;
+  refreshToken?: string | null;
+  expiresInSec?: number | null;
 }
 
 export async function saveIntegration(
   args: SaveIntegrationArgs,
 ): Promise<void> {
+  const payload: Record<string, unknown> = {
+    platform: args.platform,
+    accessTokenCiphertext: encryptSecret(args.accessToken),
+    scopes: args.scopes,
+    accountId: args.accountId,
+    accountHandle: args.accountHandle,
+    connectedAt: FieldValue.serverTimestamp(),
+  };
+  if (args.refreshToken) {
+    payload.refreshTokenCiphertext = encryptSecret(args.refreshToken);
+  }
+  if (args.expiresInSec && args.expiresInSec > 0) {
+    payload.tokenExpiresAtMs = Date.now() + args.expiresInSec * 1000;
+  }
   await db
     .collection("users")
     .doc(args.uid)
     .collection("integrations")
     .doc(args.platform)
-    .set({
-      platform: args.platform,
-      accessTokenCiphertext: encryptSecret(args.accessToken),
-      scopes: args.scopes,
-      accountId: args.accountId,
-      accountHandle: args.accountHandle,
-      connectedAt: FieldValue.serverTimestamp(),
-    });
+    .set(payload);
+}
+
+export interface DecryptedIntegration {
+  accessToken: string;
+  refreshToken: string | null;
+  tokenExpiresAtMs: number | null;
+  scopes: string;
+  accountHandle: string | null;
+}
+
+export async function getIntegration(
+  uid: string,
+  platform: IntegrationPlatform,
+): Promise<DecryptedIntegration | null> {
+  const doc = await db
+    .collection("users")
+    .doc(uid)
+    .collection("integrations")
+    .doc(platform)
+    .get();
+  const data = doc.data();
+  if (!data?.accessTokenCiphertext) return null;
+  const refreshCt = data.refreshTokenCiphertext as string | undefined;
+  return {
+    accessToken: decryptSecret(data.accessTokenCiphertext as string),
+    refreshToken: refreshCt ? decryptSecret(refreshCt) : null,
+    tokenExpiresAtMs: (data.tokenExpiresAtMs as number | undefined) ?? null,
+    scopes: (data.scopes as string | undefined) ?? "",
+    accountHandle: (data.accountHandle as string | null) ?? null,
+  };
 }
 
 export interface IntegrationStatus {

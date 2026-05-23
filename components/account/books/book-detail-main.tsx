@@ -27,6 +27,8 @@ import {
   type SavedBookForDownload,
 } from "@/lib/functions/client/download-saved-book";
 import { PageHeader } from "../page-header";
+import { PublishToEtsyButton } from "./publish-to-etsy-button";
+import { PublishToPinterestButton } from "./publish-to-pinterest-button";
 import { SavedBookPageGrid, type SavedPage } from "./saved-book-page-grid";
 
 interface ImageVariant {
@@ -276,6 +278,8 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
               ? "Building print package…"
               : "Download print package"}
           </button>
+          <PublishToEtsyButton bookId={book.bookId} />
+          <PublishToPinterestButton bookId={book.bookId} />
           <button
             type="button"
             onClick={handleDelete}

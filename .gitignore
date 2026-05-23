@@ -42,3 +42,8 @@ next-env.d.ts
 
 # internal planning docs (founder-only, not for repo history)
 /docs/
+
+# claude code / agent skills (third-party vendored, do not commit)
+/.agents/
+/.claude/
+/skills-lock.json

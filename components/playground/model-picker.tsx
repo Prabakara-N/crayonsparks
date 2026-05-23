@@ -1,9 +1,17 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MODEL_LABELS, type ImageModel } from "@/lib/constants";
+import {
+  MODEL_LABELS,
+  isProTierModel,
+  type ImageModel,
+} from "@/lib/constants";
+import { useModelAccess } from "@/lib/hooks/use-model-access";
+
+const UPGRADE_TOOLTIP =
+  "Upgrade to Hobbyist or Pro to unlock this premium model.";
 
 interface ModelPickerProps {
   label: string;
@@ -47,6 +55,10 @@ export function ModelPicker({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
+  const { hasProAccess } = useModelAccess();
+
+  const isLocked = (m: ImageModel) =>
+    !hasProAccess && isProTierModel(m);
 
   // Close on outside click. We attach to mousedown (not click) so that a
   // click on a trigger inside another container doesn't fire after our
@@ -71,6 +83,7 @@ export function ModelPicker({
   }, [open, options, value]);
 
   function commit(next: ImageModel) {
+    if (isLocked(next)) return;
     onChange(next);
     setOpen(false);
     triggerRef.current?.focus();
@@ -168,18 +181,25 @@ export function ModelPicker({
           {options.map((opt, i) => {
             const selected = opt === value;
             const highlighted = i === highlight;
+            const locked = isLocked(opt);
             return (
               <button
                 key={opt}
                 type="button"
                 role="option"
                 aria-selected={selected}
+                aria-disabled={locked}
+                title={locked ? UPGRADE_TOOLTIP : undefined}
                 onMouseEnter={() => setHighlight(i)}
                 onClick={() => commit(opt)}
                 className={cn(
                   "w-full flex items-center gap-2 pl-2.5 pr-3 py-1.5 text-left",
                   "text-xs text-white transition-colors",
-                  highlighted ? "bg-violet-500/25" : "hover:bg-white/10",
+                  locked
+                    ? "opacity-50 cursor-not-allowed hover:bg-transparent"
+                    : highlighted
+                      ? "bg-violet-500/25"
+                      : "hover:bg-white/10",
                 )}
               >
                 <Check
@@ -189,9 +209,20 @@ export function ModelPicker({
                     selected ? "text-violet-300" : "text-transparent",
                   )}
                 />
-                <span className={cn(selected ? "font-semibold" : "font-medium")}>
+                <span
+                  className={cn(
+                    "flex-1",
+                    selected ? "font-semibold" : "font-medium",
+                  )}
+                >
                   {MODEL_LABELS[opt]}
                 </span>
+                {locked && (
+                  <Lock
+                    aria-hidden
+                    className="w-3 h-3 text-amber-300 shrink-0"
+                  />
+                )}
               </button>
             );
           })}
