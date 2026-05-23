@@ -35,7 +35,7 @@ export function AdminShell({ children }: AdminShellProps) {
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open admin menu"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-sm text-amber-100 hover:bg-amber-500/25"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm text-white hover:bg-white/10 hover:border-white/20 transition-colors"
           >
             <Menu className="w-4 h-4" />
             Menu

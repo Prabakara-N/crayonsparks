@@ -34,7 +34,7 @@ export function AdminMobileDrawer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-[59] bg-black/70 backdrop-blur-sm md:hidden"
             onClick={onClose}
             aria-hidden
           />
@@ -43,7 +43,7 @@ export function AdminMobileDrawer({
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-y-0 left-0 z-50 w-72 p-3 md:hidden"
+            className="fixed inset-y-0 left-0 z-[60] w-[85vw] max-w-[18rem] p-3 md:hidden"
             role="dialog"
             aria-modal="true"
             aria-label="Admin navigation"
@@ -53,7 +53,7 @@ export function AdminMobileDrawer({
                 type="button"
                 onClick={onClose}
                 aria-label="Close admin menu"
-                className="absolute -right-2 top-2 z-10 w-8 h-8 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 flex items-center justify-center text-white"
+                className="absolute right-3 top-3 z-10 w-8 h-8 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-white/15 flex items-center justify-center text-neutral-300 hover:text-white shadow-lg shadow-black/40 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
