@@ -36,5 +36,37 @@ export function useAdmin() {
       [],
     ),
     overviewStats: useCallback(() => orpc.admin.overview.stats(), []),
+    listGenerations: useCallback(
+      (params: {
+        limit?: number;
+        kind?: "coloring" | "story" | "all";
+      }) =>
+        orpc.admin.generations.list({
+          limit: params.limit ?? 50,
+          kind: params.kind ?? "all",
+        }),
+      [],
+    ),
+    listCredits: useCallback(
+      (params: {
+        limit?: number;
+        refKind?:
+          | "all"
+          | "signup"
+          | "grant"
+          | "purchase"
+          | "spend"
+          | "refund";
+      }) =>
+        orpc.admin.credits.list({
+          limit: params.limit ?? 100,
+          refKind: params.refKind ?? "all",
+        }),
+      [],
+    ),
+    dailyCosts: useCallback(
+      (days?: number) => orpc.admin.costs.daily({ days: days ?? 30 }),
+      [],
+    ),
   };
 }

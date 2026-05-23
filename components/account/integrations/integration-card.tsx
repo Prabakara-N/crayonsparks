@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Loader2, Store } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDialog } from "@/components/ui/confirm-dialog";
 import type { IntegrationStatus } from "@/lib/hooks/use-integrations";
+import { PlatformIcon, PLATFORM_BRAND_COLORS } from "./platform-icon";
 import type { IntegrationPlatformMeta } from "./integration-platforms";
 
 interface IntegrationCardProps {
@@ -43,11 +44,14 @@ export function IntegrationCard({
     }
   }
 
+  const brand = PLATFORM_BRAND_COLORS[meta.id];
   return (
     <div className="rounded-2xl bg-zinc-900/60 border border-white/10 p-5 flex flex-col">
       <div className="flex items-start justify-between gap-3">
-        <span className="w-10 h-10 rounded-xl bg-violet-500/15 border border-violet-500/30 flex items-center justify-center">
-          <Store className="w-5 h-5 text-violet-200" />
+        <span
+          className={`w-10 h-10 rounded-xl border flex items-center justify-center ${brand.bg} ${brand.border}`}
+        >
+          <PlatformIcon platform={meta.id} className="w-6 h-6" />
         </span>
         {connected && (
           <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-300">

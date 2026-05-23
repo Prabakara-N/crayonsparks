@@ -5,7 +5,6 @@ import {
   BookOpen,
   CreditCard,
   Store,
-  Settings,
 } from "lucide-react";
 import type { User } from "firebase/auth";
 import { AccountUserBlock } from "./account-user-block";
@@ -45,13 +44,6 @@ export function AccountSidebar({ user, onNavigate }: AccountSidebarProps) {
           href="/account/integrations"
           icon={Store}
           label="Integrations"
-          onClick={onNavigate}
-        />
-        <AccountSidebarLink
-          href="/account/settings"
-          icon={Settings}
-          label="Settings"
-          badge="Soon"
           onClick={onNavigate}
         />
       </nav>

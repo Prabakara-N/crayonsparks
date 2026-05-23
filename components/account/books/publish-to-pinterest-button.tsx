@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Send, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { orpc } from "@/lib/orpc/client";
+import { PlatformIcon } from "@/components/account/integrations/platform-icon";
 
 interface PublishToPinterestButtonProps {
   bookId: string;
@@ -59,7 +60,7 @@ export function PublishToPinterestButton({
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium text-red-100 bg-red-500/15 hover:bg-red-500/20 border border-red-500/30 transition-colors"
       >
-        <Send className="w-4 h-4" />
+        <PlatformIcon platform="pinterest" className="w-4 h-4" />
         Pin to Pinterest
       </button>
 
@@ -154,7 +155,7 @@ export function PublishToPinterestButton({
                   {submitting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Send className="w-4 h-4" />
+                    <PlatformIcon platform="pinterest" className="w-4 h-4" />
                   )}
                   {submitting ? "Publishing…" : "Publish"}
                 </button>

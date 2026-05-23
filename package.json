@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "render:assets": "node scripts/brand-assets/render.js"
+    "render:assets": "node scripts/brand-assets/render.js",
+    "fb:indexes:deploy": "firebase deploy --only firestore:indexes"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.53",
@@ -53,6 +54,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "firebase-tools": "^15.18.0",
     "playwright": "^1.59.1",
     "tailwindcss": "^4",
     "typescript": "^5"

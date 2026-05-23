@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, Loader2, ShoppingBag, X } from "lucide-react";
+import { ExternalLink, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { orpc } from "@/lib/orpc/client";
+import { PlatformIcon } from "@/components/account/integrations/platform-icon";
 
 interface PublishToEtsyButtonProps {
   bookId: string;
@@ -88,7 +89,7 @@ export function PublishToEtsyButton({ bookId }: PublishToEtsyButtonProps) {
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium text-orange-100 bg-orange-500/15 hover:bg-orange-500/20 border border-orange-500/30 transition-colors"
       >
-        <ShoppingBag className="w-4 h-4" />
+        <PlatformIcon platform="etsy" className="w-4 h-4" />
         Publish to Etsy
       </button>
 
@@ -239,7 +240,7 @@ export function PublishToEtsyButton({ bookId }: PublishToEtsyButtonProps) {
                   {submitting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <ShoppingBag className="w-4 h-4" />
+                    <PlatformIcon platform="etsy" className="w-4 h-4" />
                   )}
                   {submitting ? "Publishing…" : "Publish"}
                 </button>

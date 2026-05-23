@@ -5,6 +5,7 @@ import { ORPCError } from "@orpc/server";
 import { getAdminAuth, db } from "@/lib/firebase/admin";
 import { writeAuditLog } from "@/lib/firebase/audit";
 import { adjustCredits, InsufficientCreditsError } from "@/lib/firebase/credits";
+import { getReadUrl } from "@/lib/storage/sign-url";
 import { adminProcedure } from "../base";
 
 const UsersListInput = z.object({
@@ -213,5 +214,191 @@ export const adminRouter = {
         totalUsers: usersCount,
       };
     }),
+  },
+
+  generations: {
+    list: adminProcedure
+      .input(
+        z.object({
+          limit: z.number().int().min(1).max(100).default(50),
+          kind: z.enum(["coloring", "story", "all"]).default("all"),
+        }),
+      )
+      .handler(async ({ input }) => {
+        const snap = await db
+          .collectionGroup("books")
+          .orderBy("createdAt", "desc")
+          .limit(input.limit * 2)
+          .get();
+
+        const items = await Promise.all(
+          snap.docs.map(async (d) => {
+            const data = d.data();
+            const ownerUid =
+              (data.ownerUid as string | undefined) ?? d.ref.parent.parent?.id ?? null;
+            const mode = (data.mode as "qa" | "story") ?? "qa";
+            const kind: "coloring" | "story" =
+              mode === "story" ? "story" : "coloring";
+            const thumbKey = data.cover?.thumb?.key as string | undefined;
+            return {
+              bookId: d.id,
+              ownerUid,
+              title: (data.coverTitle as string) ?? (data.title as string) ?? "",
+              kind,
+              mode,
+              pageCount: (data.pageCount as number | undefined) ?? 0,
+              coverThumbUrl: thumbKey ? await getReadUrl(thumbKey, 600) : null,
+              createdAt: data.createdAt?.toMillis?.() ?? null,
+            };
+          }),
+        );
+
+        const filtered = items.filter(
+          (it) => input.kind === "all" || it.kind === input.kind,
+        );
+        const ownerUids = Array.from(
+          new Set(filtered.map((it) => it.ownerUid).filter(Boolean)),
+        ) as string[];
+        const userDocs = await Promise.all(
+          ownerUids.map((uid) => db.collection("users").doc(uid).get()),
+        );
+        const userMap = new Map(
+          userDocs.map((d) => [
+            d.id,
+            (d.data()?.email as string | null) ?? null,
+          ]),
+        );
+
+        return {
+          items: filtered.slice(0, input.limit).map((it) => ({
+            ...it,
+            ownerEmail: it.ownerUid ? userMap.get(it.ownerUid) ?? null : null,
+          })),
+        };
+      }),
+  },
+
+  credits: {
+    list: adminProcedure
+      .input(
+        z.object({
+          limit: z.number().int().min(1).max(500).default(100),
+          refKind: z
+            .enum(["all", "signup", "grant", "purchase", "spend", "refund"])
+            .default("all"),
+        }),
+      )
+      .handler(async ({ input }) => {
+        const base = db.collectionGroup("credits");
+        let query = base.orderBy("createdAt", "desc").limit(input.limit * 2);
+        if (input.refKind !== "all") {
+          query = base
+            .where("refKind", "==", input.refKind)
+            .orderBy("createdAt", "desc")
+            .limit(input.limit);
+        }
+        const snap = await query.get();
+        const items = snap.docs.map((d) => {
+          const data = d.data();
+          const ownerUid = d.ref.parent.parent?.id ?? null;
+          return {
+            id: d.id,
+            ownerUid,
+            delta: (data.delta as number) ?? 0,
+            balanceAfter: (data.balanceAfter as number | null) ?? null,
+            reason: (data.reason as string) ?? "",
+            refKind: (data.refKind as string) ?? "grant",
+            refId: (data.refId as string | null) ?? null,
+            createdByEmail: (data.createdByEmail as string | null) ?? null,
+            createdAt: data.createdAt?.toMillis?.() ?? null,
+          };
+        });
+        const limited = items.slice(0, input.limit);
+        const ownerUids = Array.from(
+          new Set(limited.map((it) => it.ownerUid).filter(Boolean)),
+        ) as string[];
+        const userDocs = await Promise.all(
+          ownerUids.map((uid) => db.collection("users").doc(uid).get()),
+        );
+        const userMap = new Map(
+          userDocs.map((d) => [
+            d.id,
+            (d.data()?.email as string | null) ?? null,
+          ]),
+        );
+        return {
+          items: limited.map((it) => ({
+            ...it,
+            ownerEmail: it.ownerUid ? userMap.get(it.ownerUid) ?? null : null,
+          })),
+        };
+      }),
+  },
+
+  costs: {
+    daily: adminProcedure
+      .input(
+        z.object({
+          days: z.number().int().min(1).max(90).default(30),
+        }),
+      )
+      .handler(async ({ input }) => {
+        const cutoff = Date.now() - input.days * 24 * 60 * 60 * 1000;
+        const snap = await db
+          .collectionGroup("credits")
+          .where("refKind", "==", "spend")
+          .orderBy("createdAt", "desc")
+          .limit(5000)
+          .get();
+
+        const buckets = new Map<
+          string,
+          { date: string; coloring: number; story: number; total: number }
+        >();
+
+        for (const doc of snap.docs) {
+          const data = doc.data();
+          const at = data.createdAt?.toMillis?.() as number | undefined;
+          if (!at || at < cutoff) continue;
+          const delta = Math.abs((data.delta as number) ?? 0);
+          if (delta === 0) continue;
+          const reason = (data.reason as string | undefined) ?? "";
+          const isStory = /story/i.test(reason);
+          const date = new Date(at).toISOString().slice(0, 10);
+          const bucket = buckets.get(date) ?? {
+            date,
+            coloring: 0,
+            story: 0,
+            total: 0,
+          };
+          if (isStory) bucket.story += delta;
+          else bucket.coloring += delta;
+          bucket.total += delta;
+          buckets.set(date, bucket);
+        }
+
+        const days: Array<{
+          date: string;
+          coloring: number;
+          story: number;
+          total: number;
+        }> = [];
+        for (let i = input.days - 1; i >= 0; i--) {
+          const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+          const key = d.toISOString().slice(0, 10);
+          days.push(
+            buckets.get(key) ?? { date: key, coloring: 0, story: 0, total: 0 },
+          );
+        }
+
+        const totalCredits = days.reduce((n, d) => n + d.total, 0);
+        const peakCredits = days.reduce((n, d) => Math.max(n, d.total), 0);
+        return {
+          days,
+          totalCredits,
+          peakCredits,
+          creditUsdRate: 0.013,
+        };
+      }),
   },
 };
