@@ -22,6 +22,8 @@
       "collectionGroup": "books",
       "fieldPath": "createdAt",
       "indexes": [
+        { "queryScope": "COLLECTION", "order": "ASCENDING" },
+        { "queryScope": "COLLECTION", "order": "DESCENDING" },
         { "queryScope": "COLLECTION_GROUP", "order": "DESCENDING" }
       ]
     },
@@ -29,6 +31,8 @@
       "collectionGroup": "credits",
       "fieldPath": "createdAt",
       "indexes": [
+        { "queryScope": "COLLECTION", "order": "ASCENDING" },
+        { "queryScope": "COLLECTION", "order": "DESCENDING" },
         { "queryScope": "COLLECTION_GROUP", "order": "DESCENDING" }
       ]
     }

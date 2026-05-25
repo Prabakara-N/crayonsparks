@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useBooks } from "@/lib/hooks/use-books";
+import { useIsAdmin } from "@/lib/hooks/use-is-admin";
 import { useDialog } from "@/components/ui/confirm-dialog";
 import { LoadingState } from "@/components/ui/loading-state";
 import { BookFlip, prefetchBookFlip } from "@/components/playground/book-flip";
@@ -64,6 +65,7 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
   const router = useRouter();
   const dialog = useDialog();
   const { get, delete: deleteBook } = useBooks();
+  const { isAdmin } = useIsAdmin();
   const [book, setBook] = useState<BookDoc | null>(null);
   const [pages, setPages] = useState<SavedPage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -262,12 +264,12 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
             onClick={handleDownload}
             disabled={downloading || deleting}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-linear-to-r from-violet-500 to-cyan-400 hover:opacity-95 disabled:opacity-60 transition-opacity"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-linear-to-r from-violet-500 to-cyan-400 hover:opacity-95 disabled:opacity-60 transition-opacity whitespace-nowrap"
           >
             {downloading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -278,8 +280,12 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
               ? "Building print package…"
               : "Download print package"}
           </button>
-          <PublishToEtsyButton bookId={book.bookId} />
-          <PublishToPinterestButton bookId={book.bookId} />
+          {isAdmin && (
+            <>
+              <PublishToEtsyButton bookId={book.bookId} />
+              <PublishToPinterestButton bookId={book.bookId} />
+            </>
+          )}
           <button
             type="button"
             onClick={handleDelete}

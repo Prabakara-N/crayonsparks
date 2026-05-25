@@ -96,6 +96,16 @@ export function BookStudio({
 
   const [qualityCheck] = useState(false);
   const [viewMode, setViewMode] = useState<"carousel" | "book">("carousel");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const enforceMobile = () => {
+      if (mq.matches) setViewMode("carousel");
+    };
+    enforceMobile();
+    mq.addEventListener("change", enforceMobile);
+    return () => mq.removeEventListener("change", enforceMobile);
+  }, []);
   const [storyPreview, setStoryPreview] = useState<{
     open: boolean;
     src: string;
@@ -755,7 +765,7 @@ export function BookStudio({
       {plan && allDone && (
         <div className="flex flex-col gap-3 lg:grid lg:grid-cols-3 lg:items-center lg:gap-2">
           <div className="hidden lg:block" aria-hidden />
-          <div className="flex justify-center order-2 lg:order-none">
+          <div className="hidden md:flex justify-center order-2 lg:order-none">
             <div
               role="tablist"
               aria-label="Page view"

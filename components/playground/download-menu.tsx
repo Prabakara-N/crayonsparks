@@ -80,10 +80,15 @@ export function DownloadMenu({
   function pick(action: () => void) {
     setOpen(false);
     const rect = buttonRef.current?.getBoundingClientRect();
-    if (rect) {
-      fireConfettiBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
-    }
     action();
+    if (rect) {
+      setTimeout(() => {
+        fireConfettiBurst(
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+        );
+      }, 400);
+    }
   }
 
   return (

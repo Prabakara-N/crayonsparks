@@ -8,8 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "render:assets": "node scripts/brand-assets/render.js",
-    "fb:indexes:deploy": "firebase deploy --only firestore:indexes",
-    "fb:indexes:deploy:prod": "firebase deploy --only firestore:indexes --project prod"
+    "fb:indexes:deploy": "npx --no-install firebase deploy --only firestore:indexes --project default",
+    "fb:indexes:deploy:prod": "npx --no-install firebase deploy --only firestore:indexes --project prod"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.53",
@@ -21,8 +21,10 @@
     "@radix-ui/react-hover-card": "^1.1.15",
     "@sentry/nextjs": "^10.53.1",
     "@tabler/icons-react": "^3.41.1",
+    "@types/canvas-confetti": "^1.9.0",
     "@vercel/analytics": "^2.0.1",
     "ai": "^6.0.168",
+    "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^12.13.0",

@@ -44,8 +44,10 @@ export function BookCard({ book }: { book: SavedBookSummary }) {
             <BookOpen className="w-8 h-8 text-neutral-600" />
           </div>
         )}
+      </div>
+      <div className="p-3">
         <span
-          className={`absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${
             isStory
               ? "bg-violet-500/20 border border-violet-500/40 text-violet-100"
               : "bg-cyan-500/20 border border-cyan-500/40 text-cyan-100"
@@ -58,8 +60,6 @@ export function BookCard({ book }: { book: SavedBookSummary }) {
           )}
           {isStory ? "Story" : "Coloring"}
         </span>
-      </div>
-      <div className="p-3">
         <p className="text-sm font-semibold text-white truncate group-hover:text-violet-200">
           {book.coverTitle || book.title}
         </p>

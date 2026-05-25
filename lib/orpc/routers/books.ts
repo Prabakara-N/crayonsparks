@@ -160,52 +160,79 @@ export const booksRouter = {
     }),
 
   list: protectedProcedure.input(ListInput).handler(async ({ input, context }) => {
-    const snap = await db
-      .collection("users")
-      .doc(context.userId as string)
-      .collection("books")
-      .orderBy("createdAt", "desc")
-      .limit(input.limit)
-      .get();
+    try {
+      const userId = context.userId as string;
+      let snap;
+      try {
+        snap = await db
+          .collection("users")
+          .doc(userId)
+          .collection("books")
+          .orderBy("createdAt", "desc")
+          .limit(input.limit)
+          .get();
+      } catch (err) {
+        console.error("[books.list] orderBy query failed, falling back", err);
+        snap = await db
+          .collection("users")
+          .doc(userId)
+          .collection("books")
+          .limit(input.limit)
+          .get();
+      }
 
-    const items = await Promise.all(
-      snap.docs.map(async (d) => {
-        const data = d.data();
-        const mode = (data.mode as "qa" | "story") ?? "qa";
-        const thumbKey = data.cover?.thumb?.key as string | undefined;
-        let coverThumbUrl: string | null = null;
-        if (thumbKey) {
-          try {
-            coverThumbUrl = await getReadUrl(thumbKey);
-          } catch {
-            coverThumbUrl = null;
+      const items = await Promise.all(
+        snap.docs.map(async (d) => {
+          const data = d.data();
+          const mode = (data.mode as "qa" | "story") ?? "qa";
+          const thumbKey = data.cover?.thumb?.key as string | undefined;
+          let coverThumbUrl: string | null = null;
+          if (thumbKey) {
+            try {
+              coverThumbUrl = await getReadUrl(thumbKey);
+            } catch {
+              coverThumbUrl = null;
+            }
           }
-        }
-        return {
-          bookId: d.id,
-          title: (data.title as string) ?? "",
-          coverTitle: (data.coverTitle as string) ?? "",
-          mode,
-          kind: mode === "story" ? "story" : "coloring",
-          age: (data.age as string) ?? "toddlers",
-          pageCount: (data.pageCount as number) ?? 0,
-          coverThumbUrl,
-          createdAt: data.createdAt?.toMillis() ?? null,
-        };
-      }),
-    );
-    return { items };
+          return {
+            bookId: d.id,
+            title: (data.title as string) ?? "",
+            coverTitle: (data.coverTitle as string) ?? "",
+            mode,
+            kind: mode === "story" ? "story" : "coloring",
+            age: (data.age as string) ?? "toddlers",
+            pageCount: (data.pageCount as number) ?? 0,
+            coverThumbUrl,
+            createdAt: data.createdAt?.toMillis() ?? null,
+          };
+        }),
+      );
+      return { items };
+    } catch (err) {
+      console.error("[books.list] failed", err);
+      throw new ORPCError("INTERNAL_SERVER_ERROR", {
+        message:
+          err instanceof Error
+            ? `books.list failed: ${err.message}`
+            : "books.list failed",
+      });
+    }
   }),
 
   count: protectedProcedure.handler(async ({ context }) => {
-    const userId = context.userId as string;
-    const snap = await db
-      .collection("users")
-      .doc(userId)
-      .collection("books")
-      .count()
-      .get();
-    return { total: snap.data().count };
+    try {
+      const userId = context.userId as string;
+      const snap = await db
+        .collection("users")
+        .doc(userId)
+        .collection("books")
+        .count()
+        .get();
+      return { total: snap.data().count };
+    } catch (err) {
+      console.error("[books.count] failed", err);
+      return { total: 0 };
+    }
   }),
 
   get: protectedProcedure.input(GetInput).handler(async ({ input, context }) => {

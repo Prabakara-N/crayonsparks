@@ -74,9 +74,23 @@ export function BooksMain() {
         </div>
       )}
 
-      {error && <p className="text-sm text-red-300 mb-4">{error}</p>}
-
-      {books === null && !error ? (
+      {error ? (
+        <div className="rounded-2xl bg-red-500/5 border border-red-500/30 p-6 text-center">
+          <p className="text-sm font-semibold text-red-300 mb-1">
+            Couldn&apos;t load your library
+          </p>
+          <p className="text-xs text-red-200/70 mb-4">
+            Something went wrong fetching your saved books. Try refreshing.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-white/10 hover:bg-white/15 text-white"
+          >
+            Retry
+          </button>
+        </div>
+      ) : books === null ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
             <div
@@ -91,7 +105,7 @@ export function BooksMain() {
             </div>
           ))}
         </div>
-      ) : books && books.length === 0 ? (
+      ) : books.length === 0 ? (
         <EmptyLibrary />
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl bg-zinc-900/60 border border-white/10 p-8 text-center text-sm text-neutral-400">
