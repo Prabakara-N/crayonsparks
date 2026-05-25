@@ -14,6 +14,7 @@ import type { ImageModel } from "./constants";
 import { generateColoringImage } from "./gemini";
 import type { GenerateImageResult, GenerateOptions } from "./gemini";
 import { generateOpenAiImage } from "./openai-image";
+import { trimUniformBorders } from "./image-post-process";
 
 export interface DispatchOptions extends Omit<GenerateOptions, "model"> {
   model: ImageModel;
@@ -33,17 +34,13 @@ export async function generateImageByModel(
   prompt: string,
   opts: DispatchOptions,
 ): Promise<GenerateImageResult> {
-  if (isOpenAiImageModel(opts.model)) {
-    return generateOpenAiImage(prompt, { ...opts, model: opts.model });
-  }
-  if (isGeminiImageModel(opts.model)) {
-    return generateColoringImage(prompt, { ...opts, model: opts.model });
-  }
-  // Caller passed an unknown model — fall back to the safe Gemini default
-  // rather than throwing, so a stale client-side model id doesn't break
-  // the run mid-bulk.
-  return generateColoringImage(prompt, {
-    ...opts,
-    model: DEFAULT_INTERIOR_MODEL,
-  });
+  const raw = isOpenAiImageModel(opts.model)
+    ? await generateOpenAiImage(prompt, { ...opts, model: opts.model })
+    : isGeminiImageModel(opts.model)
+      ? await generateColoringImage(prompt, { ...opts, model: opts.model })
+      : await generateColoringImage(prompt, {
+          ...opts,
+          model: DEFAULT_INTERIOR_MODEL,
+        });
+  return trimUniformBorders(raw);
 }

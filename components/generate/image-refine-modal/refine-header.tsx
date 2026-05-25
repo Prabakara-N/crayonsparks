@@ -39,16 +39,18 @@ export function RefineHeader({
   busy,
 }: RefineHeaderProps) {
   return (
-    <div className="px-5 py-3 border-b border-white/10 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+    <div className="px-3 py-2 lg:px-5 lg:py-3 border-b border-white/10 flex flex-wrap items-center lg:items-start justify-between gap-x-3 gap-y-2">
       <div className="min-w-0 flex-1">
-        <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-linear-to-r from-violet-500/15 to-cyan-500/15 border border-violet-500/30 text-[10px] font-semibold uppercase tracking-wider text-violet-300 mb-1.5">
+        <div className="hidden lg:inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-linear-to-r from-violet-500/15 to-cyan-500/15 border border-violet-500/30 text-[10px] font-semibold uppercase tracking-wider text-violet-300 mb-1.5">
           {contextLabel(context)} · Refine chat
         </div>
-        <h3 className="font-display text-base font-semibold text-white">
+        <h3 className="font-display text-sm lg:text-base font-semibold text-white truncate">
           {title ?? "Refine with Sparky"}
         </h3>
         {subtitle && (
-          <p className="text-xs text-neutral-400 mt-0.5">{subtitle}</p>
+          <p className="hidden lg:block text-xs text-neutral-400 mt-0.5">
+            {subtitle}
+          </p>
         )}
       </div>
       <ModelPicker

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/apple-cards-carousel";
 import { RegenerateCardButton } from "@/components/playground/regenerate-card-button";
 import { PageCover } from "./page-cover";
+import { PageDownloadButton } from "./page-download-button";
 import { RefineStatusBadge } from "./refine-status-badge";
 import { StatusBadge } from "./status-badge";
 import type {
@@ -164,17 +165,26 @@ export function Carousel({
     // The apple carousel only holds the interior page cards now.
     return items.map((it, i) => {
       const refineState = refineStatus?.[it.id];
+      const downloadFilename = `page-${i + 1}-${it.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.png`;
       const card: CardData = {
         title: it.name,
         category: `Page ${i + 1} / ${items.length}`,
         cover: (
-          <PageCover
-            status={it.status}
-            dataUrl={it.dataUrl}
-            message={it.error ?? it.name}
-            aspectClass={aspectRatio.replace(":", " / ")}
-            showFrame
-          />
+          <>
+            <PageCover
+              status={it.status}
+              dataUrl={it.dataUrl}
+              message={it.error ?? it.name}
+              aspectClass={aspectRatio.replace(":", " / ")}
+              showFrame
+            />
+            {it.status === "done" && it.dataUrl && (
+              <PageDownloadButton
+                dataUrl={it.dataUrl}
+                filename={downloadFilename}
+              />
+            )}
+          </>
         ),
         badge: refineState ? (
           <RefineStatusBadge state={refineState} />
@@ -206,16 +216,9 @@ export function Carousel({
             quality: it.quality,
           });
         } else if (it.status === "error") {
-          if (isStory) {
-            void dialog.alert({
-              title: "Story pages generate in order",
-              message:
-                "Each story page references the previous one so characters stay consistent across the book. You can't retry a single page in isolation — use the main Generate / Resume button to continue from where it failed.",
-              variant: "info",
-              okText: "Got it",
-            });
-            return;
-          }
+          // Failed pages never produced an image — retrying in place is safe
+          // for both modes. Story mode might see slight character drift on
+          // the single retry, but that's preferable to being blocked.
           setEditingError(it);
         } else if (it.status === "generating") {
           // Don't fire a parallel regen on an in-flight page — that races

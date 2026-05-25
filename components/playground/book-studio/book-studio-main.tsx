@@ -819,8 +819,7 @@ export function BookStudio({
 
       {plan && (
         <div
-          className="rounded-3xl p-4 md:p-6 bg-zinc-900/60 backdrop-blur-xl border border-white/10 relative"
-          style={{ minHeight: 620 }}
+          className="rounded-3xl p-4 md:p-6 bg-zinc-900/60 backdrop-blur-xl border border-white/10 relative min-h-[500px] md:min-h-[620px]"
         >
           <AnimatePresence mode="wait" initial={false}>
             {viewMode === "book" && allDone ? (

@@ -302,10 +302,8 @@ export function Card({ card, index, size = "md", onClick }: CardProps) {
             handleOpen();
           }
         }}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
         className={cn(
-          "rounded-3xl bg-neutral-900 border border-white/10 overflow-hidden flex flex-col items-start justify-start relative z-10 shrink-0 text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400/60",
+          "group rounded-3xl bg-neutral-900 border border-white/10 overflow-hidden flex flex-col items-start justify-start relative z-10 shrink-0 text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400/60",
           SIZE_CLASSES[size],
         )}
       >

@@ -1,10 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ImageModel } from "@/lib/constants";
 import { DEFAULT_COVER_MODEL, DEFAULT_INTERIOR_MODEL } from "@/lib/constants";
+import { useDialog } from "@/components/ui/confirm-dialog";
 import { AGE_LABELS } from "../book-studio-constants";
 import { isAbortError } from "../book-studio-helpers";
+import {
+  isCreditsError,
+  showCreditsExhaustedDialog,
+} from "../credits-error";
 import { generateCover as runGenerateCover } from "@/lib/functions/client/generate-cover";
 import { generateBackCover as runGenerateBackCover } from "@/lib/functions/client/generate-back-cover";
 import { generateBelongsToPage as runGenerateBelongsTo } from "@/lib/functions/client/generate-belongs-to-page";
@@ -47,6 +53,8 @@ export function useCoverGeneration({
   characterLockBlockRef,
   abortRef,
 }: UseCoverGenerationArgs) {
+  const dialog = useDialog();
+  const router = useRouter();
   const [cover, setCover] = useState<CoverState>({ status: "pending" });
   const [backCover, setBackCover] = useState<CoverState>({ status: "pending" });
   const [belongsTo, setBelongsTo] = useState<CoverState>({ status: "pending" });
@@ -97,10 +105,13 @@ export function useCoverGeneration({
         setCover({ status: "pending" });
         return;
       }
-      setCover({
-        status: "error",
-        error: e instanceof Error ? e.message : "Cover failed",
-      });
+      const message = e instanceof Error ? e.message : "Cover failed";
+      if (isCreditsError(message)) {
+        setCover({ status: "pending" });
+        void showCreditsExhaustedDialog(dialog, router);
+        return;
+      }
+      setCover({ status: "error", error: message });
       throw e;
     }
   }, [
@@ -114,6 +125,8 @@ export function useCoverGeneration({
     qualityCheck,
     coverModel,
     abortRef,
+    dialog,
+    router,
   ]);
 
   const generateBackCover = useCallback(async () => {
@@ -145,10 +158,13 @@ export function useCoverGeneration({
         setBackCover({ status: "pending" });
         return;
       }
-      setBackCover({
-        status: "error",
-        error: e instanceof Error ? e.message : "Back cover failed",
-      });
+      const message = e instanceof Error ? e.message : "Back cover failed";
+      if (isCreditsError(message)) {
+        setBackCover({ status: "pending" });
+        void showCreditsExhaustedDialog(dialog, router);
+        return;
+      }
+      setBackCover({ status: "error", error: message });
     }
   }, [
     plan,
@@ -160,6 +176,8 @@ export function useCoverGeneration({
     coverModel,
     age,
     abortRef,
+    dialog,
+    router,
   ]);
 
   const generateBelongsToPage = useCallback(async () => {
@@ -187,10 +205,14 @@ export function useCoverGeneration({
         setBelongsTo({ status: "pending" });
         return;
       }
-      setBelongsTo({
-        status: "error",
-        error: e instanceof Error ? e.message : "Belongs-to page failed",
-      });
+      const message =
+        e instanceof Error ? e.message : "Belongs-to page failed";
+      if (isCreditsError(message)) {
+        setBelongsTo({ status: "pending" });
+        void showCreditsExhaustedDialog(dialog, router);
+        return;
+      }
+      setBelongsTo({ status: "error", error: message });
     }
   }, [
     plan,
@@ -201,6 +223,8 @@ export function useCoverGeneration({
     cover.dataUrl,
     interiorModel,
     abortRef,
+    dialog,
+    router,
   ]);
 
   const generateTheEndPage = useCallback(async () => {
@@ -222,10 +246,13 @@ export function useCoverGeneration({
         setTheEndPage({ status: "pending" });
         return;
       }
-      setTheEndPage({
-        status: "error",
-        error: e instanceof Error ? e.message : "The End page failed",
-      });
+      const message = e instanceof Error ? e.message : "The End page failed";
+      if (isCreditsError(message)) {
+        setTheEndPage({ status: "pending" });
+        void showCreditsExhaustedDialog(dialog, router);
+        return;
+      }
+      setTheEndPage({ status: "error", error: message });
     }
   }, [
     plan,
@@ -235,6 +262,8 @@ export function useCoverGeneration({
     coverStyle,
     coverBorder,
     abortRef,
+    dialog,
+    router,
   ]);
 
   return {

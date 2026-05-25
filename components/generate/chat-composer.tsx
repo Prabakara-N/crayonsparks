@@ -128,7 +128,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   const hasSuggestions = suggestions.length > 0 || suggestionsLoading;
 
   return (
-    <div className="border-t border-white/10 bg-zinc-950/80 backdrop-blur-md p-3 space-y-2">
+    <div className="border-t border-white/10 bg-zinc-950/80 backdrop-blur-md p-2 lg:p-3 space-y-1.5 lg:space-y-2">
       {hasSuggestions && (
         <div>
           <button

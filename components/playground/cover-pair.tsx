@@ -222,7 +222,7 @@ export function CoverPair({
               </div>
             )}
             <div className="flex items-start justify-center">
-              <div className="w-full max-w-[180px] md:max-w-[200px] shrink">
+              <div className="w-full max-w-[240px] md:max-w-[200px] mx-auto md:mx-0">
                 <CoverTile
                   key="the-end"
                   label="The End"
@@ -257,7 +257,7 @@ export function CoverPair({
               </div>
             )}
             <div className="flex items-start justify-center">
-              <div className="w-full max-w-[180px] md:max-w-[200px] shrink">
+              <div className="w-full max-w-[240px] md:max-w-[200px] mx-auto md:mx-0">
                 <CoverTile
                   key="belongs-to"
                   label="Belongs to"

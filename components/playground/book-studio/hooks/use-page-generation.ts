@@ -1,11 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ImageModel } from "@/lib/constants";
 import { useDialog } from "@/components/ui/confirm-dialog";
 import { readJsonOrThrow } from "@/lib/fetch-json";
 import { downscaleReferenceImage } from "@/lib/functions/client/downscale-image";
 import { isAbortError, shareKeyNoun } from "../book-studio-helpers";
+import {
+  isCreditsError,
+  showCreditsExhaustedDialog,
+} from "../credits-error";
 import type {
   AgeRange,
   Aspect,
@@ -61,6 +66,7 @@ export function usePageGeneration({
   itemsRef,
 }: UsePageGenerationArgs) {
   const dialog = useDialog();
+  const router = useRouter();
 
   const [items, setItems] = useState<PromptItem[]>(
     initialPlan
@@ -227,10 +233,13 @@ export function usePageGeneration({
           updateItem(item.id, { status: "pending", error: undefined });
           return undefined;
         }
-        updateItem(item.id, {
-          status: "error",
-          error: e instanceof Error ? e.message : "Failed",
-        });
+        const message = e instanceof Error ? e.message : "Failed";
+        if (isCreditsError(message)) {
+          updateItem(item.id, { status: "pending", error: undefined });
+          void showCreditsExhaustedDialog(dialog, router);
+          return undefined;
+        }
+        updateItem(item.id, { status: "error", error: message });
         return undefined;
       }
     },
@@ -246,6 +255,7 @@ export function usePageGeneration({
       cover.status,
       cover.dataUrl,
       dialog,
+      router,
       detailLevel,
       coverStyle,
       updateItem,

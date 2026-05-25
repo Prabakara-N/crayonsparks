@@ -84,7 +84,15 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
   // (matches the prior UX where the chip row was visible on entry).
   const [openSubpanel, setOpenSubpanel] = useState<
     "none" | "suggestions" | "customize"
-  >("suggestions");
+  >(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 1023px)").matches
+    ) {
+      return "none";
+    }
+    return "suggestions";
+  });
   // Cache suggestions per image so re-opening the modal on the same image
   // (or flipping back to a previously-seen version) doesn't re-fetch.
   // Key: `${context}::<dataUrl>` — cleared on full unmount.
@@ -848,16 +856,16 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full h-full lg:h-auto lg:max-h-[92vh] max-w-none lg:max-w-6xl rounded-none lg:rounded-3xl bg-zinc-950 border-0 lg:border lg:border-white/10 shadow-2xl shadow-violet-500/20 overflow-hidden grid grid-cols-1 grid-rows-[minmax(0,1fr)_auto] lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)]"
+            className="relative w-full h-full lg:h-auto lg:max-h-[92vh] max-w-none lg:max-w-6xl rounded-none lg:rounded-3xl bg-zinc-950 border-0 lg:border lg:border-white/10 shadow-2xl shadow-violet-500/20 overflow-hidden grid grid-cols-1 grid-rows-[auto_minmax(0,1fr)] lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)]"
           >
             {/* Image pane */}
-            <div className="relative bg-black flex items-center justify-center min-h-[320px] overflow-hidden">
-              <div className="relative w-full h-full flex items-center justify-center bg-white">
+            <div className="relative bg-black flex items-center justify-center lg:min-h-[320px] overflow-hidden">
+              <div className="relative w-full flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={current.dataUrl}
                   alt={title ?? "Preview"}
-                  className="w-full h-full max-h-[40vh] lg:max-h-[92vh] object-contain bg-white"
+                  className="max-h-[28vh] lg:max-h-[92vh] w-auto h-auto max-w-full object-contain"
                 />
                 {/* Border is now drawn by Gemini into the image itself
                     (per master prompt's DRAW_BORDER_RULE). No CSS overlay. */}
@@ -872,7 +880,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
             </div>
 
             {/* Chat pane */}
-            <div className="flex flex-col max-h-[55vh] lg:max-h-[92vh] bg-zinc-950 min-h-0">
+            <div className="flex flex-col lg:max-h-[92vh] bg-zinc-950 min-h-0 overflow-hidden">
               <RefineHeader
                 context={context}
                 title={title}
@@ -894,7 +902,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
 
               {(context === "back-cover" ||
                 context === "story-back-cover") && (
-                <div className="px-4 pt-2 pb-1 flex justify-end">
+                <div className="px-3 lg:px-4 pt-1.5 lg:pt-2 pb-1 flex justify-end">
                   <BackCoverRefinePanel
                     frontCoverDataUrl={frontCoverDataUrl}
                     bookTitle={bookTitle ?? title ?? "Coloring Book"}
