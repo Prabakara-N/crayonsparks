@@ -55,6 +55,7 @@ export async function exchangePinterestCode(
 
   const res = await fetch(PINTEREST_TOKEN, {
     method: "POST",
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Authorization: `Basic ${basic}`,
       "Content-Type": "application/x-www-form-urlencoded",

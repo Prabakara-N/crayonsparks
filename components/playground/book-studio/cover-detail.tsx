@@ -91,7 +91,7 @@ export function CoverDetail({
                 {
                   value: "illustrated",
                   label: "Illustrated",
-                  sub: "Premium picture-book",
+                  sub: "Premium story-book",
                 },
               ] as const
             ).map((opt) => {

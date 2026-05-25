@@ -157,7 +157,7 @@ export function Carousel({
         <div
           ref={carouselRef}
           onScroll={checkScrollability}
-          className="flex w-full overflow-x-scroll overscroll-x-auto scroll-smooth py-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          className="flex w-full overflow-x-scroll overscroll-x-auto scroll-smooth py-3 md:py-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
           <div className="flex flex-row justify-start gap-4 pl-4 pr-4 mx-auto">
             {items.map((item, index) => (
@@ -180,7 +180,7 @@ export function Carousel({
             ))}
           </div>
         </div>
-        <div className="flex justify-end gap-2 mt-2 mr-4">
+        <div className="hidden md:flex justify-end gap-2 mt-2 mr-4">
           <button
             type="button"
             aria-label="Scroll left"
@@ -213,9 +213,9 @@ export interface CardProps {
 }
 
 const SIZE_CLASSES: Record<NonNullable<CardProps["size"]>, string> = {
-  sm: "h-72 w-48 md:h-96 md:w-72",
-  md: "h-80 w-56 md:h-[28rem] md:w-80",
-  lg: "h-80 w-56 md:h-[40rem] md:w-96",
+  sm: "h-64 w-44 md:h-96 md:w-72",
+  md: "h-72 w-52 md:h-[28rem] md:w-80",
+  lg: "h-72 w-52 md:h-[40rem] md:w-96",
 };
 
 export function Card({ card, index, size = "md", onClick }: CardProps) {

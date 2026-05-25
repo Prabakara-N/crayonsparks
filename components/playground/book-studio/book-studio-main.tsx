@@ -941,6 +941,7 @@ export function BookStudio({
                   coverScene={plan?.coverScene}
                   characterLockBlock={characterLock.block}
                   refineStatus={refineStatus}
+                  mode={mode}
                 />
               </motion.div>
             ) : null}

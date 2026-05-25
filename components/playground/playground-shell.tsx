@@ -80,7 +80,7 @@ function briefToPlan(brief: BookBrief): Plan {
     title: brief.name,
     coverTitle: brief.name,
     description: isStory
-      ? `${brief.prompts.length}-page picture book.`
+      ? `${brief.prompts.length}-page story book.`
       : `${brief.prompts.length}-page coloring book.`,
     scene: brief.pageScene,
     coverScene: brief.coverScene,
@@ -301,35 +301,37 @@ export function PlaygroundShell() {
         </div>
       )}
 
-      <div className="flex justify-center">
-        <div
-          role="tablist"
-          aria-label="Playground mode"
-          className="flex w-full sm:inline-flex sm:w-auto p-1.5 rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur shadow-lg shadow-black/40"
-        >
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const active = activeTab === t.slug;
-            return (
-              <button
-                key={t.slug}
-                role="tab"
-                aria-selected={active}
-                onClick={() => setTab(t.slug)}
-                className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 sm:gap-2.5 px-2 sm:px-5 md:px-7 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold whitespace-nowrap transition-colors ${active
-                  ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow-lg shadow-violet-500/30"
-                  : "text-neutral-300 hover:text-white"
-                  }`}
-              >
-                <Icon className="hidden sm:block w-5 h-5" />
-                {t.label}
-              </button>
-            );
-          })}
+      {activeTab !== "chat-book" && (
+        <div className="flex justify-center">
+          <div
+            role="tablist"
+            aria-label="Playground mode"
+            className="flex w-full sm:inline-flex sm:w-auto p-1.5 rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur shadow-lg shadow-black/40"
+          >
+            {TABS.map((t) => {
+              const Icon = t.icon;
+              const active = activeTab === t.slug;
+              return (
+                <button
+                  key={t.slug}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setTab(t.slug)}
+                  className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 sm:gap-2.5 px-2 sm:px-5 md:px-7 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold whitespace-nowrap transition-colors ${active
+                    ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow-lg shadow-violet-500/30"
+                    : "text-neutral-300 hover:text-white"
+                    }`}
+                >
+                  <Icon className="hidden sm:block w-5 h-5" />
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      {!hideHero && (
+      {!hideHero && activeTab !== "chat-book" && (
         <ActiveTabDescription tab={TABS.find((t) => t.slug === activeTab)!} />
       )}
 

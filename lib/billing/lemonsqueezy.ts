@@ -58,6 +58,7 @@ async function createCheckoutForVariant(opts: {
 }): Promise<string> {
   const res = await fetch(`${LS_API}/checkouts`, {
     method: "POST",
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Authorization: `Bearer ${env("LEMONSQUEEZY_API_KEY")}`,
       Accept: "application/vnd.api+json",
@@ -142,6 +143,7 @@ export async function cancelSubscription(
 ): Promise<void> {
   const res = await fetch(`${LS_API}/subscriptions/${subscriptionId}`, {
     method: "DELETE",
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Authorization: `Bearer ${env("LEMONSQUEEZY_API_KEY")}`,
       Accept: "application/vnd.api+json",

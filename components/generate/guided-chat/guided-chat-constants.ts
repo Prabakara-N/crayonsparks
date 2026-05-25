@@ -23,7 +23,7 @@ export const MODE_INTROS: Record<Mode, ModeIntro> = {
   },
   story: {
     greeting:
-      "Hi, I'm Sparky AI ✨ I turn stories into coloring books — classic fables (Aesop, Panchatantra, Grimm) or your own ideas. Say hi or tell me a story.",
+      "Hi, I'm Sparky AI ✨ I turn ideas into full-color story books — classic fables (Aesop, Panchatantra, Grimm) or your own original story. Say hi or share a story idea.",
     placeholders: [
       "The Tortoise and the Hare…",
       "Goldilocks and the Three Bears…",
@@ -33,9 +33,9 @@ export const MODE_INTROS: Record<Mode, ModeIntro> = {
       "Jack and the Beanstalk…",
     ],
     quickStarts: [
-      "Give me a classic fable I can turn into a book",
-      "Show me popular school-textbook stories",
-      "Help me build an original kids' story",
+      "Give me a classic fable I can turn into a story book",
+      "Show me popular bedtime-story ideas",
+      "Help me build an original kids' story book",
     ],
   },
 };

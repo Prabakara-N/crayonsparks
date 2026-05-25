@@ -9,6 +9,7 @@ async function pinterestFetch<T>(
   const { accessToken, ...rest } = init;
   const res = await fetch(`${PINTEREST_API}${path}`, {
     ...rest,
+    signal: rest.signal ?? AbortSignal.timeout(20_000),
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",

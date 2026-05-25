@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import {
   BookOpen,
   BookPlus,
+  ChevronDown,
   ClipboardList,
   Lightbulb,
   XCircle,
 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ReferenceImageField } from "@/components/ui/reference-image-field";
 import { IdeaSuggestionsPanel } from "@/components/playground/idea-suggestions-panel";
@@ -90,6 +92,7 @@ export function IdeaForm({
   onViewPlan?: () => void;
 }) {
   const [showIdeas, setShowIdeas] = useState(false);
+  const [showHelper, setShowHelper] = useState(false);
   const isStory = bookKind === "story";
   const ideasPanelRef = useRef<HTMLDivElement>(null);
 
@@ -189,60 +192,112 @@ export function IdeaForm({
             modes so the form reads consistently. Larger type and clearer
             copy for non-technical users. */}
         {isStory ? (
-          <div className="mt-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-5 py-4 text-cyan-100/95 leading-relaxed">
-            <p className="font-semibold text-cyan-200 text-base mb-1.5">
-              Story book · full-color picture book with dialogue
-            </p>
-            <p className="text-sm">
-              You&apos;ll get a 6×9 picture book where the same characters
-              appear across every page, the colors stay consistent, and
-              speech bubbles render the dialogue. Type your story idea below
-              — a fable name, a character, or your own plot — pick a story
-              type if you want a specific tone, and we&apos;ll draft the whole
-              book in one shot.{" "}
-              {onSwitchToChat ? (
-                <>
-                  Prefer a back-and-forth chat?{" "}
-                  <button
-                    type="button"
-                    onClick={() => onSwitchToChat(idea, "story")}
-                    className="underline underline-offset-2 hover:text-cyan-100 font-semibold"
-                  >
-                    Plan with Sparky AI →
-                  </button>
-                </>
-              ) : null}
-            </p>
+          <div className="mt-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 text-cyan-100/95 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowHelper((v) => !v)}
+              aria-expanded={showHelper}
+              className="w-full flex items-center justify-between gap-3 px-5 py-3 text-left"
+            >
+              <span className="font-semibold text-cyan-200 text-sm sm:text-base">
+                Story book · full-color with dialogue
+              </span>
+              <ChevronDown
+                className={cn(
+                  "w-4 h-4 shrink-0 text-cyan-300 transition-transform duration-300",
+                  showHelper && "rotate-180",
+                )}
+              />
+            </button>
+            <AnimatePresence initial={false}>
+              {showHelper && (
+                <motion.div
+                  key="story-helper"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                  className="overflow-hidden"
+                >
+                  <p className="text-sm leading-relaxed px-5 pb-4">
+                    You&apos;ll get a 6×9 story book where the same characters
+                    appear across every page, the colors stay consistent, and
+                    speech bubbles render the dialogue. Type your story idea
+                    below — a fable name, a character, or your own plot —
+                    pick a story type if you want a specific tone, and
+                    we&apos;ll draft the whole book in one shot.{" "}
+                    {onSwitchToChat ? (
+                      <>
+                        Prefer a back-and-forth chat?{" "}
+                        <button
+                          type="button"
+                          onClick={() => onSwitchToChat(idea, "story")}
+                          className="underline underline-offset-2 hover:text-cyan-100 font-semibold"
+                        >
+                          Plan with Sparky AI →
+                        </button>
+                      </>
+                    ) : null}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         ) : (
-          <div className="mt-3 rounded-xl border border-violet-500/30 bg-violet-500/5 px-5 py-4 text-violet-100/95 leading-relaxed">
-            <p className="font-semibold text-violet-200 text-base mb-1.5">
-              Coloring book · black-and-white line art
-            </p>
-            <p className="text-sm">
-              You&apos;ll get an 8.5×11 KDP-ready coloring book with bold
-              outlines kids can color in. Type either a{" "}
-              <strong className="text-violet-100">theme</strong> (e.g.{" "}
-              &ldquo;20 farm animals&rdquo;, &ldquo;ocean creatures&rdquo;) for
-              independent subjects on each page, OR a{" "}
-              <strong className="text-violet-100">story</strong> (e.g.{" "}
-              &ldquo;The Tortoise and the Hare&rdquo;, &ldquo;a panda&apos;s
-              first day&rdquo;) for a narrative coloring book where each page
-              is a scene from the story. We&apos;ll detect which one you want
-              and structure the pages accordingly.{" "}
-              {onSwitchToChat ? (
-                <>
-                  Prefer a back-and-forth chat?{" "}
-                  <button
-                    type="button"
-                    onClick={() => onSwitchToChat(idea, "qa")}
-                    className="underline underline-offset-2 hover:text-violet-100 font-semibold"
-                  >
-                    Plan with Sparky AI →
-                  </button>
-                </>
-              ) : null}
-            </p>
+          <div className="mt-3 rounded-xl border border-violet-500/30 bg-violet-500/5 text-violet-100/95 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowHelper((v) => !v)}
+              aria-expanded={showHelper}
+              className="w-full flex items-center justify-between gap-3 px-5 py-3 text-left"
+            >
+              <span className="font-semibold text-violet-200 text-sm sm:text-base">
+                Coloring book · black-and-white line art
+              </span>
+              <ChevronDown
+                className={cn(
+                  "w-4 h-4 shrink-0 text-violet-300 transition-transform duration-300",
+                  showHelper && "rotate-180",
+                )}
+              />
+            </button>
+            <AnimatePresence initial={false}>
+              {showHelper && (
+                <motion.div
+                  key="coloring-helper"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                  className="overflow-hidden"
+                >
+                  <p className="text-sm leading-relaxed px-5 pb-4">
+                    You&apos;ll get an 8.5×11 KDP-ready coloring book with bold
+                    outlines kids can color in. Type either a{" "}
+                    <strong className="text-violet-100">theme</strong> (e.g.{" "}
+                    &ldquo;20 farm animals&rdquo;, &ldquo;ocean creatures&rdquo;)
+                    for independent subjects on each page, OR a{" "}
+                    <strong className="text-violet-100">story</strong> (e.g.{" "}
+                    &ldquo;The Tortoise and the Hare&rdquo;, &ldquo;a panda&apos;s
+                    first day&rdquo;) for a narrative coloring book where each
+                    page is a scene from the story. We&apos;ll detect which one
+                    you want and structure the pages accordingly.{" "}
+                    {onSwitchToChat ? (
+                      <>
+                        Prefer a back-and-forth chat?{" "}
+                        <button
+                          type="button"
+                          onClick={() => onSwitchToChat(idea, "qa")}
+                          className="underline underline-offset-2 hover:text-violet-100 font-semibold"
+                        >
+                          Plan with Sparky AI →
+                        </button>
+                      </>
+                    ) : null}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>

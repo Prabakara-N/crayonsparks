@@ -24,8 +24,10 @@ async function etsyFetch<T>(path: string, init: EtsyFetchInit): Promise<T> {
   };
   if (init.contentType) headers["Content-Type"] = init.contentType;
 
+  const isMultipart = !!init.contentType?.startsWith("multipart/");
   const res = await fetch(`${ETSY_API}${path}`, {
     method: init.method ?? "GET",
+    signal: AbortSignal.timeout(isMultipart ? 45_000 : 20_000),
     headers,
     body: init.body as BodyInit | undefined,
   });

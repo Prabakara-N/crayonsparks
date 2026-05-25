@@ -26,6 +26,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -53,6 +54,7 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
   const initials = (user.displayName || user.email || "?")
     .split(/\s+/)
     .map((s) => s[0])
@@ -96,7 +98,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                     tooltip={item.label}
                     className="relative data-[active=true]:bg-white/5 data-[active=true]:text-white data-[active=true]:hover:bg-white/8"
                   >
-                    <Link href={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false);
+                      }}
+                    >
                       {active && (
                         <span
                           aria-hidden
@@ -138,7 +145,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           </div>
         </div>
         <div className="px-2 pb-1 group-data-[collapsible=icon]:hidden">
-          <SignOutButton className="w-full text-xs" />
+          <SignOutButton
+            className="w-full text-xs"
+            onBeforeConfirm={() => {
+              if (isMobile) setOpenMobile(false);
+            }}
+          />
         </div>
       </SidebarFooter>
 

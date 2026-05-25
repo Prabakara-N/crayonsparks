@@ -147,7 +147,7 @@ function DialogShell({ state, onClose }: DialogShellProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
       aria-labelledby="dialog-title"
       aria-describedby="dialog-message"
       role="dialog"

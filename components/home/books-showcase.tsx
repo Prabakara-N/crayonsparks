@@ -80,7 +80,6 @@ export function BooksShowcase() {
   const [view, setView] = useState<View>("draggable");
   const [isMobile, setIsMobile] = useState(false);
 
-  // Drag-to-move is awkward on touch — mobile always uses the carousel.
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
     const update = () => setIsMobile(mq.matches);
@@ -89,13 +88,11 @@ export function BooksShowcase() {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  const effectiveView: View = isMobile ? "carousel" : view;
-
   return (
     <section className="relative bg-black overflow-hidden">
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
-        {/* Toggle — desktop only; mobile is carousel-only */}
-        <div className="hidden sm:flex absolute top-6 right-4 sm:right-6 lg:right-8 z-30 items-center gap-1 p-1 rounded-full bg-white/5 border border-white/10 backdrop-blur">
+        {/* Toggle — visible on mobile too; mobile drag uses 5 books only */}
+        <div className="flex absolute top-6 right-4 sm:right-6 lg:right-8 z-30 items-center gap-1 p-1 rounded-full bg-white/5 border border-white/10 backdrop-blur">
           <ToggleButton
             active={view === "draggable"}
             onClick={() => setView("draggable")}
@@ -125,7 +122,7 @@ export function BooksShowcase() {
         </div>
       </div>
 
-      {effectiveView === "draggable" ? <DraggableView /> : <CarouselView />}
+      {view === "draggable" ? <DraggableView isMobile={isMobile} /> : <CarouselView />}
     </section>
   );
 }
@@ -158,25 +155,35 @@ function ToggleButton({
   );
 }
 
-function DraggableView() {
+function DraggableView({ isMobile }: { isMobile: boolean }) {
+  const items = isMobile ? draggableItems.slice(0, 5) : draggableItems;
   return (
-    <DraggableCardContainer className="relative flex min-h-[110vh] w-full items-center justify-center overflow-clip pb-12">
-      <p className="absolute top-1/2 mx-auto max-w-md -translate-y-1/2 text-center text-2xl font-black md:text-4xl text-neutral-800 px-4">
+    <DraggableCardContainer
+      className={cn(
+        "relative flex w-full items-center justify-center overflow-clip pb-12",
+        isMobile ? "min-h-[85vh]" : "min-h-[110vh]",
+      )}
+    >
+      <p className="absolute top-1/2 mx-auto max-w-md -translate-y-1/2 text-center text-xl font-black md:text-4xl text-neutral-800 px-4">
         Drag the books around. Every one was made with{" "}
         <span className="gradient-text">CrayonSparks</span>.
       </p>
-      {draggableItems.map((item) => (
+      {items.map((item) => (
         <DraggableCardBody
           key={item.title}
-          className={`${item.className} bg-neutral-900 border border-white/10`}
+          className={cn(
+            item.className,
+            "bg-neutral-900 border border-white/10",
+            "min-h-0 w-52 p-3 md:min-h-96 md:w-80 md:p-6",
+          )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={item.image}
             alt={item.title}
-            className="pointer-events-none relative z-10 h-80 w-60 object-cover rounded-md mx-auto"
+            className="pointer-events-none relative z-10 h-56 w-40 md:h-80 md:w-60 object-cover rounded-md mx-auto"
           />
-          <h3 className="mt-4 text-center text-lg font-bold text-neutral-200">
+          <h3 className="mt-2 md:mt-4 text-center text-xs md:text-lg font-bold text-neutral-200">
             {item.title}
           </h3>
         </DraggableCardBody>

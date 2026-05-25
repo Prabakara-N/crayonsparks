@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ImageModel } from "@/lib/constants";
 import { useDialog } from "@/components/ui/confirm-dialog";
+import { readJsonOrThrow } from "@/lib/fetch-json";
+import { downscaleReferenceImage } from "@/lib/functions/client/downscale-image";
 import { isAbortError, shareKeyNoun } from "../book-studio-helpers";
 import type {
   AgeRange,
@@ -130,6 +132,12 @@ export function usePageGeneration({
         : item.id;
 
       try {
+        const [coverRefSmall, chainRefSmall, referenceSmall] = await Promise.all([
+          downscaleReferenceImage(cover.dataUrl),
+          downscaleReferenceImage(chainReferenceDataUrl),
+          downscaleReferenceImage(reference ?? undefined),
+        ]);
+
         if (mode === "story") {
           if (!plan.characters?.length || !plan.palette) {
             throw new Error(
@@ -149,19 +157,19 @@ export function usePageGeneration({
               narration: item.narration,
               composition: item.composition,
               coverReferenceDataUrl:
-                cover.dataUrl && cover.dataUrl !== chainReferenceDataUrl
-                  ? cover.dataUrl
+                coverRefSmall && coverRefSmall !== chainRefSmall
+                  ? coverRefSmall
                   : undefined,
-              chainReferenceDataUrl,
+              chainReferenceDataUrl: chainRefSmall,
               model: interiorModel,
               coverStyle,
             }),
           });
-          const json = (await res.json()) as {
+          const json = await readJsonOrThrow<{
             dataUrl?: string;
             error?: string;
-          };
-          if (!res.ok || !json.dataUrl) {
+          }>(res);
+          if (!json.dataUrl) {
             throw new Error(json.error || "Story page failed");
           }
           updateItem(item.id, {
@@ -185,25 +193,25 @@ export function usePageGeneration({
             aspectRatio,
             scene: plan.scene,
             variantSeed: seed,
-            referenceDataUrl: reference ?? undefined,
-            chainReferenceDataUrl,
+            referenceDataUrl: referenceSmall ?? undefined,
+            chainReferenceDataUrl: chainRefSmall,
             coverReferenceDataUrl:
-              cover.dataUrl &&
-                cover.dataUrl !== chainReferenceDataUrl &&
+              coverRefSmall &&
+                coverRefSmall !== chainRefSmall &&
                 shareKeyNoun(plan.coverScene ?? "", item.subject)
-                ? cover.dataUrl
+                ? coverRefSmall
                 : undefined,
             characterLock: characterLockBlock,
             qualityGate: qualityCheck,
             model: interiorModel,
           }),
         });
-        const json = (await res.json()) as {
+        const json = await readJsonOrThrow<{
           dataUrl?: string;
           error?: string;
           quality?: import("../types").QualityScore | null;
-        };
-        if (!res.ok || !json.dataUrl) {
+        }>(res);
+        if (!json.dataUrl) {
           throw new Error(json.error || "Page failed");
         }
 

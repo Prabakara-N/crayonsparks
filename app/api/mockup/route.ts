@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readBoundedJson } from "@/lib/api/bounded-json";
 import { generateColoringImage } from "@/lib/gemini";
 import { findMockupStyle } from "@/lib/mockup-prompts";
 
@@ -23,12 +24,9 @@ function parseDataUrl(url: string): { mimeType: string; data: string } | null {
 }
 
 export async function POST(req: Request) {
-  let body: Body;
-  try {
-    body = (await req.json()) as Body;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
+  const jsonRes = await readBoundedJson<Body>(req);
+  if (!jsonRes.ok) return jsonRes.response;
+  const body = jsonRes.body;
 
   const style = findMockupStyle(body.styleId ?? "");
   if (!style) {

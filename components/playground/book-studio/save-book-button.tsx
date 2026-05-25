@@ -87,30 +87,19 @@ export function SaveBookButton(props: SaveBookButtonProps) {
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={!canClick}
-        title={
-          isSignedIn
-            ? "Save this book to your library"
-            : "Sign in to save"
-        }
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-linear-to-r from-violet-500 to-cyan-400 hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-violet-500/30 transition-opacity"
-      >
-        {saving ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <BookmarkPlus className="w-4 h-4" />
-        )}
-        {saving ? progress?.step ?? "Saving…" : "Save to library"}
-      </button>
-      {saving && progress && (
-        <span className="text-[11px] text-neutral-400 font-mono">
-          {progress.done} / {progress.total}
-        </span>
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={!canClick}
+      title={isSignedIn ? "Save this book to your library" : "Sign in to save"}
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-linear-to-r from-violet-500 to-cyan-400 hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-violet-500/30 transition-opacity"
+    >
+      {saving ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        <BookmarkPlus className="w-4 h-4" />
       )}
-    </div>
+      {saving ? progress?.step ?? "Saving…" : "Save to library"}
+    </button>
   );
 }

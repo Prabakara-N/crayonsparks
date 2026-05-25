@@ -27,7 +27,7 @@ import type { DialogueStyle } from "@/lib/prompts";
 import { requireAuth } from "@/lib/auth/server-require-auth";
 
 export const runtime = "nodejs";
-export const maxDuration = 90;
+export const maxDuration = 60;
 
 interface Body {
   idea?: string;

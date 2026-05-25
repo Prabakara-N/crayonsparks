@@ -2,6 +2,7 @@
 // Returns: { dataUrl, model, elapsedMs }
 
 import { NextResponse } from "next/server";
+import { readBoundedJson } from "@/lib/api/bounded-json";
 import { generateImageByModel } from "@/lib/image-providers";
 import { preauthorizeCharge } from "@/lib/credits/charge";
 import {
@@ -67,12 +68,9 @@ function countWords(text: string): number {
 }
 
 export async function POST(req: Request) {
-  let body: Body;
-  try {
-    body = (await req.json()) as Body;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
+  const parsed = await readBoundedJson<Body>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const band = normalizeAgeBand(body.ageBand);
   const taglineMax = TAGLINE_MAX_WORDS[band];

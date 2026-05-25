@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { rateLimitByIp } from "@/lib/api/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,13 @@ interface Body {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: Request) {
+  const limit = await rateLimitByIp({
+    req,
+    kind: "contact",
+    limit: 5,
+  });
+  if (!limit.ok) return limit.response;
+
   let body: Body;
   try {
     body = (await req.json()) as Body;

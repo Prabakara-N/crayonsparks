@@ -14,7 +14,7 @@ import {
 } from "@/lib/kdp-metadata-hybrid";
 
 export const runtime = "nodejs";
-export const maxDuration = 90;
+export const maxDuration = 60;
 
 interface Body {
   bookTitle?: string;

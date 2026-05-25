@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -10,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { User } from "firebase/auth";
+import { orpc } from "@/lib/orpc/client";
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +23,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -31,10 +34,13 @@ interface NavItem {
   icon: LucideIcon;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/account", label: "Dashboard", icon: LayoutDashboard },
   { href: "/account/books", label: "My Books", icon: BookOpen },
   { href: "/account/billing", label: "Billing", icon: CreditCard },
+];
+
+const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/account/integrations", label: "Integrations", icon: Store },
 ];
 
@@ -44,12 +50,31 @@ interface AccountSidebarProps {
 
 export function AccountSidebar({ user }: AccountSidebarProps) {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const [isAdmin, setIsAdmin] = useState(false);
   const initials = (user.displayName || user.email || "?")
     .split(/\s+/)
     .map((s) => s[0])
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  useEffect(() => {
+    let cancelled = false;
+    orpc.auth
+      .me()
+      .then((res) => {
+        if (!cancelled) setIsAdmin(Boolean(res.isAdmin));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const navItems = isAdmin
+    ? [...BASE_NAV_ITEMS, ...ADMIN_NAV_ITEMS]
+    : BASE_NAV_ITEMS;
 
   return (
     <Sidebar collapsible="icon" className="top-16 h-[calc(100svh-4rem)]">
@@ -76,7 +101,7 @@ export function AccountSidebar({ user }: AccountSidebarProps) {
         <SidebarGroup>
           <SidebarGroupLabel>Account</SidebarGroupLabel>
           <SidebarMenu className="gap-1">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const active =
                 pathname === item.href ||
                 (item.href !== "/account" &&
@@ -90,7 +115,12 @@ export function AccountSidebar({ user }: AccountSidebarProps) {
                     tooltip={item.label}
                     className="data-[active=true]:bg-violet-500/15 data-[active=true]:text-white data-[active=true]:border data-[active=true]:border-violet-500/30 data-[active=true]:hover:bg-violet-500/20"
                   >
-                    <Link href={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false);
+                      }}
+                    >
                       <Icon
                         className={
                           active ? "text-violet-100" : "text-muted-foreground"
@@ -110,7 +140,12 @@ export function AccountSidebar({ user }: AccountSidebarProps) {
 
       <SidebarFooter className="border-t border-sidebar-border">
         <div className="px-2 pb-1 group-data-[collapsible=icon]:hidden">
-          <SignOutButton className="w-full text-xs" />
+          <SignOutButton
+            className="w-full text-xs"
+            onBeforeConfirm={() => {
+              if (isMobile) setOpenMobile(false);
+            }}
+          />
         </div>
       </SidebarFooter>
 

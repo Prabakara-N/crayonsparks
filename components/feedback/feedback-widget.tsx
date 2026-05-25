@@ -121,7 +121,7 @@ export function FeedbackWidget() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-md p-0 flex flex-col"
+          className="data-[side=right]:w-full sm:data-[side=right]:max-w-md data-[side=right]:max-w-none p-0 flex flex-col"
         >
           <SheetHeader className="px-5 pt-5">
             <SheetTitle>Send feedback</SheetTitle>

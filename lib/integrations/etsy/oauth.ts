@@ -81,6 +81,7 @@ export async function exchangeEtsyCode(opts: {
 
   const res = await fetch(ETSY_TOKEN, {
     method: "POST",
+    signal: AbortSignal.timeout(15_000),
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
@@ -120,6 +121,7 @@ export async function refreshEtsyToken(
 
   const res = await fetch(ETSY_TOKEN, {
     method: "POST",
+    signal: AbortSignal.timeout(15_000),
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });

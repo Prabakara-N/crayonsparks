@@ -8,15 +8,21 @@ import { useDialog } from "@/components/ui/confirm-dialog";
 
 interface SignOutButtonProps {
   onAfter?: () => void;
+  onBeforeConfirm?: () => void;
   className?: string;
 }
 
-export function SignOutButton({ onAfter, className = "" }: SignOutButtonProps) {
+export function SignOutButton({
+  onAfter,
+  onBeforeConfirm,
+  className = "",
+}: SignOutButtonProps) {
   const router = useRouter();
   const dialog = useDialog();
   const [busy, setBusy] = useState(false);
 
   async function handleClick() {
+    onBeforeConfirm?.();
     const ok = await dialog.confirm({
       title: "Sign out?",
       message:

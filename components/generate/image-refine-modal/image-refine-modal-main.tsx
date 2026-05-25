@@ -823,7 +823,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: visuallyHidden ? 0 : 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-9999 bg-black/90 backdrop-blur-md flex items-center justify-center p-2 md:p-4"
+          className="fixed inset-0 z-9999 bg-black/90 backdrop-blur-md flex items-stretch justify-end lg:items-center lg:justify-center lg:p-4"
           style={{
             pointerEvents: visuallyHidden ? "none" : "auto",
             visibility: visuallyHidden ? "hidden" : "visible",
@@ -848,7 +848,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-6xl max-h-[95vh] md:max-h-[92vh] rounded-2xl md:rounded-3xl bg-zinc-950 border border-white/10 shadow-2xl shadow-violet-500/20 overflow-hidden grid grid-cols-1 grid-rows-[minmax(0,1fr)_auto] md:grid-rows-1 md:grid-cols-[minmax(0,1fr)_minmax(0,560px)]"
+            className="relative w-full h-full lg:h-auto lg:max-h-[92vh] max-w-none lg:max-w-6xl rounded-none lg:rounded-3xl bg-zinc-950 border-0 lg:border lg:border-white/10 shadow-2xl shadow-violet-500/20 overflow-hidden grid grid-cols-1 grid-rows-[minmax(0,1fr)_auto] lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)]"
           >
             {/* Image pane */}
             <div className="relative bg-black flex items-center justify-center min-h-[320px] overflow-hidden">
@@ -857,7 +857,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
                 <img
                   src={current.dataUrl}
                   alt={title ?? "Preview"}
-                  className="w-full h-full max-h-[40vh] md:max-h-[92vh] object-contain bg-white"
+                  className="w-full h-full max-h-[40vh] lg:max-h-[92vh] object-contain bg-white"
                 />
                 {/* Border is now drawn by Gemini into the image itself
                     (per master prompt's DRAW_BORDER_RULE). No CSS overlay. */}
@@ -872,7 +872,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
             </div>
 
             {/* Chat pane */}
-            <div className="flex flex-col max-h-[55vh] md:max-h-[92vh] bg-zinc-950 min-h-0">
+            <div className="flex flex-col max-h-[55vh] lg:max-h-[92vh] bg-zinc-950 min-h-0">
               <RefineHeader
                 context={context}
                 title={title}

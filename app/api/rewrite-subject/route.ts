@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readBoundedJson } from "@/lib/api/bounded-json";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { OPENAI_TEXT_MODEL } from "@/lib/constants";
@@ -19,12 +20,9 @@ interface Body {
 
 
 export async function POST(req: Request) {
-  let body: Body;
-  try {
-    body = (await req.json()) as Body;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
+  const parsed = await readBoundedJson<Body>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const subject = (body.subject ?? "").trim();
   if (!subject || subject.length < 5) {

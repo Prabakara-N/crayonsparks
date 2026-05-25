@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readBoundedJson } from "@/lib/api/bounded-json";
 import { SUPPORTED_ASPECTS, type AspectRatio } from "@/lib/gemini";
 import { generateImageByModel } from "@/lib/image-providers";
 import {
@@ -27,12 +28,9 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  let body: Body;
-  try {
-    body = (await req.json()) as Body;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
+  const parsed = await readBoundedJson<Body>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const mode = body.mode ?? "subject";
   const category = body.categorySlug ? findCategory(body.categorySlug) : null;

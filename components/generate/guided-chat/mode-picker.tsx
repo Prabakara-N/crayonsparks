@@ -78,7 +78,7 @@ export function ModePicker({ onPick }: ModePickerProps) {
             Strength, Lion &amp; Mouse) or your own original. Sparky knows
             hundreds of fables by name. Each page becomes a SCENE in
             narrative order, rendered as a{" "}
-            <strong className="text-neutral-200">full-color picture book</strong>{" "}
+            <strong className="text-neutral-200">full-color story book</strong>{" "}
             with locked characters and speech bubbles.
           </p>
           <ul className="text-[12px] text-neutral-500 space-y-1 leading-relaxed">

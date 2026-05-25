@@ -16,6 +16,7 @@ export async function getGumroadUser(
 ): Promise<GumroadUser> {
   const res = await fetch(
     `${GUMROAD_API}/user?access_token=${encodeURIComponent(accessToken)}`,
+    { signal: AbortSignal.timeout(15_000) },
   );
   if (!res.ok) {
     throw new Error(`Gumroad /user failed (${res.status}).`);

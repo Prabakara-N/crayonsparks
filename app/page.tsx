@@ -143,7 +143,7 @@ export default function HomePage() {
             <HeroPrimaryCta />
             <Link
               href="/features"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full text-sm md:text-base font-medium text-white/90 bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur transition-colors"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 h-12 md:h-14 px-6 md:px-7 rounded-full text-sm md:text-base font-medium text-white/90 bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur transition-colors"
             >
               See features
             </Link>

@@ -41,6 +41,7 @@ export async function callPerplexity(
 
   const res = await fetch(ENDPOINT, {
     method: "POST",
+    signal: AbortSignal.timeout(30_000),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,

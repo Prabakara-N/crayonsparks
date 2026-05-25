@@ -44,6 +44,7 @@ export async function exchangeGumroadCode(
 ): Promise<GumroadToken> {
   const res = await fetch(GUMROAD_TOKEN, {
     method: "POST",
+    signal: AbortSignal.timeout(15_000),
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: env("GUMROAD_CLIENT_ID"),

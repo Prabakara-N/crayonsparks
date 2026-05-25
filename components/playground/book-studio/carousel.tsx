@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, RefreshCw, Sparkles, X } from "lucide-react";
+import { useDialog } from "@/components/ui/confirm-dialog";
 import {
   Carousel as AppleCarousel,
   Card as AppleCard,
@@ -62,6 +63,7 @@ export interface CarouselProps {
   coverScene?: string;
   characterLockBlock?: string;
   refineStatus?: Record<string, "running" | "done">;
+  mode?: "qa" | "story";
 }
 
 export function Carousel({
@@ -86,7 +88,10 @@ export function Carousel({
   coverScene,
   characterLockBlock,
   refineStatus,
+  mode = "qa",
 }: CarouselProps) {
+  const isStory = mode === "story";
+  const dialog = useDialog();
   // When a failed page is clicked, open a small modal that lets the user
   // edit the page's subject text and regenerate. Refine isn't useful for
   // failed pages (no image to edit), and Apple-card carousel doesn't expose
@@ -177,7 +182,7 @@ export function Carousel({
           <StatusBadge status={it.status} />
         ),
         action:
-          it.status === "done" ? (
+          it.status === "done" && !isStory ? (
             <RegenerateCardButton
               quality={it.quality}
               busy={false}
@@ -201,6 +206,16 @@ export function Carousel({
             quality: it.quality,
           });
         } else if (it.status === "error") {
+          if (isStory) {
+            void dialog.alert({
+              title: "Story pages generate in order",
+              message:
+                "Each story page references the previous one so characters stay consistent across the book. You can't retry a single page in isolation — use the main Generate / Resume button to continue from where it failed.",
+              variant: "info",
+              okText: "Got it",
+            });
+            return;
+          }
           setEditingError(it);
         } else if (it.status === "generating") {
           // Don't fire a parallel regen on an in-flight page — that races
@@ -208,6 +223,16 @@ export function Carousel({
           // image after the fact, which the user reads as auto-regen.
           return;
         } else {
+          if (isStory) {
+            void dialog.alert({
+              title: "Story pages generate in order",
+              message:
+                "Each story page references the previous one so characters stay consistent across the book. Use the main Generate / Resume button to render this page — single-page regeneration would break the chain.",
+              variant: "info",
+              okText: "Got it",
+            });
+            return;
+          }
           void onRegenerateItem(it);
         }
       };
@@ -221,7 +246,7 @@ export function Carousel({
         />
       );
     });
-  }, [items, aspectRatio, onRegenerateItem, onOpenRefine, onSetItem, refineStatus]);
+  }, [items, aspectRatio, onRegenerateItem, onOpenRefine, onSetItem, refineStatus, isStory, dialog]);
 
   return (
     <div>
@@ -229,8 +254,20 @@ export function Carousel({
         <p className="text-sm font-semibold text-white">
           {items.length} interior pages
         </p>
-        <p className="text-xs text-neutral-500">Tap a card to refine · covers shown above</p>
+        <p className="text-xs text-neutral-500">
+          {isStory
+            ? "Tap a done page to refine"
+            : "Tap a card to refine · covers shown above"}
+        </p>
       </div>
+      {isStory && (
+        <div className="mb-3 mx-2 rounded-lg border border-cyan-500/25 bg-cyan-500/5 px-3 py-2 text-[11px] text-cyan-100/90 leading-relaxed">
+          Story pages are linked — each one references the previous page so
+          characters stay consistent. They generate in order from the main
+          Generate / Resume button. Refining a finished page is OK (edits
+          existing image without breaking the chain).
+        </div>
+      )}
       <AppleCarousel items={cards} />
 
       {/* Edit-prompt-and-regenerate modal for failed pages */}

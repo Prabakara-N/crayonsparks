@@ -7,6 +7,7 @@ import {
   getAuthIdToken,
   redirectToLogin,
 } from "@/lib/auth/require-auth-for-action";
+import { readJsonOrThrow } from "@/lib/fetch-json";
 import { useAuthContext } from "@/components/auth/auth-provider";
 import {
   savePendingAction,
@@ -132,8 +133,8 @@ export function useBookPlan({
         },
         body: JSON.stringify(body),
       });
-      const json = (await res.json()) as { plan?: Plan; error?: string };
-      if (!res.ok || !json.plan) throw new Error(json.error || "Planning failed");
+      const json = await readJsonOrThrow<{ plan?: Plan; error?: string }>(res);
+      if (!json.plan) throw new Error(json.error || "Planning failed");
       setMode(isStoryPlan ? "story" : "qa");
       setPlan(json.plan);
       setItems(

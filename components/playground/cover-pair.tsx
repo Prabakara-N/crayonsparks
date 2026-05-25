@@ -142,7 +142,7 @@ export function CoverPair({
               {description}
             </p>
           )}
-          <p className="text-[10px] text-neutral-500 mt-1">
+          <p className="hidden md:block text-[10px] text-neutral-500 mt-1">
             {swapped
               ? "Front (left) · Back (right)"
               : "Back (left) · Front (right)"}
@@ -180,11 +180,11 @@ export function CoverPair({
             />
           </div>
 
-          <div className="flex items-start justify-center gap-3 md:gap-4">
-            <div className="w-full max-w-[180px] md:max-w-[200px] shrink">
+          <div className="flex flex-col md:flex-row items-stretch md:items-start justify-center gap-4 md:gap-4">
+            <div className="w-full max-w-[240px] md:max-w-[200px] mx-auto md:mx-0">
               {leftTile}
             </div>
-            <div className="flex flex-col items-center pt-10 md:pt-12 shrink-0">
+            <div className="hidden md:flex flex-col items-center pt-12 shrink-0">
               <button
                 type="button"
                 onClick={() => setSwapped((v) => !v)}
@@ -198,7 +198,7 @@ export function CoverPair({
                 swap
               </span>
             </div>
-            <div className="w-full max-w-[180px] md:max-w-[200px] shrink">
+            <div className="w-full max-w-[240px] md:max-w-[200px] mx-auto md:mx-0">
               {rightTile}
             </div>
           </div>

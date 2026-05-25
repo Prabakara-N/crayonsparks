@@ -3,6 +3,7 @@
 // illustration as a PNG data URL.
 
 import { NextResponse } from "next/server";
+import { readBoundedJson } from "@/lib/api/bounded-json";
 import { generateImageByModel } from "@/lib/image-providers";
 import { preauthorizeCharge } from "@/lib/credits/charge";
 import {
@@ -147,12 +148,9 @@ const MAX_DIALOGUE_LINES = 2;
 const MAX_CHARACTERS = 3;
 
 export async function POST(req: Request) {
-  let body: Body;
-  try {
-    body = (await req.json()) as Body;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
+  const parsed = await readBoundedJson<Body>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const band = normalizeAgeBand(body.ageBand);
   const bubbleMax = DIALOGUE_MAX_WORDS[band];
