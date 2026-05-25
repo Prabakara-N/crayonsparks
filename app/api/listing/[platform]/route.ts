@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import type {
-  AgeBand,
-  KdpKind,
-  KdpMetadataInput,
-} from "@/lib/kdp-metadata";
+import type { AgeBand, KdpKind, KdpMetadataInput } from "@/lib/kdp-metadata";
 import {
   generateEtsy,
   generateGumroad,
@@ -14,7 +10,7 @@ import {
 } from "@/lib/kdp-metadata-hybrid";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 interface Body {
   bookTitle?: string;

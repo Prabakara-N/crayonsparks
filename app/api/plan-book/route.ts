@@ -3,7 +3,7 @@ import { planBook, type BookPlanInput } from "@/lib/book-planner";
 import { requireAuth } from "@/lib/auth/server-require-auth";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 interface Body extends Partial<BookPlanInput> {}
 
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   if (!idea || idea.length < 10) {
     return NextResponse.json(
       { error: "Please describe your book idea in at least 10 characters." },
-      { status: 400 }
+      { status: 400 },
     );
   }
   const pageCount = Math.max(5, Math.min(50, Number(body.pageCount ?? 20)));

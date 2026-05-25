@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PLANS, type BillingCycle, type PlanId } from "@/lib/billing/plans";
+import { BillingToggle } from "@/components/pricing/billing-toggle";
 import { PlanTierCard } from "./plan-tier-card";
 
 interface PlanTiersProps {
@@ -29,27 +30,7 @@ export function PlanTiers({
             commercial exports.
           </p>
         </div>
-        <div className="inline-flex p-1 rounded-full bg-zinc-900/60 border border-white/10">
-          {(["monthly", "annual"] as const).map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCycle(c)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize transition-colors ${
-                cycle === c
-                  ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white"
-                  : "text-neutral-400 hover:text-white"
-              }`}
-            >
-              {c}
-              {c === "annual" && (
-                <span className="ml-1 text-[10px] text-emerald-300">
-                  -20%
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        <BillingToggle value={cycle} onChange={setCycle} size="sm" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
 import type { ModelMessage } from "ai";
-import {
-  runBookChatTurn,
-  type BookChatMode,
-} from "@/lib/book-chat";
+import { runBookChatTurn, type BookChatMode } from "@/lib/book-chat";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 interface Body {
   messages?: ModelMessage[];
