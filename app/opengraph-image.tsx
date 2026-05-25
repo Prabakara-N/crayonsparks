@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "CrayonSparks — Generate coloring books in minutes";
+export const alt =
+  "CrayonSparks — AI story books, coloring books & activity books in minutes";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -103,7 +104,7 @@ export default async function OGImage() {
               marginBottom: 12,
             }}
           >
-            Generate coloring books
+            Create kids&apos; books
           </div>
           <div
             style={{
@@ -125,9 +126,16 @@ export default async function OGImage() {
               fontSize: 26,
               color: "#a1a1aa",
               letterSpacing: -0.5,
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
             }}
           >
-            14 categories · Powered by Gemini Nano Banana
+            <span>Story books</span>
+            <span style={{ color: "#3f3f46" }}>·</span>
+            <span>Coloring books</span>
+            <span style={{ color: "#3f3f46" }}>·</span>
+            <span style={{ color: "#67e8f9" }}>Activity books (soon)</span>
           </div>
         </div>
 
@@ -148,7 +156,7 @@ export default async function OGImage() {
             fontWeight: 500,
           }}
         >
-          For Amazon KDP · Etsy · Gumroad sellers
+          For parents &amp; KDP creators · Birthdays · Return gifts · Keepsakes
         </div>
       </div>
     ),

@@ -71,6 +71,9 @@ export const metadata: Metadata = {
     description:
       "Make a custom kids' book in minutes. For parents (birthdays, return gifts, keepsakes) and KDP creators.",
   },
+  verification: {
+    google: "r4wplTuoD0-FkXXdUJ6_xBipt1PFHUpNL1d_n2PRedE",
+  },
 };
 
 export default function RootLayout({

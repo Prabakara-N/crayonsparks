@@ -301,7 +301,7 @@ export function PlaygroundShell() {
         </div>
       )}
 
-      {activeTab !== "chat-book" && (
+      {!(activeTab === "chat-book" && chatActive) && (
         <div className="flex justify-center">
           <div
             role="tablist"
@@ -331,7 +331,7 @@ export function PlaygroundShell() {
         </div>
       )}
 
-      {!hideHero && activeTab !== "chat-book" && (
+      {!hideHero && !(activeTab === "chat-book" && chatActive) && (
         <ActiveTabDescription tab={TABS.find((t) => t.slug === activeTab)!} />
       )}
 
