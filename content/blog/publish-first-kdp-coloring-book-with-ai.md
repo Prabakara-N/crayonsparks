@@ -46,7 +46,7 @@ Bright flat colors, large title, 2-3 cartoon characters from the book. Keep the 
 
 In KDP:
 
-1. **Book Details**: paste your SEO title, use the description template from `/gallery` for your category, tick "Not Low Content".
+1. **Book Details**: paste your SEO title, use a category-matched description template, tick "Not Low Content".
 2. **Content**: upload interior.pdf, upload cover.pdf, preview in the online previewer.
 3. **Pricing**: $6.99 in US, ₹299 in IN, start low. Enable expanded distribution.
 

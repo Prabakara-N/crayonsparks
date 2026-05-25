@@ -25,12 +25,12 @@ const sections: FeatureSection[] = [
     subtitle: "From prompt to line art",
     status: "live",
     bullets: [
-      "280 curated, battle-tested prompts across 14 categories",
+      "Hand-tuned prompt formulas for coloring books, story books and (soon) activity books",
       "Master prompt formula ensures consistency across a book",
       "Gemini Nano Banana (2.5 Flash Image) — cheapest & fastest",
       "Batch generation with 3× parallelism — 20 pages in ~3 min",
       "Regenerate any outlier with one click",
-      "Custom subjects wrapped in proven coloring-book formula",
+      "Custom subjects wrapped in proven, kid-safe formulas",
     ],
   },
   {

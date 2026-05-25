@@ -32,24 +32,33 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://crayonsparks.com";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "CrayonSparks — Generate Coloring Books in Minutes",
+    default:
+      "CrayonSparks — AI Story Books, Coloring Books & Activity Books in Minutes",
     template: "%s · CrayonSparks",
   },
   description:
-    "AI-powered coloring book generator for Amazon KDP creators. Pick a theme, generate 20 kid-friendly pages, publish & earn. Built for parents, teachers, and KDP sellers.",
+    "AI book studio for parents and KDP creators. Turn any idea into a custom kids' book in minutes — story books, coloring books and (soon) activity books. Perfect for birthdays, return gifts, memory keepsakes, screen-free fun, or selling on Amazon KDP.",
   keywords: [
+    "AI story book generator",
     "AI coloring book generator",
+    "AI activity book maker",
+    "custom kids book",
+    "personalized children's book",
     "Amazon KDP coloring book",
-    "kids coloring pages",
-    "Gemini Nano Banana",
-    "coloring book AI",
-    "Prabakaran",
+    "kids book maker",
+    "birthday gift book for kids",
+    "return gift ideas for kids",
+    "memory keepsake book",
+    "screen-free activities for kids",
+    "make a children's book online",
+    "CrayonSparks",
   ],
   authors: [{ name: "Prabakaran" }],
   openGraph: {
-    title: "CrayonSparks — Generate Coloring Books in Minutes",
+    title:
+      "CrayonSparks — AI Story Books, Coloring Books & Activity Books in Minutes",
     description:
-      "Pick a theme, generate 20 kid-friendly pages, publish & earn on Amazon KDP.",
+      "Make a custom kids' book in minutes. For parents (birthdays, return gifts, keepsakes) and KDP creators. Story books · coloring books · activity books coming soon.",
     type: "website",
     locale: "en_US",
     url: siteUrl,
@@ -57,9 +66,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "CrayonSparks — Generate Coloring Books in Minutes",
+    title:
+      "CrayonSparks — AI Story Books, Coloring Books & Activity Books in Minutes",
     description:
-      "Pick a theme, generate 20 kid-friendly pages, publish & earn on Amazon KDP.",
+      "Make a custom kids' book in minutes. For parents (birthdays, return gifts, keepsakes) and KDP creators.",
   },
 };
 

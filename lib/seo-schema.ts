@@ -89,10 +89,12 @@ export function buildSoftwareApplication(offers: SoftwareOffer[]) {
       availability: "https://schema.org/InStock",
     })),
     featureList: [
-      "AI coloring page generation",
-      "KDP-ready PDF export (8.5x11, 300 DPI)",
-      "Pinterest auto-publishing",
-      "280 curated prompts across 14 themes",
+      "AI story book generation (full-color picture books with dialogue)",
+      "AI coloring book generation (B&W line art)",
+      "Activity book generator (mazes, dot-to-dot, word search) — coming soon",
+      "KDP-ready PDF export (8.5x11 coloring, 6x9 story books, 300 DPI)",
+      "Custom kids' books for birthdays, return gifts and memory keepsakes",
+      "Pinterest auto-publishing for marketing",
       "Multi-marketplace publishing (Amazon KDP, Etsy, Gumroad)",
     ],
   };

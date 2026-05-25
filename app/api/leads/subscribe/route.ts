@@ -79,7 +79,7 @@ export async function POST(req: Request) {
                   </p>
                   <ul style="margin:0;padding-left:20px;color:#a1a1aa;font-size:14px;line-height:1.8;">
                     <li>Try our AI generator — make your own book in minutes</li>
-                    <li>Browse the full gallery of 280 curated prompts</li>
+                    <li>Make a one-of-a-kind story book for a birthday, return gift, or keepsake</li>
                     <li>Reply to this email if anything breaks</li>
                   </ul>
                 </div>

@@ -12,7 +12,7 @@ Here's the prompt formula that solved it for us.
 
 ## The master template
 
-We use the same structure for every one of the 280 prompts in ColorBook AI:
+We use the same structure for every prompt in CrayonSparks:
 
 ```
 Simple kids coloring book page.

@@ -6,11 +6,10 @@ import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid";
 import { InfiniteMovingCards } from "@/components/ui/infinite-moving-cards";
 import { BackgroundBeams } from "@/components/ui/background-beams";
 import { TypewriterEffect } from "@/components/ui/typewriter-effect";
-import { TOTAL_PROMPTS } from "@/lib/prompts";
 import { visualUrl } from "@/lib/visuals";
 import { HeroPrimaryCta } from "@/components/home/hero-cta";
 import { BooksShowcase } from "@/components/home/books-showcase";
-import { buildSoftwareApplication } from "@/lib/seo-schema";
+import { buildSoftwareApplication, buildFaqPage } from "@/lib/seo-schema";
 import {
   ArrowRight,
   Sparkles,
@@ -52,26 +51,59 @@ function BentoHeader({
   );
 }
 
+const faqSchema = buildFaqPage([
+  {
+    q: "What is CrayonSparks?",
+    a:
+      "CrayonSparks is an AI book studio that turns any idea into a finished kids' book in minutes. You can make story books (full-color picture books with dialogue), coloring books (B&W line art) and — soon — activity books (mazes, dot-to-dot, word search). Use it to self-publish on Amazon KDP, or print one-of-a-kind books for birthdays, return gifts and memory keepsakes.",
+  },
+  {
+    q: "Can I make a custom story book starring my own child?",
+    a:
+      "Yes. Open Sparky AI, describe your child's name, age and the kind of story you want. CrayonSparks generates a full-color picture book where your child is the main character. Download the print-ready PDF and print it at any local print shop or upload to Amazon KDP.",
+  },
+  {
+    q: "Is CrayonSparks good for Amazon KDP self-publishers?",
+    a:
+      "Yes — it is purpose-built for KDP. Every coloring-book PDF is 8.5×11 at 300 DPI with KDP-spec margins. Story books are 6×9 print-ready. Multi-marketplace publishing pushes to Amazon KDP, Etsy and Gumroad, and the built-in Pinterest engine drives traffic to your listings.",
+  },
+  {
+    q: "How long does it take to make a book?",
+    a:
+      "About 3 to 8 minutes for a complete 20–30 page book. Each page renders in roughly 8 seconds, and you can regenerate any outlier in a single click without redoing the rest.",
+  },
+  {
+    q: "Do I need design or AI prompting experience?",
+    a:
+      "No. You only describe what you want in plain English. Sparky AI (the built-in chat assistant) handles all the prompt engineering, character locking and style consistency for you.",
+  },
+  {
+    q: "Are activity books available yet?",
+    a:
+      "Activity books (mazes, dot-to-dot, word search and mixed puzzle pages) are coming soon as the third book type alongside story books and coloring books. Join the free tier to be notified when they launch.",
+  },
+  {
+    q: "Can I make a return-gift book for a birthday party?",
+    a:
+      "Yes — many parents use CrayonSparks to make a small printable book each child takes home from a birthday party. Print and bind a stack of identical books, or personalize each one with the child's name on the cover.",
+  },
+]);
+
 const softwareSchema = buildSoftwareApplication([
   {
     name: "Free",
     price: "0",
-    description: "Bring your own Gemini API key. 1 book/month, 20 pages, watermarked.",
+    description: "50 starter credits — try story books and coloring books risk-free.",
   },
   {
-    name: "Starter",
-    price: "9.99",
-    description: "5 books/month, 50 pages, no watermark. Managed AI quota.",
+    name: "Hobbyist",
+    price: "19",
+    description: "800 credits/month. Best for parents making one-of-a-kind kids' books and small-batch KDP creators.",
   },
   {
     name: "Pro",
-    price: "24.99",
-    description: "20 books/month, Pinterest auto-posting, sales attribution.",
-  },
-  {
-    name: "Studio",
-    price: "49.99",
-    description: "Unlimited books, Etsy + Gumroad publishing, team seats.",
+    price: "49",
+    description: "3500 credits/month. Best for full-time KDP creators publishing weekly.",
   },
 ]);
 
@@ -82,6 +114,12 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(softwareSchema),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqSchema),
         }}
       />
       <Navbar />
@@ -110,7 +148,7 @@ export default function HomePage() {
 
         <div className="relative z-10 max-w-6xl mx-auto px-4 py-20 text-center">
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white">
-            Generate coloring books
+            Create kids&apos; books
             <br />
             <span className="gradient-text">in minutes, not months</span>
           </h1>
@@ -118,25 +156,28 @@ export default function HomePage() {
           <div className="mt-6">
             <TypewriterEffect
               words={[
-                { text: "For" },
-                { text: "Amazon", className: "text-violet-400" },
-                { text: "KDP", className: "text-violet-400" },
+                { text: "Story" },
+                { text: "books" },
                 { text: "·" },
-                { text: "Etsy" },
+                { text: "Coloring" },
+                { text: "books" },
                 { text: "·" },
-                { text: "Gumroad" },
-                { text: "·" },
-                { text: "and", className: "text-neutral-400" },
-                { text: "Pinterest.", className: "text-cyan-400" },
+                { text: "Activity", className: "text-cyan-400" },
+                { text: "books", className: "text-cyan-400" },
+                { text: "(soon)", className: "text-cyan-400/60" },
               ]}
               className="text-lg md:text-xl text-neutral-300"
             />
           </div>
 
           <p className="mt-6 max-w-2xl mx-auto text-neutral-400 text-base md:text-lg leading-relaxed">
-            The all-in-one AI studio for self-publishers. Pick a theme, generate
-            20 kid-friendly pages with consistent style, assemble a KDP-ready PDF,
-            and drive sales with auto-scheduled Pinterest pins.
+            Turn any idea into a beautiful kids&apos; book your child (or your
+            customers) will love. Publish on Amazon KDP, gift one-of-a-kind
+            books for{" "}
+            <span className="text-violet-300">birthdays</span>,{" "}
+            <span className="text-violet-300">return gifts</span> and{" "}
+            <span className="text-violet-300">memory keepsakes</span> — or
+            print screen-free fun the whole family will treasure.
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
@@ -152,9 +193,9 @@ export default function HomePage() {
           {/* Stats */}
           <div className="mt-16 grid grid-cols-3 gap-4 max-w-2xl mx-auto">
             {[
-              { v: TOTAL_PROMPTS.toString(), l: "Curated Prompts" },
-              { v: "14", l: "Categories" },
-              { v: "~8s", l: "Per Page" },
+              { v: "Minutes", l: "Idea → Printable PDF" },
+              { v: "~8s", l: "Per page" },
+              { v: "KDP", l: "Print-ready 8.5×11 / 6×9" },
             ].map((s) => (
               <div
                 key={s.l}

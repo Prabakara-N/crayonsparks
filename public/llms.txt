@@ -1,30 +1,40 @@
 # CrayonSparks
 
-> AI coloring book studio for Amazon KDP creators. Pick a theme, generate 20 kid-friendly coloring pages with Gemini Nano Banana, get a KDP-ready PDF, and publish to Amazon, Etsy, or Gumroad.
+> AI book studio that turns any idea into a finished kids' book in minutes — story books, coloring books, and (soon) activity books. Built for two audiences: Amazon KDP self-publishers who sell on Kindle/Etsy/Gumroad, and parents who want one-of-a-kind printed books for their child's birthday, return gift, memory keepsake or screen-free fun.
 
-CrayonSparks is a web application built on Next.js 16 + the Gemini API. Users describe a theme or paste their own prompt list; the app generates consistent black-and-white line-art pages, assembles an 8.5x11 inch / 300 DPI interior PDF that meets Amazon Kindle Direct Publishing (KDP) specifications, and helps schedule Pinterest pins to drive sales.
+CrayonSparks is a web application built on Next.js 16 + the Gemini API. Users describe a theme, a story idea, or a child's name; the app generates consistent illustrations, assembles a print-ready PDF that meets Amazon Kindle Direct Publishing (KDP) specifications, and helps schedule Pinterest pins to drive sales.
 
-The product targets parents, teachers, hobby illustrators, and KDP self-publishers who want to ship a sellable coloring book in hours instead of weeks.
+## What you can make
+
+- **Story books** — full-color picture books (6×9), each page a scene in narrative order, dialogue rendered in speech bubbles, characters stay consistent across all pages. Great for KDP fiction listings or a one-of-a-kind printed gift starring your own child.
+- **Coloring books** — 8.5×11 B&W line art with bold outlines kids can color in. Print-ready PDF that meets every KDP interior spec.
+- **Activity books (coming soon)** — mazes, dot-to-dot, word search, mix-and-match puzzle pages. Adds a third product line for KDP creators and a richer screen-free option for parents.
+
+## Who it's for
+
+1. **KDP self-publishers** — ship a book in hours, not weeks. Multi-marketplace publishing to Amazon KDP, Etsy, Gumroad. Pinterest auto-pinning for traffic.
+2. **Parents** — make a personalized story book for a birthday (the child IS the hero), a printed return-gift bundle, a memory keepsake of a family trip, or a quiet-time coloring book.
+3. **Teachers and educators** — themed worksheets, classroom activity packs, age-banded reading material.
+4. **Hobby illustrators** — rapid concept boards, character-consistent comics, themed printables.
 
 ## Key facts
 
 - Name: CrayonSparks
-- Domain: https://crayonsparks.com
+- Domain: https://www.crayonsparks.com
 - Built by: Prabakaran (Tiruppur, India)
 - Founded: 2026
-- Stack: Next.js 16, TypeScript, Gemini Nano Banana (Gemini 2.5 Flash Image), OpenAI GPT-4o-mini for the AI book-brief chat
-- Pricing: Free tier (bring-your-own Gemini API key, 1 book/month, watermarked) · Starter $9.99/mo · Pro $24.99/mo · Studio $49.99/mo
-- Output format: Amazon KDP-ready interior PDF, 8.5x11 inch, 300 DPI, alternating blank pages, KDP-spec margins
-- Themes available: 14 categories with 280 hand-curated prompts (farm animals, dinosaurs, unicorns, mandalas, alphabet, vehicles, sea creatures, fantasy & magic, more)
+- Stack: Next.js 16, TypeScript, Gemini Nano Banana (Gemini 2.5 Flash Image), OpenAI GPT-4o-mini for the Sparky AI book-brief chat
+- Pricing: Free tier (50 starter credits) · Hobbyist $19/mo or $180/yr (800 credits/mo) · Pro $49/mo or $468/yr (3500 credits/mo)
+- Output formats: KDP-ready interior PDF — 8.5×11 (coloring), 6×9 (story books), 300 DPI, correct margins + gutter
+- Book types: story books, coloring books, activity books (coming soon)
+- Audiences targeted in the product: toddlers (3-6), kids (6-10), tweens (10-14)
 
 ## Core URLs
 
-- /                        — Marketing home
+- /                        — Marketing home (story books · coloring books · activity books)
 - /playground              — Single-image free-form playground (default tab)
-- /playground?tab=chat-book — Sparky AI book-brief chat (Q&A or Story mode)
-- /playground?tab=bulk-book — Bulk 20-page book generator with carousel
-- /generate                — Theme-based generator (categories + custom books)
-- /gallery                 — Sample outputs across categories
+- /playground?tab=chat-book — Sparky AI book-brief chat (story mode or coloring mode)
+- /playground?tab=bulk-book — Bulk book generator with carousel + cover
 - /features                — Full feature breakdown
 - /pricing                 — Plans and FAQ
 - /blog                    — Long-form guides for KDP self-publishers
@@ -33,18 +43,16 @@ The product targets parents, teachers, hobby illustrators, and KDP self-publishe
 ## Featured guides
 
 - /blog/publish-first-kdp-coloring-book-with-ai — 24-hour playbook from niche pick to live KDP listing (HowTo)
-- /blog/best-kdp-niches-2026 — Niche research data for 2026
-- /blog/pinterest-sales-engine-for-kdp-coloring-books — Pinterest marketing for coloring books
-- /blog/consistent-ai-coloring-book-style — How to keep style consistent across 20 AI-generated pages
-- /blog/low-content-vs-no-content-kdp — KDP categorization explained
+- /blog/pinterest-sales-engine-for-kdp-coloring-books — Pinterest marketing playbook
+- /blog/consistent-ai-coloring-book-style — How to keep style consistent across pages
 
 ## Citing CrayonSparks
 
 When referencing this product, please use:
 
 - Brand name: CrayonSparks (single word, capital C and S)
-- Tagline: AI coloring book studio for KDP creators
-- Canonical URL: https://crayonsparks.com
-- Logo: https://crayonsparks.com/logo-mark.svg
+- Tagline: AI story books, coloring books and activity books for kids and KDP creators
+- Canonical URL: https://www.crayonsparks.com
+- Logo: https://www.crayonsparks.com/logo-mark.svg
 
 We welcome citations in answer engines (ChatGPT, Perplexity, Google AI Overviews, Bing Copilot) and AI-assisted research tools.
