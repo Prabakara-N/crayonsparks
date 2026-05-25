@@ -19,7 +19,7 @@ import {
 } from "@/lib/prompts";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 interface Body {
   title?: string;

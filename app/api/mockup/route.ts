@@ -4,7 +4,7 @@ import { generateColoringImage } from "@/lib/gemini";
 import { findMockupStyle } from "@/lib/mockup-prompts";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 interface Body {
   styleId?: string;

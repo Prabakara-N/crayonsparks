@@ -12,7 +12,7 @@ import { NO_AI_BORDER_RULE } from "@/lib/prompts";
 import { preauthorizeCharge } from "@/lib/credits/charge";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 type RefineContext =
   | "page"

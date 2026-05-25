@@ -25,7 +25,7 @@ import { parseDataUrl, type Body } from "./request";
 import { preauthorizeCharge } from "@/lib/credits/charge";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const parsed = await readBoundedJson<Body>(req);
