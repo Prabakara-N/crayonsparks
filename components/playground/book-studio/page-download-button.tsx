@@ -1,6 +1,7 @@
 "use client";
 
 import { Download } from "lucide-react";
+import { fireConfettiBurst } from "@/components/ui/confetti-burst";
 
 interface PageDownloadButtonProps {
   dataUrl: string;
@@ -11,8 +12,10 @@ export function PageDownloadButton({
   dataUrl,
   filename,
 }: PageDownloadButtonProps) {
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    fireConfettiBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
     const link = document.createElement("a");
     link.href = dataUrl;
     link.download = filename;

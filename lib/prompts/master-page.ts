@@ -7,6 +7,7 @@ import {
   ARTIFACT_GUARDRAIL,
   COMMON_ELEMENT_STYLE,
   FILL_CANVAS_RULE,
+  FINAL_BW_OVERRIDE,
   KDP_QUALITY_GUARDRAIL,
   KID_SAFE_CONTENT_RULE,
   NO_AI_BORDER_RULE,
@@ -199,8 +200,9 @@ export const MASTER_PROMPT_USER = (
 
   parts.push(agePreset.note);
   parts.push(
-    "FINAL CHECK BEFORE SUBMITTING (re-read these and apply): (1) Scan the four page edges and corners — if ANY straight line forms a rectangle, outline, or printer's frame near the edges, ERASE IT. The page is borderless from your side. (2) Count the supporting background elements you drew. If the detail level is LOW, the count MUST be 2 or fewer total; remove the rest. If MEDIUM, 3-5. If HIGH, 7-10. If your count exceeds the cap, REMOVE the weakest elements until you are within range. Both checks happen BEFORE you finalize the image.",
+    "FINAL CHECK BEFORE SUBMITTING (re-read these and apply): (1) Scan the four page edges and corners — if ANY straight line forms a rectangle, outline, or printer's frame near the edges, ERASE IT. The page is borderless from your side. (2) Count the supporting background elements you drew. If the detail level is LOW, the count MUST be 2 or fewer total; remove the rest. If MEDIUM, 3-5. If HIGH, 7-10. If your count exceeds the cap, REMOVE the weakest elements until you are within range. (3) Scan the entire canvas — if you see ANY color, ANY gray shading, ANY fill (red apple body, yellow lemon, green leaves, brown wood, blue sky tone, beige skin), CONVERT IT TO PURE WHITE INTERIOR with only the BLACK OUTLINE remaining. The page is a coloring page — the CHILD adds color, not you. All three checks happen BEFORE you finalize the image.",
   );
+  parts.push(FINAL_BW_OVERRIDE);
   return parts.join(" ");
 };
 

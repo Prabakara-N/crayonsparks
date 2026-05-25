@@ -753,9 +753,9 @@ export function BookStudio({
       )}
 
       {plan && allDone && (
-        <div className="grid grid-cols-3 items-center gap-2">
-          <div aria-hidden />
-          <div className="flex justify-center">
+        <div className="flex flex-col gap-3 lg:grid lg:grid-cols-3 lg:items-center lg:gap-2">
+          <div className="hidden lg:block" aria-hidden />
+          <div className="flex justify-center order-2 lg:order-none">
             <div
               role="tablist"
               aria-label="Page view"
@@ -787,7 +787,7 @@ export function BookStudio({
               </button>
             </div>
           </div>
-          <div className="flex justify-end items-center gap-3">
+          <div className="flex justify-center lg:justify-end items-center gap-3 flex-wrap order-3 lg:order-none">
             <SaveBookButton
               plan={plan!}
               mode={mode}

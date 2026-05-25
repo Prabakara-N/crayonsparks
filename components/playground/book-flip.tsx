@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BookFlipPage } from "./book-flip-page";
 
 interface PageFlipApi {
@@ -70,6 +70,28 @@ export function BookFlip({
   alternateBlankPages = true,
   fullBleedInterior = false,
 }: BookFlipProps) {
+  const [isPortrait, setIsPortrait] = useState(false);
+  const [pageWidth, setPageWidth] = useState(width);
+  const [pageHeight, setPageHeight] = useState(height);
+  useEffect(() => {
+    const aspect = height / width;
+    const update = () => {
+      const vw = window.innerWidth;
+      if (vw < 768) {
+        const w = Math.max(220, Math.min(vw - 48, 360));
+        setIsPortrait(true);
+        setPageWidth(w);
+        setPageHeight(Math.round(w * aspect));
+      } else {
+        setIsPortrait(false);
+        setPageWidth(width);
+        setPageHeight(height);
+      }
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [width, height]);
   // Page order — designed so EVERY illustration lands on the RIGHT side
   // (recto) of the open spread, with blanks on the LEFT (verso). Mirrors
   // how a printed coloring book is laid out: when the kid opens the book,
@@ -209,19 +231,19 @@ export function BookFlip({
   }, []);
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div ref={wrapperRef} className="relative max-w-full">
       <HTMLFlipBook
         ref={flipBookRef}
-        width={width}
-        height={height}
+        width={pageWidth}
+        height={pageHeight}
         size="fixed"
-        minWidth={280}
+        minWidth={220}
         maxWidth={520}
-        minHeight={380}
+        minHeight={300}
         maxHeight={720}
         drawShadow
         flippingTime={650}
-        usePortrait={false}
+        usePortrait={isPortrait}
         startZIndex={0}
         autoSize={false}
         maxShadowOpacity={0.55}
@@ -238,15 +260,14 @@ export function BookFlip({
       >
         {renderedPages}
       </HTMLFlipBook>
-      {/* Center spine — visible vertical line down the middle of the open
-          spread, like a real book's binding. Pointer-events-none so it doesn't
-          block page flipping. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute top-0 bottom-0 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center"
-      >
-        <div className="w-[3px] h-full bg-linear-to-b from-black/40 via-black/80 to-black/40 shadow-[0_0_8px_rgba(0,0,0,0.6)]" />
-      </div>
+      {!isPortrait && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-0 bottom-0 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center"
+        >
+          <div className="w-[3px] h-full bg-linear-to-b from-black/40 via-black/80 to-black/40 shadow-[0_0_8px_rgba(0,0,0,0.6)]" />
+        </div>
+      )}
     </div>
   );
 }

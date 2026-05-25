@@ -14,6 +14,7 @@ export function useBooks() {
         orpc.books.list({ limit: limit ?? 20 }),
       [],
     ),
+    count: useCallback(() => orpc.books.count(), []),
     get: useCallback(
       (bookId: string) => orpc.books.get({ bookId }),
       [],

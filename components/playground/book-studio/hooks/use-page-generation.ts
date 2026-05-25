@@ -293,6 +293,37 @@ export function usePageGeneration({
         void extractCharacterLock().catch(() => { });
       }
 
+      if (mode !== "story") {
+        const pending = itemsRef.current.filter(
+          (it) => it.status !== "done",
+        );
+        const CONCURRENCY = 4;
+        let cursor = 0;
+        const workers: Promise<void>[] = [];
+        const runNext = async (): Promise<void> => {
+          while (!cancelRef.current) {
+            while (pausedRef.current && !cancelRef.current) {
+              await new Promise((r) => setTimeout(r, 200));
+            }
+            if (cancelRef.current) return;
+            const idx = cursor++;
+            if (idx >= pending.length) return;
+            const item = pending[idx];
+            const globalIdx = itemsRef.current.findIndex(
+              (it) => it.id === item.id,
+            );
+            if (globalIdx >= 0) setCurrentIndex(globalIdx);
+            await generatePage(item, undefined, undefined);
+          }
+        };
+        for (let i = 0; i < Math.min(CONCURRENCY, pending.length); i++) {
+          workers.push(runNext());
+        }
+        await Promise.all(workers);
+        setPhase(cancelRef.current ? "review" : "done");
+        return;
+      }
+
       const seedDone = items.find((it) => it.status === "done" && it.dataUrl);
       let anchor: { dataUrl: string; subject: string } | undefined = seedDone?.dataUrl
         ? { dataUrl: seedDone.dataUrl, subject: seedDone.subject }
@@ -353,6 +384,8 @@ export function usePageGeneration({
     generatePage,
     mode,
     setPhase,
+    itemsRef,
+    abortRef,
   ]);
 
   const pause = useCallback(() => {

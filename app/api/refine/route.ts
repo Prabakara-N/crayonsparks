@@ -8,7 +8,7 @@ import {
   isImageModel,
   type ImageModel,
 } from "@/lib/constants";
-import { NO_AI_BORDER_RULE } from "@/lib/prompts";
+import { FINAL_BW_OVERRIDE, NO_AI_BORDER_RULE } from "@/lib/prompts";
 import { preauthorizeCharge } from "@/lib/credits/charge";
 
 export const runtime = "nodejs";
@@ -131,11 +131,14 @@ export async function POST(req: Request) {
     ? "\n\nSPEECH-BUBBLE REASSIGNMENT — LOAD-BEARING. The user is explicitly telling you the speech bubble is anchored to the WRONG character in the source image. You MUST visibly relocate the bubble. Concretely: (a) ERASE the bubble from its current location entirely — do not leave its tail behind. (b) REDRAW the bubble in fresh empty space NEAR THE CHARACTER NAMED BY THE USER (the new speaker). The bubble's BODY sits on the new speaker's side of the page — left half if the new speaker is on the left, right half if on the right. (c) The bubble's POINTED TAIL must visibly touch or point directly into the NEW SPEAKER's mouth — never the old speaker's mouth, never a midpoint. (d) Keep the bubble text EXACTLY the same words. (e) Do NOT also keep the old bubble — there is ONLY one bubble for that line, and it now belongs to the new speaker. If the new speaker is across the page from where the bubble used to be, the bubble moves across the page. Verify: in the OUTPUT image, can a child reading the page point unambiguously at the new speaker as the source of the line? If not, redraw."
     : "";
 
+  const finalBwOverride =
+    context === "page" ? `\n\n${FINAL_BW_OVERRIDE}` : "";
+
   const editPrompt = `Edit the provided image as follows: ${instruction}.
 
 Keep the overall composition and identity consistent with the original. Output as a full image (not a diff).
 
-${guardrails}${consistencyDirective}${swapBubbleOverride}`;
+${guardrails}${consistencyDirective}${swapBubbleOverride}${finalBwOverride}`;
 
   try {
     const isCoverSurface = context === "cover" || context === "back-cover";

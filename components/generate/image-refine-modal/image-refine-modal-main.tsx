@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import type { ModelMessage } from "ai";
+import { readJsonOrThrow } from "@/lib/fetch-json";
 import type { PageMeta, PageStatus } from "@/lib/refine-chat";
 import {
   defaultRefineModelFor,
@@ -440,11 +441,11 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
           signal,
           body: JSON.stringify(requestBody),
         });
-        const json = (await res.json()) as {
+        const json = await readJsonOrThrow<{
           dataUrl?: string;
           error?: string;
-        };
-        if (!res.ok || !json.dataUrl) {
+        }>(res);
+        if (!json.dataUrl) {
           throw new Error(json.error || "Back-cover regeneration failed");
         }
         setVersions((prev) => [
@@ -636,7 +637,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
             attachedImages,
           }),
         });
-        const chatJson = (await chatRes.json()) as {
+        const chatJson = await readJsonOrThrow<{
           messages?: ModelMessage[];
           reply?: string;
           action?:
@@ -648,8 +649,8 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
               }
             | { kind: "text_only" };
           error?: string;
-        };
-        if (!chatRes.ok || !chatJson.reply || !chatJson.action) {
+        }>(chatRes);
+        if (!chatJson.reply || !chatJson.action) {
           throw new Error(chatJson.error || "Sparky did not reply.");
         }
 
@@ -719,11 +720,11 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
             model: activeModel,
           }),
         });
-        const refineJson = (await refineRes.json()) as {
+        const refineJson = await readJsonOrThrow<{
           dataUrl?: string;
           error?: string;
-        };
-        if (!refineRes.ok || !refineJson.dataUrl) {
+        }>(refineRes);
+        if (!refineJson.dataUrl) {
           throw new Error(refineJson.error || "Refinement failed.");
         }
 

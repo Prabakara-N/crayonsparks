@@ -173,6 +173,14 @@ export const booksRouter = {
         const data = d.data();
         const mode = (data.mode as "qa" | "story") ?? "qa";
         const thumbKey = data.cover?.thumb?.key as string | undefined;
+        let coverThumbUrl: string | null = null;
+        if (thumbKey) {
+          try {
+            coverThumbUrl = await getReadUrl(thumbKey);
+          } catch {
+            coverThumbUrl = null;
+          }
+        }
         return {
           bookId: d.id,
           title: (data.title as string) ?? "",
@@ -181,12 +189,23 @@ export const booksRouter = {
           kind: mode === "story" ? "story" : "coloring",
           age: (data.age as string) ?? "toddlers",
           pageCount: (data.pageCount as number) ?? 0,
-          coverThumbUrl: thumbKey ? await getReadUrl(thumbKey) : null,
+          coverThumbUrl,
           createdAt: data.createdAt?.toMillis() ?? null,
         };
       }),
     );
     return { items };
+  }),
+
+  count: protectedProcedure.handler(async ({ context }) => {
+    const userId = context.userId as string;
+    const snap = await db
+      .collection("users")
+      .doc(userId)
+      .collection("books")
+      .count()
+      .get();
+    return { total: snap.data().count };
   }),
 
   get: protectedProcedure.input(GetInput).handler(async ({ input, context }) => {
