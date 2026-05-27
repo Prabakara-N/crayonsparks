@@ -50,7 +50,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast: "cn-toast group/toast",
+          closeButton:
+            "opacity-0 transition-opacity duration-150 group-hover/toast:opacity-100 focus:opacity-100",
         },
       }}
       {...props}

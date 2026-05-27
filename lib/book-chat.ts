@@ -48,6 +48,7 @@ export interface BookBriefPalette {
 export interface BookBriefDialogueLine {
   speaker: string;
   text: string;
+  speakerSide?: "left" | "right" | "center";
 }
 
 export interface BookBriefPrompt {
@@ -281,7 +282,8 @@ WHEN YOU CALL finalize_brief
 - pageScene: shared page backdrop / world. Keep it broad, reusable, and limited to 2-3 fitting environmental cues. No smiling suns.
 - bottomStripPhrases: EXACTLY 3 short ALL-CAPS phrases (12-22 chars each) tailored to THIS story — one about the story content (a moral, a journey, characters), one about a kid benefit (creativity, focus, story-time), one about fun or engagement. Do NOT claim hand-drawn / hand-illustrated / handmade / original artwork. EXAMPLE format only (do not copy unless they truly fit): ["BIG SIMPLE DESIGNS","BOOSTS CREATIVITY","HOURS OF FUN"].
 - sidePlaqueLines: EXACTLY 3 short ALL-CAPS lines (6-22 chars each) reading top-to-bottom as a parent-facing benefit statement. Tailor to the chosen audience (TODDLERS / KIDS / TWEENS) and the story. Do NOT claim hand-drawn / handmade. EXAMPLE format only: ["BIG & EASY","PAGES","PERFECT FOR TODDLERS!"].
-- prompts: 5-30 items in STORY ORDER. Use the EXACT scene count the user picked or typed (e.g. "5 pages" → exactly 5 prompts; "12 scenes" → exactly 12). NEVER round up to a default like 8 or 20 just because that's a typical picture-book size — honour the user's number, even if it's small. Each \`name\` is a 1-3 word scene label ("Start Line", "Hare Naps", "Finish"). Each \`subject\` is 12-20 words describing the scene with the locked character descriptors inline. Each prompt MAY include up to 2 \`dialogue\` lines (speaker + text, hard cap 12 words per line) when the scene has natural speech — wordless action pages should omit dialogue entirely. Optional \`narration\` (max 14 words) for pages that need a sentence of narrator context. Optional \`composition\` for camera/framing hints.
+- prompts: 5-30 items in STORY ORDER. Use the EXACT scene count the user picked or typed (e.g. "5 pages" → exactly 5 prompts; "12 scenes" → exactly 12). NEVER round up to a default like 8 or 20 just because that's a typical picture-book size — honour the user's number, even if it's small. Each \`name\` is a 1-3 word scene label ("Start Line", "Hare Naps", "Finish"). Each \`subject\` is 12-20 words describing the scene with the locked character descriptors inline. Each prompt MAY include up to 2 \`dialogue\` lines (speaker + text + speakerSide, hard cap 12 words per line) when the scene has natural speech — wordless action pages should omit dialogue entirely. Optional \`narration\` (max 14 words) for pages that need a sentence of narrator context. Optional \`composition\` for camera/framing hints.
+- SPEAKER POSITIONING: every \`dialogue\` line MUST include \`speakerSide\` ("left" / "right" / "center") matching where the speaker stands. The \`composition\` field MUST state each character's side ("Pip on the left, Hazel on the right" / "Mira centered, alone in frame"). When two characters speak on the same page they MUST be on DIFFERENT sides. Bubbles are added as SVG overlays in post-processing using \`speakerSide\` to pick which side of the page the bubble sits on.
 - characters: 1-3 recurring characters that appear across multiple pages. Each entry is { name, descriptor } where descriptor restates the FOUR-trait lock from the CHARACTER CONSISTENCY section above (species, RELATIVE size compared to the others, 2+ visual features, clothing/tail/feet differentiator). Reuse the same name verbatim in every \`dialogue.speaker\` and inside each \`subject\` so the renderer can pin character identity across pages.
 - palette: 3-8 hex colors that lock the whole book to one consistent color world. Pick one dominant background tone, one or two character accents, and one warm neutral. The label (\`palette.name\`) is a short human description; the values (\`palette.hexes\`) are what the renderer enforces.
 - ${NO_REAL_BRAND_RULE} Public-domain folktales and fully original stories only.
@@ -396,6 +398,12 @@ const finalizeBriefSchema = z.object({
                 .max(80)
                 .describe(
                   "Spoken line. Hard cap 12 words for toddler-band books — short, simple, parent-readable.",
+                ),
+              speakerSide: z
+                .enum(["left", "right", "center"])
+                .optional()
+                .describe(
+                  "Where the speaker stands on the page so the SVG bubble overlay can be placed on that side. 'left' / 'right' for two-character pages; 'center' for solo scenes. MUST match the composition hint.",
                 ),
             }),
           )
@@ -541,6 +549,7 @@ function viewFromFinalize(
               .map((d) => ({
                 speaker: d.speaker.trim(),
                 text: d.text.trim().replace(/\s+/g, " "),
+                speakerSide: d.speakerSide,
               }))
               .filter((d) => d.speaker && d.text)
               .slice(0, 2)

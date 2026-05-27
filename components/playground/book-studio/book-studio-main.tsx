@@ -21,6 +21,7 @@ import { useDialog } from "@/components/ui/confirm-dialog";
 import { ImagePreviewDialog } from "@/components/ui/image-preview-dialog";
 import { useNavigationGuard } from "@/lib/use-navigation-guard";
 import { DownloadMenu } from "@/components/playground/download-menu";
+import { fireConfettiBurst } from "@/components/ui/confetti-burst";
 import { SaveBookButton } from "./save-book-button";
 import { KdpMetadataPanel } from "@/components/playground/kdp-metadata/kdp-metadata-main";
 import { CoverPair } from "@/components/playground/cover-pair";
@@ -203,6 +204,14 @@ export function BookStudio({
     theEndPage: coverGen.theEndPage,
     mode: bookPlan.mode,
   });
+  const downloadPdf = useCallback(async () => {
+    await download.downloadPdf();
+    fireConfettiBurst(window.innerWidth / 2, window.innerHeight / 2);
+  }, [download]);
+  const downloadZip = useCallback(async () => {
+    await download.downloadZip();
+    fireConfettiBurst(window.innerWidth / 2, window.innerHeight / 2);
+  }, [download]);
 
   const listing = useListingState({
     plan: bookPlan.plan,
@@ -383,7 +392,7 @@ export function BookStudio({
     closeRefine,
     handleBackgroundChange,
   } = refineState;
-  const { pdfBuilding, downloadPdf, downloadZip } = download;
+  const { pdfBuilding } = download;
 
   const planReviewData: PlanReviewData | null = plan
     ? {
@@ -945,6 +954,9 @@ export function BookStudio({
                           : it,
                       ),
                     )
+                  }
+                  onUpdateBubbles={(id, bubbles) =>
+                    pageGen.updateItem(id, { bubbles })
                   }
                   bookTitle={plan?.coverTitle ?? plan?.title}
                   coverScene={plan?.coverScene}

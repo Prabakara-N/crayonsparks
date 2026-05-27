@@ -68,6 +68,11 @@ const dialogueSchema = z.object({
     .min(1)
     .max(80)
     .describe("Spoken line. Hard cap 12 words for the toddler band."),
+  speakerSide: z
+    .enum(["left", "right", "center"])
+    .describe(
+      "Where on the page the speaker stands so the SVG bubble overlay can be placed on that side. 'left' = speaker in the left half; 'right' = speaker in the right half; 'center' = solo character page. MUST be consistent with the composition hint — e.g. if composition says 'Pip on left, Owl on right' and Pip is speaking, speakerSide is 'left'.",
+    ),
 });
 
 // OpenAI's strict structured-output mode requires EVERY property to be
@@ -83,6 +88,21 @@ const promptSchema = z.object({
     .min(8)
     .describe(
       "Full visual description of the scene with locked character descriptors inline (12-20 words).",
+    ),
+  locationId: z
+    .string()
+    .min(2)
+    .max(40)
+    .regex(/^[a-z0-9-]+$/)
+    .describe(
+      "Stable kebab-case slug identifying the physical location of this page (e.g. 'garden-bench', 'kitchen-table', 'forest-path'). MUST be reused VERBATIM for every page set in the same place — pages that share a locationId render with identical environment. Pick a NEW slug ONLY when the characters genuinely move somewhere else.",
+    ),
+  locationDescriptor: z
+    .string()
+    .min(8)
+    .max(160)
+    .describe(
+      "Fixed 10-25 word physical description of the location (ground material, key fixtures, lighting, recurring background elements). MUST be IDENTICAL on every page that shares the same locationId — copy the string verbatim. Example: 'wooden bench by a red rose arch, brick path under it, soft afternoon light, garden fence behind'.",
     ),
   dialogue: z
     .array(dialogueSchema)
@@ -173,7 +193,13 @@ export interface StoryBookPlan {
   prompts: Array<{
     name: string;
     subject: string;
-    dialogue?: Array<{ speaker: string; text: string }>;
+    locationId: string;
+    locationDescriptor: string;
+    dialogue?: Array<{
+      speaker: string;
+      text: string;
+      speakerSide: "left" | "right" | "center";
+    }>;
     narration?: string;
     composition?: string;
   }>;
@@ -287,6 +313,12 @@ The book MUST read like ONE STORY with a beginning, middle, and end — not ${in
 BACKGROUND VARIETY (universal)
 Each page MUST sit in a visually DISTINCT sub-location, even when the whole story takes place in one building or world. Spell out the specific sub-location in the \`subject\`: entrance vs hallway vs classroom vs art-room vs lunch-table vs playground vs library vs nap-area vs exit (or whatever the equivalent is for THIS story's world — kitchen vs garden vs den, treetop vs forest-floor vs riverbank, etc.). Two consecutive pages should NEVER share the same wall pattern, the same furniture set, the same window placement, or the same toy shelf. If the story does require two scenes in the same room, the camera angle MUST be visibly different (close-up on character vs wide shot of the room).
 
+LOCATION ID + LOCATION DESCRIPTOR — CRITICAL FOR SCENE CONNECTIVITY
+Every page MUST include \`locationId\` (kebab-case slug) and \`locationDescriptor\` (10-25 word fixed physical description). Pages set in the SAME PLACE share the SAME locationId AND the SAME locationDescriptor copied VERBATIM. Pages that move to a NEW place get a new id + new descriptor. Example: pages 1, 2, and 5 set in the kitchen → all three have locationId "kitchen-table" and the IDENTICAL locationDescriptor "round wooden table, wicker chairs, sunlit yellow walls, blue tile floor, herb pots on the windowsill". Page 3 moves outside → locationId "back-garden", new descriptor. The renderer pins recurring environments by exact string match — drift in the descriptor across pages with the same id BREAKS continuity. Pick descriptors that name 3-5 fixed environmental anchors (material of ground, key fixtures, lighting, palette of background) so each location is visually recognizable across appearances.
+
+SPEAKER POSITIONING — CRITICAL FOR BUBBLE OVERLAY
+Speech bubbles are added in POST-PROCESSING as SVG overlays — Gemini renders the scene WITHOUT bubbles. The overlay places each bubble on the speaker's side of the page based on \`dialogue[i].speakerSide\`. To make this work, the \`composition\` field MUST explicitly state where each named character stands ("Pip on the left, Hazel on the right", "Mira centered, alone in frame"). Then for every dialogue line, set \`speakerSide\` to match: speaker on the left half → "left"; right half → "right"; solo character or centered group → "center". When two characters speak on the same page, they MUST be on DIFFERENT sides (one left, one right) — never both on the same side, otherwise both bubbles overlap. Restate the speaker's position inside the \`subject\` field as well so the renderer actually places them there ("Pip on the left holding the basket, Hazel on the right perched on a low branch").
+
 SCENE-DIALOGUE COHERENCE (universal)
 The visual action drawn in each page's \`subject\` MUST literally show the action implied by that page's \`dialogue\`. If a character says "Watch out!" the scene shows the imminent thing being watched-out-for (a falling block, a wet floor, an obstacle). If a character says "Write your name here!" the scene shows a name tag, paper, or sign-in sheet visible on the page. A speech bubble that doesn't match the visible action confuses the reader. Test every page: if the dialogue mentions an object or action, that object or action must be visible in the subject.
 
@@ -319,12 +351,41 @@ OUTPUT SHAPE — strict
 - "coverBadgeStyle": ONE sentence describing the visual design language of the cover overlays.
 - "characters": 1-3 entries with locked descriptors per the rules above.
 - "palette": { name, hexes: [...] } — 3-8 hex colors.
-- "prompts": EXACTLY ${input.pageCount} entries in narrative order. Each has name, subject, optional dialogue, optional narration, optional composition.
+- "prompts": EXACTLY ${input.pageCount} entries in narrative order. Each has name, subject, locationId, locationDescriptor, optional dialogue, optional narration, optional composition.
 - "notes": one short line flagging anything assumed or unclear (optional).
 
 ${NO_REAL_BRAND_RULE} Public-domain folktales and fully original stories only.
 
 Output is a full-color picture book — speech bubbles, dialogue text, and full-bleed full-color illustrations are expected.`;
+}
+
+// Enforce the rule that pages sharing a locationId render identical
+// environment. The planner is instructed to copy locationDescriptor
+// verbatim per locationId, but small drift is still possible. This
+// normalizer adopts the first descriptor seen for each id and applies it
+// to every subsequent page with the same id, guaranteeing the renderer
+// receives one descriptor string per location.
+type PromptShape = {
+  name: string;
+  subject: string;
+  locationId: string;
+  locationDescriptor: string;
+  dialogue?: Array<{
+    speaker: string;
+    text: string;
+    speakerSide: "left" | "right" | "center";
+  }> | null;
+  narration?: string | null;
+  composition?: string | null;
+};
+
+function normalizeLocations<T extends PromptShape>(prompts: T[]): T[] {
+  const canon = new Map<string, string>();
+  return prompts.map((p) => {
+    const id = p.locationId.trim();
+    if (!canon.has(id)) canon.set(id, p.locationDescriptor.trim());
+    return { ...p, locationId: id, locationDescriptor: canon.get(id)! };
+  });
 }
 
 export async function planStoryBook(
@@ -349,7 +410,7 @@ export async function planStoryBook(
   }
   // Normalize the strict-mode null fields back to undefined so consumers
   // can keep using the simpler optional-property pattern.
-  return {
+  const plan: StoryBookPlan = {
     title: raw.title,
     coverTitle: raw.coverTitle,
     description: raw.description,
@@ -363,13 +424,17 @@ export async function planStoryBook(
     coverBadgeStyle: raw.coverBadgeStyle ?? undefined,
     characters: raw.characters,
     palette: raw.palette,
-    prompts: raw.prompts.map((p) => ({
+    prompts: normalizeLocations(raw.prompts).map((p) => ({
       name: p.name,
       subject: p.subject,
+      locationId: p.locationId,
+      locationDescriptor: p.locationDescriptor,
       dialogue: p.dialogue ?? undefined,
       narration: p.narration ?? undefined,
       composition: p.composition ?? undefined,
     })),
     notes: raw.notes ?? undefined,
   };
+  const { proofreadStoryPlan } = await import("@/lib/story-proofreader");
+  return proofreadStoryPlan(plan);
 }

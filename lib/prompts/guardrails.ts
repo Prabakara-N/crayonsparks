@@ -192,7 +192,7 @@ export const STYLE_CONSISTENCY =
 // 2% trim variance during binding doesn't crop them off — but background
 // elements (grass, sky, hills, water, foliage) SHOULD reach the page edge.
 export const FILL_CANVAS_RULE =
-  "FILL THE ENTIRE CANVAS EDGE-TO-EDGE — STRICT, applies to every page. The illustration extends to ALL FOUR edges of the canvas like a printed picture-book scene. Concretely: TOP edge (upper environment) reaches the top pixel row. BOTTOM edge (lower environment or surface) reaches the bottom pixel row. LEFT and RIGHT edges contain supporting elements appropriate to the subject's setting and reach the page edges. The illustration MUST visibly touch all four edges. DO NOT leave any empty white margin between the artwork and the canvas edges — no white strip at the top, bottom, left, or right. DO NOT contract the scene into the center with white space around it. DO NOT use white as a blank background fill; white inside the page is reserved for unfilled regions of the line art that the kid will color, NOT for empty margin. Printer-safety: keep CRITICAL detail (the main character's face, eyes, mouth, tiny readable features) at least 4% away from the absolute edge so a binding-trim variance doesn't crop them off, but background elements MUST extend right up to the canvas edge. Pick whichever elements fit the subject's environment; never default to common outdoor scenery unless the subject genuinely lives in that kind of setting.";
+  "Fill the canvas edge-to-edge. The illustration extends to all four edges of the page like a printed picture-book scene — top, bottom, left, and right reach the pixel row. No empty white margin around the artwork. White inside the page is reserved for unfilled regions of the line art that the kid will color, not for blank margin. Printer-safety: keep critical detail (face, eyes, mouth, tiny readable features) at least 4% in from the edge so a binding-trim variance doesn't crop them; background scenery still reaches the edge. Pick supporting elements from the subject's own environment; never default to outdoor scenery unless the subject genuinely lives outside.";
 
 // Used by the "minimal" / "framed" presets where the subject sits on
 // mostly-white (not an edge-to-edge scene). Keeps essential features
@@ -208,16 +208,17 @@ export const PRINT_TRIM_SAFETY_RULE =
 export const DRAW_BORDER_RULE =
   "PAGE FRAME (KDP printer-safe rule, applies once — DO NOT REPEAT): Draw exactly ONE thin solid black rectangular outline at 3% inset from each page edge. Line weight ~1.5px, uniform thickness, four 90° corners, plain rectangle only. NO ornaments, NO rounded corners, NO decorative flourishes, NO double lines, NO second inset rectangle inside the first — if you start to draw a second one, stop. Keep all artwork inside this outline with ~4% buffer; nothing touches or crosses it. Identical position and thickness on every page in the book.";
 
-// New rule used by the master coloring-page prompt: explicitly forbid the
-// AI from drawing ANY border, frame, or rectangular outline at the page
-// edge. The printable border is added at PDF-assembly time as a vector
-// rectangle (lib/pdf.ts) — that's deterministic, identical on every page,
-// and free of the "two borders" / "double line" failure mode that plagued
-// the AI-drawn version. With this rule active, Gemini fills its canvas
-// edge-to-edge with line art only; pdf-lib stamps the printer border on
-// top during download.
+// Single load-bearing positive directive — image models follow positive
+// commands ("draw X") far better than negative cascades ("don't draw X").
+// The previous version repeated "border / frame / rectangle / outline"
+// ~14 times in one block, which primed the model to render the very thing
+// being forbidden. AGENTS.md's own guidance applies here: "Don't say each
+// rule twice. Repeating 'draw exactly one border' three times made the
+// model draw two." The printer's border is stamped as a vector layer in
+// lib/pdf.ts during PDF assembly, so any line art near the edges must be
+// natural scene content, never a perimeter shape.
 export const NO_AI_BORDER_RULE =
-  "RULE #1 — READ THIS FIRST AND OBEY. The page MUST BE BORDERLESS. Do NOT draw a rectangular border. Do NOT draw a page outline. Do NOT draw a printer's frame. Do NOT draw a thin black rectangle at 3% / 4% / 5% / any inset from the page edges. Do NOT draw ANY rectangle, frame, outline, or printer's mark anywhere — even faintly, even in the corners. ALSO — do NOT compose a decorative-frame effect using ARTWORK ELEMENTS along the four edges: do NOT line up trees along both vertical edges to form a 'forest archway frame'; do NOT line up bushes / ferns / grass along all four edges to form a 'jungle vignette frame'; do NOT place vines or branches that loop around the canvas perimeter; do NOT use leaves / foliage / clouds that wrap continuously along the top edge and continue down both sides. Trees, ferns, foliage, and rocks MAY appear in the scene as natural environment, but they MUST be DISTRIBUTED ASYMMETRICALLY (e.g. one tree on the left, two ferns at bottom-right, sky open elsewhere) — never balanced as a wreath / archway / mirrored frame around the central subject. The page is COMPLETELY BORDERLESS: no rectangular line frame AND no decorative-archway pseudo-frame. The printer's vector border is added in POST-PROCESSING after you finish; any border you draw or compose produces a DOUBLE BORDER on the printed page. Before submitting the image, scan the four edges and four corners: if you see ANY straight line forming a rectangle near the edges, OR a symmetric wreath of foliage forming a frame, REMOVE the offending elements and re-distribute foliage asymmetrically. Only natural scene content, never a frame. ZERO frame. ZERO border. ZERO archway-vignette. ZERO outline rectangle.";
+  "Canvas is fully borderless and edge-to-edge. The line art bleeds to the pixel row at every edge. Scene elements (trees, foliage, props, rocks) are distributed asymmetrically across the canvas — one cluster left, a different cluster low-right, sky open elsewhere — never mirrored as a wreath, archway, or perimeter ring around the subject.";
 
 // Locks the LOOK of common scene elements when (and only when) they actually
 // belong in the scene. Critically does NOT mandate that they appear — only
@@ -248,7 +249,6 @@ export const ANCHOR =
   "    No gray shading, no halftones, no hatching, no stippling, no cross-hatch, no spot-blacks, no silhouettes. " +
   "    No white-on-black inversion (the page is NEVER a black sky / black background with white drawings — even for night, space, or outer-space scenes the rule is reversed: draw black outlines of stars, moon, planets on the white page, NOT a black background with white stars). " +
   "    Color words in the brief refer to the subject's identity (a 'black cat', a 'red barn'), never to actual ink — render them as outlines only, the kid colors them. " +
-  "(2) The scene fills the canvas edge-to-edge — no empty white margin around the artwork. " +
-  "(3) The single main subject is 50-65% of the page (large, dominant, same scale on every page); the rest of the canvas is themed background, not white space. " +
-  "(4) Each named character appears exactly once per page. Crowds are simple small silhouettes without detailed faces — never repeat the hero. " +
-  "(5) Only the named subject is drawn as a character. No partial creatures (tails, ears, paws, manes) peeking from the background — the background is environment only.";
+  "(2) The single main subject is 50-65% of the page (large, dominant, same scale on every page); the rest of the canvas is themed background, not white space. " +
+  "(3) Each named character appears exactly once per page. Crowds are simple small silhouettes without detailed faces — never repeat the hero. " +
+  "(4) Only the named subject is drawn as a character. No partial creatures (tails, ears, paws, manes) peeking from the background — the background is environment only.";

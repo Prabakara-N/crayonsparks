@@ -1,18 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Download,
-  Loader2,
   Sparkles,
   Palette,
-  Trash2,
   LayoutGrid,
   BookOpen,
+  Download,
 } from "lucide-react";
+import { fireConfettiBurst } from "@/components/ui/confetti-burst";
+import { downloadImageByKey } from "@/lib/functions/client/download-image-by-key";
 import { toast } from "sonner";
 import { useBooks } from "@/lib/hooks/use-books";
 import { useIsAdmin } from "@/lib/hooks/use-is-admin";
@@ -27,10 +27,14 @@ import {
   downloadSavedBook,
   type SavedBookForDownload,
 } from "@/lib/functions/client/download-saved-book";
+import { downloadSavedBookZip } from "@/lib/functions/client/download-saved-book-zip";
 import { PageHeader } from "../page-header";
 import { PublishToEtsyButton } from "./publish-to-etsy-button";
 import { PublishToPinterestButton } from "./publish-to-pinterest-button";
 import { SavedBookPageGrid, type SavedPage } from "./saved-book-page-grid";
+import { BookActionsMenu } from "./book-actions-menu";
+import { BubbleEditorModal } from "@/components/playground/book-studio/bubble-editor/bubble-editor-modal";
+import type { StoryBubble } from "@/lib/story-bubble-seed";
 
 interface ImageVariant {
   key: string;
@@ -64,16 +68,53 @@ interface CoverTileSpec {
 export function BookDetailMain({ bookId }: { bookId: string }) {
   const router = useRouter();
   const dialog = useDialog();
-  const { get, delete: deleteBook } = useBooks();
+  const { get, delete: deleteBook, updatePageBubbles } = useBooks();
   const { isAdmin } = useIsAdmin();
   const [book, setBook] = useState<BookDoc | null>(null);
   const [pages, setPages] = useState<SavedPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [zipping, setZipping] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "book">("grid");
+  const [editingBubbleId, setEditingBubbleId] = useState<string | null>(null);
+  const editingPage = editingBubbleId
+    ? pages.find((p) => p.id === editingBubbleId) ?? null
+    : null;
+  const editingPageIndex = editingPage
+    ? pages.findIndex((p) => p.id === editingPage.id)
+    : -1;
+  const bubbleSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (bubbleSaveTimerRef.current) clearTimeout(bubbleSaveTimerRef.current);
+    };
+  }, []);
+  const queueBubbleSave = useCallback(
+    (pageId: string, bubbles: StoryBubble[]) => {
+      if (bubbleSaveTimerRef.current) clearTimeout(bubbleSaveTimerRef.current);
+      bubbleSaveTimerRef.current = setTimeout(() => {
+        void updatePageBubbles({ bookId, pageId, bubbles }).catch((err) => {
+          toast.error(
+            err instanceof Error ? err.message : "Failed to save bubbles.",
+          );
+        });
+      }, 600);
+    },
+    [bookId, updatePageBubbles],
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const enforce = () => {
+      if (mq.matches) setViewMode("grid");
+    };
+    enforce();
+    mq.addEventListener("change", enforce);
+    return () => mq.removeEventListener("change", enforce);
+  }, []);
 
   useEffect(() => {
     prefetchBookFlip();
@@ -152,10 +193,25 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
     try {
       await downloadSavedBook(book as SavedBookForDownload, pages);
       toast.success("Print package downloaded.");
+      fireConfettiBurst(window.innerWidth / 2, window.innerHeight / 2);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed.");
     } finally {
       setDownloading(false);
+    }
+  }, [book, pages]);
+
+  const handleDownloadZip = useCallback(async () => {
+    if (!book) return;
+    setZipping(true);
+    try {
+      await downloadSavedBookZip(book as SavedBookForDownload, pages);
+      toast.success("ZIP downloaded.");
+      fireConfettiBurst(window.innerWidth / 2, window.innerHeight / 2);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed.");
+    } finally {
+      setZipping(false);
     }
   }, [book, pages]);
 
@@ -230,11 +286,11 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
         }
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div className="flex items-center justify-between gap-3 mb-6">
         <div
           role="tablist"
           aria-label="Book view"
-          className="inline-flex p-1 rounded-2xl border border-white/10 bg-zinc-900/60"
+          className="hidden md:inline-flex p-1 rounded-2xl border border-white/10 bg-zinc-900/60"
         >
           <button
             role="tab"
@@ -264,41 +320,23 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
           </button>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={downloading || deleting}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-linear-to-r from-violet-500 to-cyan-400 hover:opacity-95 disabled:opacity-60 transition-opacity whitespace-nowrap"
-          >
-            {downloading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Download className="w-4 h-4" />
-            )}
-            {downloading
-              ? "Building print package…"
-              : "Download print package"}
-          </button>
-          {isAdmin && (
-            <>
-              <PublishToEtsyButton bookId={book.bookId} />
-              <PublishToPinterestButton bookId={book.bookId} />
-            </>
-          )}
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={downloading || deleting}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium text-red-200 bg-red-500/10 hover:bg-red-500/15 border border-red-500/30 disabled:opacity-60"
-          >
-            {deleting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Trash2 className="w-4 h-4" />
-            )}
-            Delete
-          </button>
+        <div className="ml-auto flex items-center">
+          <BookActionsMenu
+            onDownloadPdf={handleDownload}
+            onDownloadZip={handleDownloadZip}
+            onDelete={handleDelete}
+            pdfBuilding={downloading}
+            zipBuilding={zipping}
+            deleting={deleting}
+            extraItems={
+              isAdmin ? (
+                <div className="px-3.5 py-2 space-y-1.5">
+                  <PublishToEtsyButton bookId={book.bookId} />
+                  <PublishToPinterestButton bookId={book.bookId} />
+                </div>
+              ) : undefined
+            }
+          />
         </div>
       </div>
 
@@ -335,27 +373,52 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {coverTiles.map((tile) => (
-              <button
+              <div
                 key={tile.label}
-                type="button"
-                onClick={() =>
-                  setCarouselIndex(indexByRole.get(tile.role) ?? 0)
-                }
-                className="rounded-xl bg-zinc-900/60 border border-white/10 hover:border-violet-500/40 overflow-hidden text-left transition-colors"
+                className="group relative rounded-xl bg-zinc-900/60 border border-white/10 hover:border-violet-500/40 overflow-hidden transition-colors"
               >
-                <div className="aspect-3/4 bg-black/40">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={tile.variants.medium.url}
-                    alt={tile.label}
-                    className="w-full h-full object-contain"
-                    loading="lazy"
-                  />
-                </div>
-                <span className="block px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
-                  {tile.label}
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCarouselIndex(indexByRole.get(tile.role) ?? 0)
+                  }
+                  className="w-full text-left"
+                >
+                  <div className="aspect-3/4 bg-black/40">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={tile.variants.medium.url}
+                      alt={tile.label}
+                      className="w-full h-full object-contain"
+                      loading="lazy"
+                    />
+                  </div>
+                  <span className="block px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                    {tile.label}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      await downloadImageByKey(
+                        tile.variants.full.key,
+                        `${tile.role}.png`,
+                      );
+                    } catch (err) {
+                      toast.error(
+                        err instanceof Error ? err.message : "Download failed.",
+                      );
+                    }
+                  }}
+                  aria-label={`Download ${tile.label}`}
+                  title={`Download ${tile.label}`}
+                  className="absolute bottom-9 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-sm transition-opacity duration-150 hover:bg-black/90 hover:text-violet-200 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+              </div>
             ))}
           </div>
 
@@ -370,6 +433,7 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
                 setCarouselIndex(indexByRole.get(`page-${page.id}`) ?? 0);
               }
             }}
+            onEditBubbles={(p) => setEditingBubbleId(p.id)}
           />
         </>
       )}
@@ -380,6 +444,28 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
         startIndex={carouselIndex ?? 0}
         onClose={() => setCarouselIndex(null)}
       />
+
+      {editingPage && (
+        <BubbleEditorModal
+          open
+          onOpenChange={(o) => {
+            if (!o) setEditingBubbleId(null);
+          }}
+          pageName={editingPage.name}
+          pageIndex={editingPageIndex}
+          totalPages={pages.length}
+          imageSrc={editingPage.image.full.url}
+          bubbles={editingPage.bubbles ?? []}
+          onChange={(next: StoryBubble[]) => {
+            setPages((prev) =>
+              prev.map((p) =>
+                p.id === editingPage.id ? { ...p, bubbles: next } : p,
+              ),
+            );
+            queueBubbleSave(editingPage.id, next);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -56,6 +56,17 @@ export const PAGE_LAYOUT_CONSISTENCY =
 export const STROKE_CONSISTENCY =
   "Book-wide stroke consistency: use the same clean rounded cartoon line weight on every page. Main contours are bold and even; interior detail lines are slightly lighter but never hairline-thin. If the subject explicitly includes a readable educational letter or number, draw it as one large rounded hollow block character with thick even outline matching the main contour weight, unfilled white interior, and no extra text.";
 
+// Low-detail pages get a SHORTENED scene string. The full scene line is
+// often rich ("magical forest with mushrooms, vines, fireflies, fallen
+// logs and a glowing waterfall") which Gemini honors literally and packs
+// the page with elements regardless of the LOW detail rule below. Keeping
+// only the first clause hands the model a minimal cue that matches the
+// LOW depth-layer rule.
+function compressSceneForLowDetail(scene: string): string {
+  const firstClause = scene.split(/[,.;:]| with | featuring | including | and /i)[0];
+  return firstClause.trim().slice(0, 60);
+}
+
 function hash(str: string): number {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
@@ -84,30 +95,31 @@ function pickVariation(seed?: string) {
 export const AGE_PRESETS: Record<AgeRange, { label: string; note: string }> = {
   toddlers: {
     label: "Toddlers (3-6)",
-    note: "Large subject filling most of the foreground. Flat 2D cartoon, kid-friendly proportions, big round eyes, friendly happy expression.",
+    note: "Large subject filling most of the foreground. Flat 2D cartoon, kid-friendly proportions, friendly approachable expression. Eye style matches the subject — anatomically appropriate for the species or object, never enlarged 'kawaii' eyes unless the subject is explicitly a stylized character.",
   },
   kids: {
     label: "Kids (6-10)",
-    note: "Centered subject with slightly more detail. Friendly cartoon style, proportional anatomy, some secondary elements allowed (ribbons, simple accessories).",
+    note: "Centered subject with slightly more detail. Friendly cartoon style, proportional anatomy, eyes sized naturally for the species or object. Secondary elements allowed (ribbons, simple accessories).",
   },
   tweens: {
     label: "Tweens (10-14)",
-    note: "More detailed illustration. Balanced composition, realistic proportions, some pattern and texture detail. Still approachable line art.",
+    note: "More detailed illustration. Balanced composition, realistic proportions, naturalistic facial features. Some pattern and texture detail. Still approachable line art.",
   },
 };
 
-// User-facing "Detail level" knob — Low / Medium / High. Each preset
-// covers BOTH the line-art density (how detailed the strokes are) AND
-// the scene density (how many supporting background elements appear).
-// At every level the main character stays the visual focal point; the
-// background never crowds, repeats, or upstages them.
+// User-facing "Detail level" knob — Low / Medium / High. Rewritten from
+// count-based caps ("max 2 elements") to layout-based depth-layer
+// language. Image diffusion plans composition up front; it can't iterate
+// "count and remove extras" after the fact. Telling it WHICH depth
+// layers to populate produces consistent density. Line weight scales
+// with detail level so a Low page looks visibly chunkier than a High.
 export const DETAIL_PRESETS: Record<Detail, string> = {
   simple:
-    "DETAIL LEVEL — LOW (STRICT HARD CAP). Line work: thick clean black outlines, minimal internal detail, easy to color inside. Scene density: the main character is the star and occupies AT LEAST 60% of the page area; render AT MOST 2 (TWO) small supporting background elements TOTAL — count them: foreground decorations, mid-ground props, far-background scenery, sky elements, and ground props ALL count toward this cap. Anything beyond 2 is a VIOLATION. Forbidden by default at this level (do NOT add unless one of them is your single chosen element): clouds, scattered rocks, scattered mushrooms, scattered flowers, scattered leaves, multiple trees (more than 1), grass-blade ground texture, decorative pathways, fences, signs, fallen logs, bushes, hills, stars, butterflies, birds. If the page subject names a setting like 'forest', 'garden', 'park', 'meadow', 'market', or 'woods', COMPRESS it to 1-2 symbolic representative elements (one tree, one cloud) — do NOT populate a full scene. Background is intentionally sparse; let the character breathe. NO repetitive props. NO crowded clusters of small items. Before submitting, count all supporting elements; if more than 2, REMOVE the extras.",
+    "DETAIL LEVEL — LOW. Composition: the subject stands alone on a single ground line (grass tuft, sand strip, floor seam — one short line). No mid-ground, no background scenery, no sky decoration, no scattered props. Just subject + ground. Line work: thick chunky outlines (about 4pt at print size), minimal interior detail, easy big regions for a small child to color inside. If the page brief mentions a richer setting, render only the subject and one single ground element — ignore the rest of the scenery for this level.",
   detailed:
-    "DETAIL LEVEL — MEDIUM (STRICT HARD CAP). Line work: medium-weight clean black outlines, moderate internal detail (gentle texture, simple pattern hints), still clearly colorable. Scene density: a balanced scene around the character — EXACTLY 3 to 5 supporting background elements (count: foreground decorations, mid-ground props, background scenery, sky elements, ground props ALL count toward this cap). 6 or more is a VIOLATION. The character clearly dominates the composition (occupies 50-60% of the page area). FORBIDDEN at this level: lining trees / ferns / foliage along multiple page edges (that creates a frame — see RULE #1); repeating the same prop (3+ identical mushrooms, 3+ identical butterflies, 3+ identical clouds); blanket carpets of grass-blades / leaves / dots / sparkles covering large portions of the canvas. Each background element serves a purpose, occupies a distinct location, and is visibly different from the others. Before submitting, COUNT every distinct supporting element you drew (each tree counts as 1, each fern as 1, each cloud as 1, each rock as 1, etc.); if the total exceeds 5, REMOVE the weakest elements until you are within 3-5. Do NOT exceed 5.",
+    "DETAIL LEVEL — MEDIUM. Composition: TWO depth layers. Foreground = the subject occupying 50-60% of the page; mid-ground = ONE supporting prop or environmental element to the subject's side (a tree, a fence post, a tuft of flowers, a bench, a single cloud — pick what fits the subject's world). No third layer, no distant horizon detail, no scattered ground props, no decorative dots or sparkles, no repeated identical items. Line work: medium-weight outlines (about 3pt at print size), gentle interior pattern hints on the subject only, still clearly colorable.",
   intricate:
-    "DETAIL LEVEL — HIGH. This is a rich, depth-filled page with visibly more scene content than Low or Medium. STRICT: render 7-10 distinct supporting background elements arranged in THREE depth layers: foreground props near the focal group, mid-ground scenery beside or behind the focal group, and far-background silhouettes or environmental features. EVERY element MUST come from THIS BOOK's specific subject world. Derive element choices from the page subject, the shared scene description, and the subject's natural environment; do not borrow generic scenery from unrelated coloring-book tropes. NEVER default to grass, clouds, distant hills, trees, or sunshine unless this book's actual subject and setting call for them. Each element is distinct: vary type, size, and position; never repeat the same element identically. Line work: clean black outlines with detailed interior textures appropriate to each element, still kid-colorable, no solid black fills. The main focal group keeps the same scale as the rest of the book and remains dominant; add richness around it instead of shrinking it. Forbidden: merging elements into a wall of texture, obscuring the focal subject's face or main readable shape, or using a generic outdoor backdrop regardless of the book's actual subject. The page should clearly look richer and more visually populated than Medium while preserving the same margins, focal scale, and stroke weight.",
+    "DETAIL LEVEL — HIGH. Composition: THREE depth layers. Foreground = the subject with one small prop or detail near its feet/hands; mid-ground = supporting scenery beside or behind the subject (one or two distinct objects — a tree, a building, a piece of furniture, terrain); far background = silhouettes or environmental features at the horizon (distant hills, distant buildings, distant tree-line, distant water-line, distant ceiling beams). Every element belongs to the subject's actual environment — never borrow generic outdoor scenery for an indoor / underwater / space / abstract subject. Line work: refined outlines (about 2.5pt at print size), detailed interior textures on each element appropriate to its material, still kid-colorable, no solid black fills. The subject remains the dominant focal element; richness is added around it, not on top of it.",
 };
 
 /**
@@ -118,15 +130,10 @@ export const DETAIL_PRESETS: Record<Detail, string> = {
  * prompt built by {@link MASTER_PROMPT_USER}.
  */
 export const MASTER_PROMPT_SYSTEM = [
-  // NO_AI_BORDER_RULE sits at position 1 (right after the lead-in line)
-  // because the model has very strong "coloring book = has border"
-  // training priors and ignores the rule when it's buried mid-prompt.
-  // The printer's border is added by lib/pdf.ts in post-processing —
-  // any AI-drawn border produces a double border on the printed page.
-  "You generate single-page illustrations for premium Amazon KDP children's coloring books. Every page must be print-ready KDP quality.",
+  "You generate borderless full-bleed single-page line-art illustrations for premium Amazon KDP children's coloring books. Every page is print-ready KDP quality.",
   NO_AI_BORDER_RULE,
-  ANCHOR,
   FILL_CANVAS_RULE,
+  ANCHOR,
   COMMON_ELEMENT_STYLE,
   KID_SAFE_CONTENT_RULE,
   ANATOMY_GUARDRAIL,
@@ -135,6 +142,10 @@ export const MASTER_PROMPT_SYSTEM = [
   KDP_QUALITY_GUARDRAIL,
   STYLE_CONSISTENCY,
   ARTIFACT_GUARDRAIL,
+  // Detail-level reference is in the system block so the model reads
+  // the layout rules BEFORE the scene description. The user prompt
+  // names which level applies to THIS page.
+  `DETAIL LEVEL REFERENCE (the user prompt names which level applies to this page): LOW = ${DETAIL_PRESETS.simple} MEDIUM = ${DETAIL_PRESETS.detailed} HIGH = ${DETAIL_PRESETS.intricate}`,
   "Output: a print-ready KDP coloring page. Every line purposeful, premium hand-illustrated cartoon look.",
 ].join(" ");
 
@@ -150,17 +161,28 @@ export const MASTER_PROMPT_USER = (
   const age = opts.age ?? "toddlers";
   const detail = opts.detail ?? "simple";
   const background = opts.background ?? "scene";
-  const scene = opts.scene?.trim() || null;
+  const rawScene = opts.scene?.trim() || null;
+  const scene =
+    rawScene && detail === "simple" ? compressSceneForLowDetail(rawScene) : rawScene;
   const agePreset = AGE_PRESETS[age];
   const variation = pickVariation(opts.variantSeed);
   const characterLock = opts.characterLock?.trim();
-  const elementRange =
-    detail === "intricate" ? "7-10" : detail === "detailed" ? "3-5" : "1-2";
+  const detailLabel =
+    detail === "intricate" ? "HIGH" : detail === "detailed" ? "MEDIUM" : "LOW";
+  const detailLayerHint =
+    detail === "intricate"
+      ? "three depth layers (foreground prop + mid-ground scenery + far-background silhouettes)"
+      : detail === "detailed"
+        ? "two depth layers (subject + one mid-ground prop)"
+        : "subject alone on a single ground line, no scenery";
 
   const preamble =
     age === "tweens" ? "Tween coloring book page." : "Kids coloring book page.";
 
-  const parts: string[] = [preamble];
+  const parts: string[] = [
+    preamble,
+    `DETAIL LEVEL FOR THIS PAGE: ${detailLabel} — render ${detailLayerHint}. Follow the matching LOW / MEDIUM / HIGH layout block in the system instructions exactly.`,
+  ];
   if (characterLock) parts.push(characterLock);
 
   if (background === "scene") {
@@ -170,8 +192,8 @@ export const MASTER_PROMPT_USER = (
       STROKE_CONSISTENCY,
       `Subject identity rule (load-bearing): draw exactly the subject named above and nothing else as a character. If the subject names an animal, an object, or a creature, that is what appears — do not substitute or add the cover's hero / mascot / human character unless the subject line literally names them. The character lock block (if present above) describes the visual style of recurring characters when they actually appear by name; it never adds them to a page that doesn't name them.`,
       scene
-        ? `Background scene (${elementRange} supporting elements, pick from "${scene}"): only use elements from that theme line that genuinely fit the subject's natural environment. Distribute across the canvas (upper area at the top, lower surface at the bottom, mid-ground beside the focal group). ${variation.bgEmphasis}. Background never overlaps the subject's face or main readable shape.`
-        : `Background scene (${elementRange} supporting elements): derive them yourself from the subject's own natural habitat. Match the elements to where the subject would actually be found. Distribute across the canvas (upper area at the top, lower surface at the bottom, mid-ground beside the focal group). ${variation.bgEmphasis}. Background never overlaps the subject's face or main readable shape.`,
+        ? `Background scene — pick from "${scene}", using ONLY elements that fit the subject's natural environment AND fit the page's detail level (the LOW/MEDIUM/HIGH layout block in the system). Distribute across the canvas. ${variation.bgEmphasis}. Background never overlaps the subject's face or main readable shape.`
+        : `Background scene — derive elements from the subject's own natural habitat, capped by the page's detail level (the LOW/MEDIUM/HIGH layout block in the system). Distribute across the canvas. ${variation.bgEmphasis}. Background never overlaps the subject's face or main readable shape.`,
       `No-default-environment rule: do not insert trees, forest, hills, grass, sun, or clouds by default. Only include them if the theme line explicitly calls for them or the subject literally lives there. A superhero / city / vehicle / space / underwater / indoor / nighttime / abstract / mythology subject does not get trees in the background unless the brief said so.`,
       `No decorative-frame rule (this is a scene-mode page, NOT framed mode): do NOT draw a decorative floral wreath, leafy garland, vine arch, flower border, branch corners, or any ornamental motif framing the page edges. The page is BORDERLESS — the printer's rectangular border is added as a vector layer in post-processing, never by you. Foliage / flowers may appear as background scenery sized appropriately within the scene, never as a corner ornament or top-of-page decorative arch.`,
       `REFERENCE-IMAGE USAGE — read carefully: when a cover image and/or a prior interior page is attached as a visual reference, use it ONLY for two things — (a) the LOOK of the recurring characters (species, body proportions, color, fur texture, eye style, accessories), and (b) the LINE-ART STYLE (line weight, stroke polish). DO NOT copy the reference's scene composition, background elements, prop positions, character poses, character placement on the canvas, sky / cloud arrangement, tree positions, building positions, fence positions, or framing distance. Compose THIS page's scene FRESHLY from the page subject text above — never by editing the reference. If the new page would look like a near-duplicate of the reference with characters slightly repositioned, you are doing it wrong; redo it from scratch.`,
@@ -179,7 +201,6 @@ export const MASTER_PROMPT_USER = (
       `Thematic fit (strict): every background element must belong to the subject's actual environment. Test each element with one question: "would this naturally exist where this subject lives?" If the answer is no, omit it. Wrong-environment elements never appear on the page even if the cover or a previous page used them.`,
       "Composition restraint: follow the selected detail level's supporting-element count, but keep elements organized and readable. Fewer well-placed elements beats a busy page. No scattered sparkles, tiny hearts, dot textures, or sticker-like decorations unless the subject or theme specifically requires them.",
       "Ground line: a clear ground or surface (grass, sand, water, rooftop, floor — whatever fits the scene) extending across the page; the subject is never floating in white.",
-      DETAIL_PRESETS[detail],
     );
   } else if (background === "framed") {
     parts.push(
@@ -187,26 +208,22 @@ export const MASTER_PROMPT_USER = (
       "Per-page frame variety: the decorative pattern stays in the same family across the book, but each page rearranges or substitutes specific motifs so two pages never share an identical frame. The motif family is chosen to fit THIS book's subject (florals, geometric shapes, stars, abstract lines, era-appropriate ornaments — pick what suits the theme). If a chain-reference page is attached, copy only its line weight and overall density — never its exact motif placement.",
       `Subject: a single cute friendly ${subject} occupying at least 60% of the area inside the frame. ${variation.pose}, positioned ${variation.position}.`,
       PRINT_TRIM_SAFETY_RULE,
-      DETAIL_PRESETS[detail],
     );
   } else {
     parts.push(
       `Subject: a single cute friendly ${subject} filling 70-85% of the page, centered. ${variation.pose}.`,
       PRINT_TRIM_SAFETY_RULE,
-      DETAIL_PRESETS[detail],
       "Pure white background, no scene elements, just the subject.",
     );
   }
 
   parts.push(agePreset.note);
   parts.push(
-    "FINAL CHECK BEFORE SUBMITTING (re-read these and apply in order): " +
-      "(1) RECTANGULAR BORDER SCAN — look at the four page edges and corners; if ANY straight line forms a rectangle, outline, or printer's frame near the edges, ERASE IT. The page is borderless from your side. " +
-      "(2) DECORATIVE-FRAME SCAN — look at how trees / foliage / clouds / rocks are arranged; if they form a symmetric wreath, archway, or mirrored frame around the central subject (e.g. trees on both vertical sides, foliage along top and bottom), REDISTRIBUTE them asymmetrically so the scene reads as natural environment, not a vignette frame. " +
-      "(3) LETTER / NUMBER / TEXT SCAN — look for any shape that resembles a letter (A–Z), a digit (0–9), or a word on signs / books / banners / blackboards / storefronts / posters / screens / decorative props. If you see ANY such shape, ERASE IT and leave the surface blank or replace it with a non-textual pattern. The subject's name being 'Velociraptor', 'Tiger', 'Apple', etc. is NOT permission to draw a letter — the page shows the ANIMAL/OBJECT, never the letter. " +
-      "(4) ELEMENT COUNT — count every distinct supporting background element you drew. If the detail level is LOW, the count MUST be 2 or fewer total; remove the rest. If MEDIUM, 3-5 (six or more is a violation — remove the weakest). If HIGH, 7-10. If your count exceeds the cap, REMOVE the weakest elements until you are within range. " +
-      "(5) COLOR SCAN — if you see ANY color, ANY gray shading, ANY fill anywhere on the canvas (red apple body, yellow lemon, green leaves, brown wood, blue sky tone, beige skin), CONVERT IT TO PURE WHITE INTERIOR with only the BLACK OUTLINE remaining. The page is a coloring page — the CHILD adds color, not you. " +
-      "All five checks happen BEFORE you finalize the image.",
+    "FINAL CHECK BEFORE SUBMITTING — apply in order: " +
+      "(1) ASYMMETRY — scene elements must be distributed asymmetrically; if foliage / trees / props form a mirrored wreath or archway around the subject, redistribute them off-axis. " +
+      "(2) TEXT SCAN — any shape resembling a letter, digit, or word on signs / books / banners / blackboards / storefronts / posters / screens / props gets erased. The subject's name being 'Velociraptor', 'Tiger', 'Apple' is NOT permission to draw a letter — show the animal/object, never the letter. " +
+      "(3) DEPTH LAYERS — confirm the selected detail level matches: Low = subject alone on a clean ground line, Medium = subject + one prop + one background silhouette, High = subject + foreground prop + mid-ground scenery + background silhouettes. " +
+      "(4) COLOR SCAN — any color, gray shading, or fill anywhere on the canvas (red apple body, yellow lemon, green leaves, brown wood, blue sky tone, beige skin) gets converted to pure white interior with only the black outline remaining. The page is a coloring page — the child adds color, not you.",
   );
   parts.push(FINAL_BW_OVERRIDE);
   return parts.join(" ");

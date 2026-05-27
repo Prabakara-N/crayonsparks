@@ -102,21 +102,49 @@ export async function handleSubscriptionPayment(
   payload: LsPayload,
 ): Promise<WebhookResult> {
   const userId = payload.meta?.custom_data?.user_id;
-  const planId = payload.meta?.custom_data?.plan_id;
   const invoiceId =
     payload.data?.id != null ? String(payload.data.id) : null;
   const status = payload.data?.attributes?.status;
 
-  if (!userId || !planId || !invoiceId) {
+  if (!userId || !invoiceId) {
+    console.error("[lemonsqueezy] payment webhook missing user_id/invoiceId", {
+      userId,
+      invoiceId,
+    });
     return { status: 400, message: "Missing payment fields" };
   }
   if (status && status !== "paid") {
     return ok("Invoice not paid — ignored");
   }
 
-  const plan = getPlanById(planId);
+  const customPlanId = payload.meta?.custom_data?.plan_id;
+  const variantId = payload.data?.attributes?.variant_id;
+  const planFromVariant =
+    variantId != null ? resolvePlanByVariantId(String(variantId)) : null;
+  const resolvedPlanId =
+    customPlanId ?? planFromVariant?.id ?? null;
+
+  if (!resolvedPlanId) {
+    console.error("[lemonsqueezy] cannot resolve plan from payment payload", {
+      userId,
+      invoiceId,
+      variantId,
+    });
+    return {
+      status: 422,
+      message:
+        "Cannot resolve plan — missing custom_data.plan_id and unknown variant_id.",
+    };
+  }
+
+  const plan = getPlanById(resolvedPlanId);
   if (plan.id === "free") {
-    return { status: 202, message: "Unknown subscription plan" };
+    console.error("[lemonsqueezy] resolved plan is free — refusing to grant", {
+      userId,
+      invoiceId,
+      resolvedPlanId,
+    });
+    return { status: 422, message: `Unknown subscription plan: ${resolvedPlanId}` };
   }
 
   const result = await applySubscriptionCredits({
@@ -129,6 +157,14 @@ export async function handleSubscriptionPayment(
   await updateSubscriptionState(userId, {
     planId: plan.id,
     status: "active",
+  });
+  console.log("[lemonsqueezy] subscription payment processed", {
+    userId,
+    invoiceId,
+    planId: plan.id,
+    granted: result.granted,
+    duplicate: result.duplicate,
+    newBalance: result.newBalance,
   });
   return ok(
     result.duplicate

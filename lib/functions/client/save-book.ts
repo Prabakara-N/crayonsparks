@@ -186,6 +186,8 @@ export async function saveBookToCloud(
         narration: p.narration ?? undefined,
         composition: p.composition ?? undefined,
         image: variants,
+        bubbles: p.bubbles,
+        bubblesFlattened: p.bubblesFlattened ?? false,
       };
     }),
   });

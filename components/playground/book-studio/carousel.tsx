@@ -9,6 +9,9 @@ import {
   type CardData,
 } from "@/components/ui/apple-cards-carousel";
 import { RegenerateCardButton } from "@/components/playground/regenerate-card-button";
+import { BubbleEditorModal } from "./bubble-editor/bubble-editor-modal";
+import { BubblePreviewOverlay } from "./bubble-editor/bubble-preview-overlay";
+import { EditBubblesButton } from "./bubble-editor/edit-bubbles-button";
 import { PageCover } from "./page-cover";
 import { PageDownloadButton } from "./page-download-button";
 import { RefineStatusBadge } from "./refine-status-badge";
@@ -19,6 +22,7 @@ import type {
   CoverStyle,
   PromptItem,
   QualityScore,
+  StoryBubble,
 } from "./types";
 
 export interface CarouselProps {
@@ -60,6 +64,7 @@ export interface CarouselProps {
   onSetCover: (dataUrl: string) => void;
   onSetBackCover: (dataUrl: string) => void;
   onSetItem: (id: string, dataUrl: string) => void;
+  onUpdateBubbles?: (id: string, bubbles: StoryBubble[]) => void;
   bookTitle?: string;
   coverScene?: string;
   characterLockBlock?: string;
@@ -85,6 +90,7 @@ export function Carousel({
   onSetCover,
   onSetBackCover,
   onSetItem,
+  onUpdateBubbles,
   bookTitle,
   coverScene,
   characterLockBlock,
@@ -102,6 +108,13 @@ export function Carousel({
   const [altLoading, setAltLoading] = useState(false);
   const [altError, setAltError] = useState<string | null>(null);
   const [altCount, setAltCount] = useState(0);
+  const [editingBubblesId, setEditingBubblesId] = useState<string | null>(null);
+  const editingBubblesItem = editingBubblesId
+    ? items.find((it) => it.id === editingBubblesId) ?? null
+    : null;
+  const editingBubblesIndex = editingBubblesItem
+    ? items.findIndex((it) => it.id === editingBubblesItem.id)
+    : -1;
 
   // Fetch an AI-suggested alternative subject. Used both on modal open
   // (auto-fill the textarea) and when the user clicks "Suggest another".
@@ -178,12 +191,35 @@ export function Carousel({
               aspectClass={aspectRatio.replace(":", " / ")}
               showFrame
             />
+            {isStory &&
+              it.status === "done" &&
+              it.dataUrl &&
+              !it.bubblesFlattened &&
+              it.bubbles &&
+              it.bubbles.length > 0 && (
+                <BubblePreviewOverlay bubbles={it.bubbles} />
+              )}
             {it.status === "done" && it.dataUrl && (
               <PageDownloadButton
                 dataUrl={it.dataUrl}
                 filename={downloadFilename}
+                bubbles={
+                  isStory && !it.bubblesFlattened ? it.bubbles : undefined
+                }
               />
             )}
+            {isStory &&
+              it.status === "done" &&
+              it.dataUrl &&
+              it.bubbles &&
+              it.bubbles.length > 0 &&
+              !it.bubblesFlattened &&
+              onUpdateBubbles && (
+                <EditBubblesButton
+                  bubbleCount={it.bubbles.length}
+                  onClick={() => setEditingBubblesId(it.id)}
+                />
+              )}
           </>
         ),
         badge: refineState ? (
@@ -249,7 +285,17 @@ export function Carousel({
         />
       );
     });
-  }, [items, aspectRatio, onRegenerateItem, onOpenRefine, onSetItem, refineStatus, isStory, dialog]);
+  }, [
+    items,
+    aspectRatio,
+    onRegenerateItem,
+    onOpenRefine,
+    onSetItem,
+    onUpdateBubbles,
+    refineStatus,
+    isStory,
+    dialog,
+  ]);
 
   return (
     <div>
@@ -407,6 +453,23 @@ export function Carousel({
           </div>
         </div>
       )}
+      {editingBubblesItem &&
+        editingBubblesItem.dataUrl &&
+        editingBubblesItem.bubbles &&
+        onUpdateBubbles && (
+          <BubbleEditorModal
+            open
+            onOpenChange={(o) => {
+              if (!o) setEditingBubblesId(null);
+            }}
+            pageName={editingBubblesItem.name}
+            pageIndex={editingBubblesIndex}
+            totalPages={items.length}
+            imageSrc={editingBubblesItem.dataUrl}
+            bubbles={editingBubblesItem.bubbles}
+            onChange={(next) => onUpdateBubbles(editingBubblesItem.id, next)}
+          />
+        )}
     </div>
   );
 }

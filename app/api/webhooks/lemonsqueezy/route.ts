@@ -58,8 +58,11 @@ export async function POST(req: Request) {
         return new Response(null, { status: 204 });
     }
     return new Response(result.message, { status: result.status });
-  } catch {
-    // 5xx — Lemon Squeezy retries; every handler is idempotent.
+  } catch (err) {
+    console.error("[lemonsqueezy] webhook handler threw", {
+      event: name,
+      error: err instanceof Error ? err.message : err,
+    });
     return new Response("Webhook processing failed", { status: 500 });
   }
 }

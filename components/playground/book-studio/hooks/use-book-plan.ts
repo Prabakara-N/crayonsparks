@@ -146,6 +146,8 @@ export function useBookPlan({
           dialogue: p.dialogue,
           narration: p.narration,
           composition: p.composition,
+          locationId: p.locationId,
+          locationDescriptor: p.locationDescriptor,
         })),
       );
       setCoverPending();

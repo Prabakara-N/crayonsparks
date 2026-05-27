@@ -43,16 +43,48 @@ export function BillingMain() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("purchase") === "success") {
-      toast.success(
-        "Payment received — your credits will appear here shortly.",
+    if (params.get("purchase") !== "success") return;
+    window.history.replaceState(null, "", "/account/billing");
+    const toastId = toast.loading(
+      "Payment received — confirming credits with Lemon Squeezy…",
+    );
+    const sinceMs = Date.now() - 60_000;
+    let cancelled = false;
+    let elapsed = 0;
+    const POLL_MS = 2000;
+    const TIMEOUT_MS = 30_000;
+    const tick = async () => {
+      if (cancelled) return;
+      await refresh();
+      await refreshPlan();
+      const purchaseEntry = entries.find(
+        (e) =>
+          e.delta > 0 &&
+          e.refKind === "purchase" &&
+          (e.createdAt ?? 0) >= sinceMs,
       );
-      window.history.replaceState(null, "", "/account/billing");
-      void refresh();
-      const t = setTimeout(() => void refresh(), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [refresh]);
+      if (purchaseEntry) {
+        toast.success(
+          `+${purchaseEntry.delta.toLocaleString()} credits added — new balance ${(balance ?? 0).toLocaleString()}.`,
+          { id: toastId, duration: 6000 },
+        );
+        return;
+      }
+      elapsed += POLL_MS;
+      if (elapsed >= TIMEOUT_MS) {
+        toast.success(
+          "Payment received. Credits will appear here within a minute — refresh if you don't see them.",
+          { id: toastId, duration: 8000 },
+        );
+        return;
+      }
+      setTimeout(tick, POLL_MS);
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+    };
+  }, [refresh, refreshPlan, entries, balance]);
 
   async function handleBuy(packId: string) {
     if (busyKey) return;

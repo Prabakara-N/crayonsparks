@@ -1,6 +1,9 @@
 import type { DialogueStyle } from "@/lib/prompts";
 import type { ImageModel } from "@/lib/constants";
 import { type StoryType } from "@/lib/story-book-planner";
+import type { StoryBubble } from "@/lib/story-bubble-seed";
+
+export type { StoryBubble };
 
 export type Aspect = "1:1" | "3:4" | "4:3" | "2:3" | "3:2" | "9:16" | "16:9";
 export type AgeRange = "toddlers" | "kids" | "tweens";
@@ -27,6 +30,7 @@ export interface QualityScore {
 export interface StoryDialogueLine {
   speaker: string;
   text: string;
+  speakerSide?: "left" | "right" | "center";
 }
 
 export interface PromptItem {
@@ -39,8 +43,12 @@ export interface PromptItem {
   quality?: QualityScore | null;
   model?: ImageModel;
   dialogue?: StoryDialogueLine[];
+  bubbles?: StoryBubble[];
+  bubblesFlattened?: boolean;
   narration?: string;
   composition?: string;
+  locationId?: string;
+  locationDescriptor?: string;
 }
 
 // Story-mode locked character — reused across every page in the book.
@@ -67,6 +75,8 @@ export interface Plan {
     dialogue?: StoryDialogueLine[];
     narration?: string;
     composition?: string;
+    locationId?: string;
+    locationDescriptor?: string;
   }[];
   bottomStripPhrases?: string[];
   sidePlaqueLines?: string[];

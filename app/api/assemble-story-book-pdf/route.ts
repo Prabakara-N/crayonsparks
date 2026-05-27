@@ -19,28 +19,52 @@ import {
   assembleStoryBookPdf,
   type StoryPageInput,
 } from "@/lib/story-book-pdf";
+import { compositeBubblesOnImage } from "@/lib/page-bubble-composite";
+import type { StoryBubble } from "@/lib/story-bubble-seed";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
+interface PageBody extends StoryPageInput {
+  bubbles?: StoryBubble[];
+}
+
 interface Body {
   title?: string;
-  pages?: StoryPageInput[];
+  pages?: PageBody[];
   cover?: { dataUrl: string };
   backCover?: { dataUrl: string };
   trimWidthInches?: number;
   trimHeightInches?: number;
 }
 
-function isPage(value: unknown): value is StoryPageInput {
+function isPage(value: unknown): value is PageBody {
   return (
     !!value &&
     typeof value === "object" &&
-    typeof (value as StoryPageInput).id === "string" &&
-    typeof (value as StoryPageInput).name === "string" &&
-    typeof (value as StoryPageInput).dataUrl === "string" &&
-    (value as StoryPageInput).dataUrl.startsWith("data:")
+    typeof (value as PageBody).id === "string" &&
+    typeof (value as PageBody).name === "string" &&
+    typeof (value as PageBody).dataUrl === "string" &&
+    (value as PageBody).dataUrl.startsWith("data:")
   );
+}
+
+async function bakePageBubbles(page: PageBody): Promise<StoryPageInput> {
+  if (!page.bubbles || page.bubbles.length === 0) {
+    return { id: page.id, name: page.name, dataUrl: page.dataUrl };
+  }
+  const sep = page.dataUrl.indexOf(";base64,");
+  if (sep < 0) return { id: page.id, name: page.name, dataUrl: page.dataUrl };
+  const base64 = page.dataUrl.slice(sep + 8);
+  const result = await compositeBubblesOnImage({
+    imageBase64: base64,
+    bubbles: page.bubbles,
+  });
+  return {
+    id: page.id,
+    name: page.name,
+    dataUrl: `data:${result.mimeType};base64,${result.base64}`,
+  };
 }
 
 export async function POST(req: Request) {
@@ -60,9 +84,10 @@ export async function POST(req: Request) {
   }
 
   try {
+    const bakedPages = await Promise.all(pages.map(bakePageBubbles));
     const bytes = await assembleStoryBookPdf({
       title: body.title,
-      pages,
+      pages: bakedPages,
       cover: body.cover,
       backCover: body.backCover,
       trimWidthInches: body.trimWidthInches,

@@ -23,5 +23,10 @@ export function useBooks() {
       (bookId: string) => orpc.books.delete({ bookId }),
       [],
     ),
+    updatePageBubbles: useCallback(
+      (input: Parameters<typeof orpc.books.updatePageBubbles>[0]) =>
+        orpc.books.updatePageBubbles(input),
+      [],
+    ),
   };
 }

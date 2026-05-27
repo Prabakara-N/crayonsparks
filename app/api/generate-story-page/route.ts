@@ -20,6 +20,7 @@ import {
   type StoryDialogueLine,
   type StoryPalette,
 } from "@/lib/prompts";
+import { seedBubblesFromDialogue } from "@/lib/story-bubble-seed";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -36,6 +37,9 @@ interface Body {
   coverStyle?: "flat" | "illustrated";
   coverReferenceDataUrl?: string;
   chainReferenceDataUrl?: string;
+  locationId?: string;
+  locationDescriptor?: string;
+  previousLocationId?: string;
 }
 
 const VALID_AGE_BANDS: readonly AgeBand[] = ["toddlers", "kids", "tweens"];
@@ -61,6 +65,7 @@ function dedupeDialogue(dialogue: StoryDialogueLine[]): StoryDialogueLine[] {
     out.push({
       speaker: line.speaker?.trim() ?? "",
       text: ensureTerminalPunctuation(text),
+      speakerSide: line.speakerSide,
     });
   }
   return out;
@@ -113,14 +118,18 @@ function isStoryCharacter(value: unknown): value is StoryCharacter {
 }
 
 function isDialogueLine(value: unknown): value is StoryDialogueLine {
-  return (
-    !!value &&
-    typeof value === "object" &&
-    typeof (value as StoryDialogueLine).speaker === "string" &&
-    (value as StoryDialogueLine).speaker.trim().length > 0 &&
-    typeof (value as StoryDialogueLine).text === "string" &&
-    (value as StoryDialogueLine).text.trim().length > 0
-  );
+  if (!value || typeof value !== "object") return false;
+  const v = value as StoryDialogueLine;
+  if (typeof v.speaker !== "string" || v.speaker.trim().length === 0) return false;
+  if (typeof v.text !== "string" || v.text.trim().length === 0) return false;
+  if (
+    v.speakerSide !== undefined &&
+    v.speakerSide !== "left" &&
+    v.speakerSide !== "right" &&
+    v.speakerSide !== "center"
+  )
+    return false;
+  return true;
 }
 
 function isPalette(value: unknown): value is StoryPalette {
@@ -244,7 +253,8 @@ export async function POST(req: Request) {
     }
   }
 
-  const systemInstruction = buildStoryPageSystem(band);
+  const bubbleMode = "svg-overlay" as const;
+  const systemInstruction = buildStoryPageSystem(band, bubbleMode);
   const userText = buildStoryPageUser({
     ageBand: band,
     characters,
@@ -254,6 +264,10 @@ export async function POST(req: Request) {
     narration,
     composition: body.composition?.trim(),
     coverStyle: body.coverStyle,
+    locationId: body.locationId?.trim() || undefined,
+    locationDescriptor: body.locationDescriptor?.trim() || undefined,
+    previousLocationId: body.previousLocationId?.trim() || undefined,
+    bubbleMode,
   });
   const anchor = buildConsistencyAnchorPreamble(hasCover, hasChain);
   const fullPrompt = anchor ? `${anchor} ${userText}` : userText;
@@ -277,13 +291,16 @@ export async function POST(req: Request) {
       systemInstruction,
       extraImages: extraImages.length ? extraImages : undefined,
     });
+
     const dataUrl = `data:${image.mimeType};base64,${image.data}`;
+    const bubbles = seedBubblesFromDialogue(dialogue);
     await charge.commit("Generated story page");
     return NextResponse.json({
       dataUrl,
       model: resolvedModel,
       elapsedMs: Date.now() - start,
       anchored: { cover: hasCover, chain: hasChain },
+      bubbles,
     });
   } catch (e) {
     return NextResponse.json(

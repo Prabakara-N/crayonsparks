@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   X,
@@ -35,11 +36,14 @@ export function MobileNavDrawer({
   onClose,
   links,
 }: MobileNavDrawerProps) {
+  const [mounted, setMounted] = useState(false);
   const { user } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
   const [planName, setPlanName] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!user) return;
@@ -68,7 +72,9 @@ export function MobileNavDrawer({
     };
   }, [open]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       <div
         className={cn(
@@ -232,6 +238,7 @@ export function MobileNavDrawer({
           )}
         </div>
       </aside>
-    </>
+    </>,
+    document.body,
   );
 }

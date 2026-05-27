@@ -2,7 +2,11 @@
 export interface PlanReviewPagePrompt {
   name: string;
   subject: string;
-  dialogue?: Array<{ speaker: string; text: string }>;
+  dialogue?: Array<{
+    speaker: string;
+    text: string;
+    speakerSide?: "left" | "right" | "center";
+  }>;
   narration?: string;
 }
 

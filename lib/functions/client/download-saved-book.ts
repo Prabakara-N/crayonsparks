@@ -2,6 +2,7 @@
 
 import type { Plan, PromptItem } from "@/components/playground/book-studio/types";
 import { getAuthIdToken } from "@/lib/auth/require-auth-for-action";
+import type { StoryBubble } from "@/lib/story-bubble-seed";
 import { downloadColoringBook } from "./download-coloring-book";
 import { downloadStoryBook } from "./download-story-book";
 
@@ -30,6 +31,8 @@ export interface SavedPageForDownload {
   id: string;
   name: string;
   image: ImageVariants;
+  bubbles?: StoryBubble[];
+  bubblesFlattened?: boolean;
 }
 
 /**
@@ -76,6 +79,8 @@ export async function downloadSavedBook(
       subject: "",
       status: "done" as const,
       dataUrl: await keyToDataUrl(p.image.full.key, idToken),
+      bubbles: p.bubbles,
+      bubblesFlattened: p.bubblesFlattened ?? false,
     })),
   );
 

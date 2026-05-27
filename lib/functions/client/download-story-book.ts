@@ -47,12 +47,17 @@ export async function downloadStoryBook(
     id: d.id,
     name: d.name,
     dataUrl: d.dataUrl,
+    bubbles:
+      d.bubbles && d.bubbles.length > 0 && !d.bubblesFlattened
+        ? d.bubbles
+        : undefined,
   }));
   if (args.theEndPage?.status === "done" && args.theEndPage.dataUrl) {
     storyPages.push({
       id: "the-end",
       name: "The End",
       dataUrl: args.theEndPage.dataUrl,
+      bubbles: undefined,
     });
   }
 

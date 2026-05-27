@@ -19,6 +19,7 @@ import type {
   Phase,
   Plan,
   PromptItem,
+  StoryBubble,
 } from "../types";
 
 interface CoverSnapshot {
@@ -78,6 +79,8 @@ export function usePageGeneration({
         dialogue: p.dialogue,
         narration: p.narration,
         composition: p.composition,
+        locationId: p.locationId,
+        locationDescriptor: p.locationDescriptor,
       }))
       : [],
   );
@@ -150,6 +153,10 @@ export function usePageGeneration({
               "Story brief is missing characters or palette — open the chat and re-finalize the brief.",
             );
           }
+          const currentItems = itemsRef.current;
+          const myIndex = currentItems.findIndex((it) => it.id === item.id);
+          const prevItem =
+            myIndex > 0 ? currentItems[myIndex - 1] : undefined;
           const res = await fetch("/api/generate-story-page", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -169,18 +176,28 @@ export function usePageGeneration({
               chainReferenceDataUrl: chainRefSmall,
               model: interiorModel,
               coverStyle,
+              locationId: item.locationId,
+              locationDescriptor: item.locationDescriptor,
+              previousLocationId: prevItem?.locationId,
             }),
           });
           const json = await readJsonOrThrow<{
             dataUrl?: string;
+            bubbles?: StoryBubble[];
             error?: string;
           }>(res);
           if (!json.dataUrl) {
             throw new Error(json.error || "Story page failed");
           }
+          const existingBubbles = item.bubbles;
           updateItem(item.id, {
             status: "done",
             dataUrl: json.dataUrl,
+            bubbles:
+              existingBubbles && existingBubbles.length > 0
+                ? existingBubbles
+                : json.bubbles ?? [],
+            bubblesFlattened: false,
             quality: null,
             model: interiorModel,
           });

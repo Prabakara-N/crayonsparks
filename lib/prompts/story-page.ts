@@ -33,6 +33,7 @@ export interface StoryCharacter {
 export interface StoryDialogueLine {
   speaker: string;
   text: string;
+  speakerSide?: "left" | "right" | "center";
 }
 
 export interface StoryPalette {
@@ -49,6 +50,10 @@ export interface StoryPageTemplateOptions {
   narration?: string;
   composition?: string;
   coverStyle?: CoverStyle;
+  locationId?: string;
+  locationDescriptor?: string;
+  previousLocationId?: string;
+  bubbleMode?: BubbleMode;
 }
 
 // Two interior style variants — must mirror the cover's coverStyle so the
@@ -57,7 +62,7 @@ export interface StoryPageTemplateOptions {
 // coloring-book cover so interior pages match the picture-book Pixar look
 // when the user picks Illustrated on the cover toggle.
 const STORY_PAGE_STYLE_FLAT =
-  "Style: flat 2D cartoon illustration, vibrant flat colors with bold black outlines, soft warm lighting feel, minimal shading (no realistic gradients, no painterly texture). Friendly rounded character forms with large expressive eyes, simple expressive mouths, gentle proportions. Modern picture-book aesthetic in the family of contemporary indie children's books.";
+  "Style: flat 2D cartoon illustration, vibrant flat colors with bold black outlines, soft warm lighting feel, minimal shading (no realistic gradients, no painterly texture). Friendly rounded character forms with expressive faces sized naturally for the species (kawaii-style oversized eyes only when the locked descriptor explicitly calls for them), simple expressive mouths, gentle proportions. Modern picture-book aesthetic in the family of contemporary indie children's books.";
 const STORY_PAGE_STYLE_ILLUSTRATED = `${COVER_STYLE_DIRECTIVES.illustrated} Same look as the cover — every interior page must feel like a sibling spread from the same picture book.`;
 function pageStyleDirective(style?: CoverStyle): string {
   return style === "illustrated"
@@ -70,6 +75,12 @@ const FULL_BLEED_RULE =
 
 const NO_TEXT_OUTSIDE_BUBBLES_RULE =
   "Text policy — STRICT. The ONLY text drawn anywhere on this interior page is the dialogue inside speech bubbles and the optional narration caption listed below. NO BOOK TITLE BLOCK, NO COVER TITLE typography, NO subtitle pill, NO page-count badge, NO side plaque, NO bottom strip, NO brand strapline — those belong on the FRONT COVER only and must NEVER appear on an interior page. If a cover reference image is attached, IGNORE every word of text rendered on it. No author name, no publisher, no URL, no page number, no watermark, no signature, no logo, no model attribution, no random letters or numbers in the background scenery. If a sign or book appears in the scene, leave it blank or use abstract squiggles, never readable letters.";
+
+// Used when speech bubbles are added via SVG overlay in post-processing.
+// The image model must render the scene ENTIRELY text-free; any drawn
+// bubble would collide with the deterministic overlay layer.
+const NO_TEXT_AT_ALL_RULE =
+  "Text and bubble policy — STRICT, ZERO TEXT and ZERO BUBBLES ANYWHERE on this page. NO speech bubbles (filled or empty), NO thought bubbles, NO thought clouds, NO callout outlines, NO empty oval / rounded outlines hovering near characters' heads, NO dialogue text, NO narration caption, NO title, NO badge, NO plaque, NO strip, NO brand mark, NO author name, NO publisher, NO URL, NO page number, NO watermark, NO signature, NO logo, NO letters or numbers on signs / books / banners / blackboards / posters / screens / props. The page is a wordless scene illustration with NO bubble shapes of any kind. Speech bubbles and any narration captions are added in post-processing as a deterministic SVG overlay layer; any bubble outline OR text you draw — even an empty one — collides with that layer and produces a double-bubble defect. If you find yourself starting to draw a rounded or oval outline floating near a character's head, STOP and remove it before rendering. If a sign / book / chalkboard appears in the scene, leave the writing surface blank or use abstract squiggles, never readable letters. If a cover reference is attached, IGNORE every word of text on it.";
 
 const SPEECH_BUBBLE_RULE =
   "Speech bubble rendering rules — CRITICAL: Each speech bubble is a clean white rounded oval / cloud with a thin dark outline and a clear pointed tail aimed at the speaking character's mouth. Inside the bubble, render the line of dialogue EXACTLY as written below — same words, same spelling, same punctuation, same casing — using a friendly readable rounded sans-serif at a size large enough to read at thumbnail. Center the text inside the bubble with comfortable padding on all sides. Bubbles are placed in empty sky / wall / background space, NEVER overlapping a character's face or another bubble. Maximum two bubbles on this page.";
@@ -112,13 +123,29 @@ const PROTAGONIST_PRESENCE_RULE =
 const FIRST_MENTION_NAMING_RULE =
   "First-mention naming — STRICT. When the narration or dialogue on this page introduces a new named character, draw that character prominently. Do not name a character in narration if the reader cannot tell which character on the page corresponds to the name. The bubble or caption with the name should clearly point to or describe the named character.";
 
-// Stable system rules for a specific age band — pass through Gemini's
-// `systemInstruction` channel so the long prefix benefits from implicit
-// context caching across every page in the same book run. Resulting
-// string is stable per band (caching works per band).
-export function buildStoryPageSystem(band: AgeBand = "toddlers"): string {
+// Two bubble modes:
+//   - "model-drawn" — historical behavior; the image model draws bubbles
+//     and writes the dialogue text. Reliable text + tail aim ~70% of the
+//     time, fails the other ~30%.
+//   - "svg-overlay"  — image model renders the scene WITHOUT bubbles;
+//     the SVG compositor adds bubbles in post-processing for pixel-perfect
+//     text + deterministic tail aim. Recommended default for production.
+export type BubbleMode = "model-drawn" | "svg-overlay";
+
+// Stable system rules for a specific age band + bubble mode — pass through
+// Gemini's `systemInstruction` channel so the long prefix benefits from
+// implicit context caching across every page in the same book run. The
+// returned string is stable per (band, bubbleMode) tuple.
+export function buildStoryPageSystem(
+  band: AgeBand = "toddlers",
+  bubbleMode: BubbleMode = "svg-overlay",
+): string {
   const range = AGE_BAND_RANGE[band];
   const label = AGE_BAND_LABEL_SINGULAR[band];
+  const bubbleRules =
+    bubbleMode === "svg-overlay"
+      ? [NO_TEXT_AT_ALL_RULE]
+      : [SPEECH_BUBBLE_RULE, SPEECH_BUBBLE_OWNERSHIP_RULE, NO_TEXT_OUTSIDE_BUBBLES_RULE];
   return [
     `You generate single-page full-color illustrations for premium Amazon KDP children's picture books in the ${label} band (ages ${range}). Every page must be print-ready 300 DPI quality with consistent character design across the whole book.`,
     AGE_BAND_PAGE_NOTE[band],
@@ -135,12 +162,10 @@ export function buildStoryPageSystem(band: AgeBand = "toddlers"): string {
     RECURRING_ENVIRONMENT_LOCK_RULE,
     SCENE_LOCATION_LOCK_RULE,
     BACKGROUND_CROWD_CONTINUITY_RULE,
-    SPEECH_BUBBLE_RULE,
-    SPEECH_BUBBLE_OWNERSHIP_RULE,
+    ...bubbleRules,
     STORY_RENDER_TEXT_ACCURACY_RULE,
     STORY_RENDER_INTERIOR_NO_ATTRIBUTION_RULE,
     STORY_RENDER_CHILD_SAFETY_RULE,
-    NO_TEXT_OUTSIDE_BUBBLES_RULE,
     NO_REAL_BRAND_RULE,
     KID_SAFE_CONTENT_RULE,
     COMMON_ELEMENT_STYLE,
@@ -176,9 +201,26 @@ function formatPalette(palette: StoryPalette): string {
   return `Palette lock — use only these colors and tonal blends of them across this page (no off-palette hues): ${cleanHexes.join(", ")}.`;
 }
 
-function formatDialogue(dialogue: StoryDialogueLine[] | undefined): string {
+function formatDialogue(
+  dialogue: StoryDialogueLine[] | undefined,
+  bubbleMode: BubbleMode,
+): string {
   if (!dialogue || dialogue.length === 0) {
     return "Dialogue on this page: none — render the scene without speech bubbles.";
+  }
+  if (bubbleMode === "svg-overlay") {
+    // SVG overlay mode: dialogue feeds the prompt as COMPOSITION context
+    // so the speaker is placed where the overlay's tail will point. The
+    // text itself is NOT a draw-this-bubble instruction — the SVG
+    // compositor handles bubbles after generation.
+    const placements = dialogue.slice(0, 2).map((d) => {
+      const speaker = d.speaker.trim();
+      const side = d.speakerSide ?? "left";
+      return side === "center"
+        ? `${speaker} stands centered in the frame`
+        : `${speaker} stands in the ${side} half of the frame, face clearly visible`;
+    });
+    return `Speaker placement on this page (speech bubbles are added in post-processing as SVG overlays — do NOT draw any bubbles or text yourself): ${placements.join("; ")}. Compose the page so each named speaker is clearly visible at the stated side, with empty sky / wall / background space above them where the overlay bubble will sit.`;
   }
   const trimmed = dialogue.slice(0, 2).map((d, i) => {
     const speaker = d.speaker.trim();
@@ -212,13 +254,40 @@ export function buildStoryPageUser(opts: StoryPageTemplateOptions): string {
     pageStyleDirective(opts.coverStyle),
     formatCharacterLock(opts.characters),
     formatPalette(opts.palette),
-    `Scene description: ${opts.scene.trim()}`,
   ];
+  const locationLine = formatLocation(
+    opts.locationId,
+    opts.locationDescriptor,
+    opts.previousLocationId,
+  );
+  if (locationLine) parts.push(locationLine);
+  parts.push(`Scene description: ${opts.scene.trim()}`);
   if (opts.composition?.trim()) {
     parts.push(`Composition hint: ${opts.composition.trim()}.`);
   }
-  parts.push(formatDialogue(opts.dialogue));
+  parts.push(formatDialogue(opts.dialogue, opts.bubbleMode ?? "svg-overlay"));
   const narration = formatNarration(opts.narration);
   if (narration) parts.push(narration);
   return parts.join(" ");
+}
+
+// Continuity injection: when previous page shared the same locationId,
+// prepend a SAME LOCATION directive so the renderer locks ground, fixtures,
+// lighting, and palette to the prior frame. When the location changed,
+// prepend a NEW LOCATION directive so the renderer doesn't accidentally
+// reuse the prior frame's environment.
+function formatLocation(
+  id?: string,
+  descriptor?: string,
+  previousId?: string,
+): string | null {
+  if (!id?.trim() || !descriptor?.trim()) return null;
+  const sameAsPrev = !!previousId && previousId.trim() === id.trim();
+  if (sameAsPrev) {
+    return `SAME LOCATION as the previous page — identical environment: ${descriptor.trim()}. Match ground material, fixtures, lighting, palette, and the position of recurring background elements to the chain reference image. Do NOT redesign or rearrange the environment between consecutive pages.`;
+  }
+  if (previousId?.trim()) {
+    return `NEW LOCATION (the characters moved here from the previous page) — fresh environment: ${descriptor.trim()}. Do NOT reuse the previous page's ground, fixtures, or backdrop; this is a different physical place.`;
+  }
+  return `LOCATION: ${descriptor.trim()}. Match ground material, fixtures, lighting, and palette to this fixed description.`;
 }

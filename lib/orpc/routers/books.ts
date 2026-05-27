@@ -48,6 +48,33 @@ const DialogueLineSchema = z.object({
   text: z.string().min(1),
 });
 
+const BubbleSchema = z.object({
+  id: z.string().min(1).max(64),
+  text: z.string().min(1).max(300),
+  speaker: z.string().max(80).optional(),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().min(0.05).max(0.95),
+  height: z.number().min(0.02).max(0.7).optional(),
+  tailTipX: z.number().min(0).max(1),
+  tailTipY: z.number().min(0).max(1),
+  shape: z.enum(["speech", "comic", "thought", "narration"]).optional(),
+  fontFamily: z.string().max(48).optional(),
+  fillColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  textColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  strokeColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
+  fontSize: z.number().min(8).max(72).optional(),
+});
+
 const CharacterSchema = z.object({
   name: z.string().min(1),
   descriptor: z.string().min(1),
@@ -67,6 +94,8 @@ const PageInputSchema = z.object({
   narration: z.string().optional(),
   composition: z.string().optional(),
   image: ImageVariantsSchema,
+  bubbles: z.array(BubbleSchema).max(8).optional(),
+  bubblesFlattened: z.boolean().optional(),
 });
 
 // Save shape covers BOTH book kinds via the `mode` discriminator:
@@ -116,6 +145,13 @@ const ListInput = z.object({
 });
 
 const GetInput = z.object({ bookId: z.string().min(1) });
+
+const UpdatePageBubblesInput = z.object({
+  bookId: z.string().min(1),
+  pageId: z.string().min(1),
+  bubbles: z.array(BubbleSchema).max(8),
+  bubblesFlattened: z.boolean().optional(),
+});
 
 export const booksRouter = {
   save: protectedProcedure
@@ -291,5 +327,30 @@ export const booksRouter = {
       batch.delete(bookRef);
       await batch.commit();
       return { bookId: input.bookId };
+    }),
+
+  updatePageBubbles: protectedProcedure
+    .input(UpdatePageBubblesInput)
+    .handler(async ({ input, context }) => {
+      const userId = context.userId as string;
+      const pageRef = db
+        .collection("users")
+        .doc(userId)
+        .collection("books")
+        .doc(input.bookId)
+        .collection("pages")
+        .doc(input.pageId);
+      const existing = await pageRef.get();
+      if (!existing.exists) {
+        throw new ORPCError("NOT_FOUND", {
+          message: "Page not found for this book.",
+        });
+      }
+      await pageRef.update({
+        bubbles: input.bubbles,
+        bubblesFlattened: input.bubblesFlattened ?? false,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return { ok: true, bookId: input.bookId, pageId: input.pageId };
     }),
 };
