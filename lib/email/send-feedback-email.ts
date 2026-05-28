@@ -6,10 +6,9 @@ import {
   FeedbackEmail,
   type FeedbackEmailProps,
 } from "./feedback-email";
-import { getEmailBrand } from "./brand";
+import { getEmailBrand, getFromAddress } from "./brand";
 import { FEEDBACK_KIND_LABELS } from "@/lib/feedback/types";
 
-const DEFAULT_FROM = "CrayonSparks <onboarding@resend.dev>";
 const DEFAULT_TO = "crayonsparksai@gmail.com";
 const DEFAULT_ADMIN_BASE = "https://www.crayonsparks.com";
 
@@ -22,7 +21,7 @@ export async function sendFeedbackEmail(
   if (!apiKey) {
     return { ok: false, error: "RESEND_API_KEY not configured" };
   }
-  const from = process.env.RESEND_FROM ?? DEFAULT_FROM;
+  const from = getFromAddress("feedback");
   const to = process.env.FEEDBACK_NOTIFY_TO ?? DEFAULT_TO;
   const adminBase = process.env.ADMIN_BASE_URL ?? DEFAULT_ADMIN_BASE;
   const { logoUrl } = getEmailBrand();

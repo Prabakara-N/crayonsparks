@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { LeadsWelcomeEmail } from "@/lib/email/leads-welcome-email";
-import { getEmailBrand } from "@/lib/email/brand";
+import { getEmailBrand, getFromAddress } from "@/lib/email/brand";
 import { findCategory } from "@/lib/prompts";
 import { rateLimitByIp } from "@/lib/api/rate-limit";
 
@@ -34,14 +34,19 @@ export async function POST(req: Request) {
   const email = (body.email ?? "").trim().toLowerCase();
   const slug = (body.categorySlug ?? "").trim();
   if (!EMAIL_RE.test(email)) {
-    return NextResponse.json({ error: "Please enter a valid email." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Please enter a valid email." },
+      { status: 400 },
+    );
   }
   const category = slug ? findCategory(slug) : null;
 
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM ?? "CrayonSparks <onboarding@resend.dev>";
+  const from = getFromAddress("leads");
   if (!apiKey) {
-    console.warn("[leads/subscribe] RESEND_API_KEY not set — skipping email send.");
+    console.warn(
+      "[leads/subscribe] RESEND_API_KEY not set — skipping email send.",
+    );
     return NextResponse.json({
       ok: true,
       queued: false,

@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase/admin";
 import { uploadFeedbackScreenshot } from "@/lib/feedback/storage";
 import { FEEDBACK_KINDS } from "@/lib/feedback/types";
 import { sendFeedbackEmail } from "@/lib/email/send-feedback-email";
+import { sendFeedbackConfirmationEmail } from "@/lib/email/send-feedback-confirmation-email";
 import {
   getSurveyState,
   markSurveyCompleted,
@@ -77,9 +78,35 @@ export const feedbackRouter = {
         bookKind: input.bookKind,
       }).then((result) => {
         if (!result.ok) {
-          console.warn("[feedback] email send failed:", result.error);
+          console.warn("[feedback] admin email send failed:", result.error);
         }
       });
+
+      if (userEmail) {
+        let displayName: string | null = null;
+        try {
+          const userDoc = await db.collection("users").doc(userId).get();
+          const data = userDoc.data();
+          displayName = (data?.displayName as string | undefined) ?? null;
+        } catch {
+          // non-fatal — confirmation just uses generic greeting
+        }
+        sendFeedbackConfirmationEmail({
+          to: userEmail,
+          recipientName: displayName,
+          feedbackId: docRef.id,
+          kind: input.kind,
+          title: input.title,
+          body: input.body,
+        }).then((result) => {
+          if (!result.ok) {
+            console.warn(
+              "[feedback] confirmation email send failed:",
+              result.error,
+            );
+          }
+        });
+      }
 
       if (source === "post-book-survey" && input.bookKind) {
         await markSurveyCompleted(userId, input.bookKind);

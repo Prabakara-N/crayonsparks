@@ -3,7 +3,6 @@ import "server-only";
 import {
   Body,
   Container,
-  Head,
   Heading,
   Hr,
   Html,
@@ -13,6 +12,7 @@ import {
   Tailwind,
   Text,
 } from "@react-email/components";
+import { EmailHead } from "./email-head";
 
 export interface ContactEmailProps {
   name: string;
@@ -31,12 +31,19 @@ export function ContactEmail({
 }: ContactEmailProps) {
   return (
     <Html>
-      <Head />
+      <EmailHead />
       <Preview>{`Message from ${name} via crayonsparks.com`}</Preview>
       <Tailwind>
-        <Body className="bg-slate-50 font-sans">
-          <Container className="mx-auto my-8 max-w-[600px] rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <Section className="rounded-t-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-8 py-6">
+        <Body className="email-body bg-slate-50 font-sans">
+          <Container className="email-card mx-auto my-8 max-w-[600px] rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <Section
+              className="rounded-t-2xl px-8 py-6"
+              style={{
+                backgroundColor: "#7c3aed",
+                backgroundImage:
+                  "linear-gradient(to right, #7c3aed, #06b6d4)",
+              }}
+            >
               <table cellPadding={0} cellSpacing={0} width="100%" style={{ borderCollapse: "collapse" }}>
                 <tr>
                   <td style={{ width: "48px", verticalAlign: "middle" }}>
@@ -48,8 +55,6 @@ export function ContactEmail({
                       style={{
                         display: "block",
                         borderRadius: "8px",
-                        background: "#ffffff",
-                        padding: "4px",
                       }}
                     />
                   </td>

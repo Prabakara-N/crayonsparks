@@ -19,7 +19,7 @@ export async function sendWelcomeEmail(
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return { ok: false, error: "RESEND_API_KEY not configured" };
 
-  const from = process.env.RESEND_FROM ?? DEFAULT_FROM;
+  const from = "CrayonSparks <welcome@crayonsparks.com>";
   const { homeUrl, logoUrl } = getEmailBrand();
   const playgroundUrl = `${homeUrl}/playground`;
   const accountUrl = `${homeUrl}/account`;

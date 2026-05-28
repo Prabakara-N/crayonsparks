@@ -4,7 +4,6 @@ import {
   Body,
   Button,
   Container,
-  Head,
   Heading,
   Hr,
   Html,
@@ -14,6 +13,7 @@ import {
   Tailwind,
   Text,
 } from "@react-email/components";
+import { EmailHead } from "./email-head";
 
 export interface WelcomeEmailProps {
   firstName?: string | null;
@@ -35,12 +35,19 @@ export function WelcomeEmail({
   const greeting = firstName ? `Welcome, ${firstName}!` : "Welcome to CrayonSparks!";
   return (
     <Html>
-      <Head />
+      <EmailHead />
       <Preview>{`${greeting} Make your first coloring or story book in minutes.`}</Preview>
       <Tailwind>
-        <Body className="bg-slate-50 font-sans">
-          <Container className="mx-auto my-8 max-w-[600px] rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <Section className="rounded-t-2xl bg-gradient-to-br from-violet-600 via-fuchsia-500 to-amber-400 px-8 py-12 text-center">
+        <Body className="email-body bg-slate-50 font-sans">
+          <Container className="email-card mx-auto my-8 max-w-[600px] rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <Section
+              className="rounded-t-2xl px-8 py-12 text-center"
+              style={{
+                backgroundColor: "#7c3aed",
+                backgroundImage:
+                  "linear-gradient(to bottom right, #7c3aed, #d946ef, #fbbf24)",
+              }}
+            >
               <Img
                 src={logoUrl}
                 alt="CrayonSparks"
@@ -50,8 +57,6 @@ export function WelcomeEmail({
                   margin: "0 auto",
                   display: "block",
                   borderRadius: "14px",
-                  background: "#ffffff",
-                  padding: "8px",
                 }}
               />
               <Heading
@@ -61,7 +66,7 @@ export function WelcomeEmail({
                 {greeting}
               </Heading>
               <Text className="m-0 mt-2 text-sm text-white/85">
-                You&apos;re in. Let&apos;s make something a kid will treasure.
+                Welcome aboard. Let&apos;s make something a kid will treasure.
               </Text>
             </Section>
 
@@ -163,7 +168,19 @@ export function WelcomeEmail({
             <Section className="px-8 pb-8 pt-2 text-center">
               <Button
                 href={playgroundUrl}
-                className="rounded-full bg-violet-600 px-7 py-3 text-sm font-semibold text-white no-underline shadow-sm"
+                style={{
+                  backgroundColor: "#8b5cf6",
+                  backgroundImage:
+                    "linear-gradient(to right, #8b5cf6, #22d3ee)",
+                  color: "#ffffff",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  padding: "14px 28px",
+                  borderRadius: "9999px",
+                  display: "inline-block",
+                  boxShadow: "0 4px 14px rgba(139, 92, 246, 0.35)",
+                }}
               >
                 Start your first book →
               </Button>
@@ -184,6 +201,9 @@ export function WelcomeEmail({
                   {supportEmail}
                 </a>
                 .
+              </Text>
+              <Text className="m-0 mt-4 text-[13px] font-medium text-slate-700">
+                — The CrayonSparks team
               </Text>
               <Text className="m-0 mt-3 text-[11px] text-slate-400">
                 Visit your{" "}

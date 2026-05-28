@@ -45,26 +45,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Name is required." }, { status: 400 });
   }
   if (!EMAIL_RE.test(email)) {
-    return NextResponse.json({ error: "Please enter a valid email." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Please enter a valid email." },
+      { status: 400 },
+    );
   }
   if (!message || message.length < 5) {
     return NextResponse.json(
       { error: "Please write a message (at least 5 characters)." },
-      { status: 400 }
+      { status: 400 },
     );
   }
   if (message.length > 5000) {
     return NextResponse.json(
       { error: "Message too long (max 5000 characters)." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM ?? "CrayonSparks <onboarding@resend.dev>";
+  const from = "CrayonSparks <contact@crayonsparks.com>";
   const to = process.env.CONTACT_TO ?? "crayonsparksai@gmail.com";
   if (!apiKey) {
-    console.warn("[contact] RESEND_API_KEY not set — accepting but not sending.");
+    console.warn(
+      "[contact] RESEND_API_KEY not set — accepting but not sending.",
+    );
     return NextResponse.json({
       ok: true,
       queued: false,

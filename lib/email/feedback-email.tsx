@@ -4,7 +4,6 @@ import {
   Body,
   Button,
   Container,
-  Head,
   Heading,
   Hr,
   Html,
@@ -16,6 +15,7 @@ import {
 } from "@react-email/components";
 import type { FeedbackKind } from "@/lib/feedback/types";
 import { FEEDBACK_KIND_LABELS } from "@/lib/feedback/types";
+import { EmailHead } from "./email-head";
 
 export interface FeedbackEmailProps {
   feedbackId: string;
@@ -59,63 +59,56 @@ export function FeedbackEmail({
   const preview = `${FEEDBACK_KIND_LABELS[kind]} from ${userEmail ?? "anonymous"} — ${title}`;
   return (
     <Html>
-      <Head />
+      <EmailHead />
       <Preview>{preview}</Preview>
       <Tailwind>
-        <Body className="bg-slate-50 font-sans">
-          <Container className="mx-auto my-8 max-w-[600px] rounded-2xl border border-slate-200 bg-white p-0 shadow-sm">
-            <Section className="rounded-t-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-8 py-6">
-              <table cellPadding={0} cellSpacing={0} width="100%" style={{ borderCollapse: "collapse" }}>
-                <tr>
-                  <td style={{ width: "48px", verticalAlign: "middle" }}>
-                    <Img
-                      src={logoUrl}
-                      alt="CrayonSparks"
-                      width={40}
-                      height={40}
-                      style={{
-                        display: "block",
-                        borderRadius: "8px",
-                        background: "#ffffff",
-                        padding: "4px",
-                      }}
-                    />
-                  </td>
-                  <td style={{ verticalAlign: "middle", paddingLeft: "12px" }}>
-                    <Heading
-                      as="h1"
-                      className="m-0 text-2xl font-bold leading-tight text-white"
-                    >
-                      New {FEEDBACK_KIND_LABELS[kind]}
-                    </Heading>
-                    <Text className="m-0 mt-1 text-sm text-violet-100">
-                      CrayonSparks · {sourceLabel}
-                    </Text>
-                  </td>
-                </tr>
-              </table>
+        <Body className="email-body bg-slate-50 font-sans">
+          <Container className="email-card mx-auto my-8 max-w-[600px] rounded-2xl border border-slate-200 bg-white p-0 shadow-sm">
+            <Section
+              className="rounded-t-2xl px-8 py-8 text-center"
+              style={{
+                backgroundColor: "#7c3aed",
+                backgroundImage:
+                  "linear-gradient(to right, #7c3aed, #06b6d4)",
+              }}
+            >
+              <Img
+                src={logoUrl}
+                alt="CrayonSparks"
+                width={56}
+                height={56}
+                style={{
+                  margin: "0 auto",
+                  display: "block",
+                  borderRadius: "12px",
+                }}
+              />
+              <Heading
+                as="h1"
+                className="m-0 mt-4 text-2xl font-bold leading-tight text-white"
+              >
+                New {FEEDBACK_KIND_LABELS[kind]}
+              </Heading>
+              <Text className="m-0 mt-2 text-sm text-violet-100">
+                CrayonSparks · {sourceLabel}
+              </Text>
             </Section>
 
-            <Section className="px-8 pt-6 pb-2">
-              <table cellPadding={0} cellSpacing={0} style={{ borderCollapse: "collapse" }}>
-                <tr>
-                  <td>
-                    <span
-                      style={{
-                        background: badge.bg,
-                        color: badge.fg,
-                        padding: "4px 10px",
-                        borderRadius: "999px",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        letterSpacing: "0.02em",
-                      }}
-                    >
-                      {badge.label}
-                    </span>
-                  </td>
-                </tr>
-              </table>
+            <Section className="px-8 pt-6 pb-2 text-center">
+              <span
+                style={{
+                  background: badge.bg,
+                  color: badge.fg,
+                  padding: "4px 10px",
+                  borderRadius: "999px",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  letterSpacing: "0.02em",
+                  display: "inline-block",
+                }}
+              >
+                {badge.label}
+              </span>
               <Heading
                 as="h2"
                 className="mt-3 mb-0 text-xl font-semibold leading-snug text-slate-900"
@@ -124,7 +117,7 @@ export function FeedbackEmail({
               </Heading>
             </Section>
 
-            <Section className="px-8 pt-3 pb-6">
+            <Section className="px-8 pt-3 pb-6 text-center">
               <Text className="m-0 whitespace-pre-wrap text-[15px] leading-relaxed text-slate-700">
                 {body}
               </Text>
@@ -132,43 +125,56 @@ export function FeedbackEmail({
 
             <Hr className="mx-8 my-0 border-slate-200" />
 
-            <Section className="px-8 py-5">
-              <table cellPadding={0} cellSpacing={0} width="100%" style={{ borderCollapse: "collapse" }}>
-                <tr>
-                  <td style={{ padding: "4px 0", color: "#64748b", fontSize: "13px", width: "120px" }}>
-                    From
-                  </td>
-                  <td style={{ padding: "4px 0", color: "#0f172a", fontSize: "13px" }}>
-                    {userEmail ?? "(no email on file)"}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ padding: "4px 0", color: "#64748b", fontSize: "13px" }}>User ID</td>
-                  <td style={{ padding: "4px 0", color: "#0f172a", fontSize: "13px", fontFamily: "monospace" }}>
-                    {userId}
-                  </td>
-                </tr>
-                {page ? (
-                  <tr>
-                    <td style={{ padding: "4px 0", color: "#64748b", fontSize: "13px" }}>Page</td>
-                    <td style={{ padding: "4px 0", color: "#0f172a", fontSize: "13px", fontFamily: "monospace" }}>
-                      {page}
-                    </td>
-                  </tr>
-                ) : null}
-                <tr>
-                  <td style={{ padding: "4px 0", color: "#64748b", fontSize: "13px" }}>ID</td>
-                  <td style={{ padding: "4px 0", color: "#0f172a", fontSize: "13px", fontFamily: "monospace" }}>
-                    {feedbackId}
-                  </td>
-                </tr>
-              </table>
+            <Section className="px-8 py-5 text-center">
+              <Text className="m-0 mt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                From
+              </Text>
+              <Text className="m-0 mt-1 text-[13px] text-slate-900">
+                {userEmail ?? "(no email on file)"}
+              </Text>
+
+              <Text className="m-0 mt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                User ID
+              </Text>
+              <Text className="m-0 mt-1 text-[13px] text-slate-900" style={{ fontFamily: "monospace" }}>
+                {userId}
+              </Text>
+
+              {page ? (
+                <>
+                  <Text className="m-0 mt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    Page
+                  </Text>
+                  <Text className="m-0 mt-1 text-[13px] text-slate-900" style={{ fontFamily: "monospace" }}>
+                    {page}
+                  </Text>
+                </>
+              ) : null}
+
+              <Text className="m-0 mt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                ID
+              </Text>
+              <Text className="m-0 mt-1 text-[13px] text-slate-900" style={{ fontFamily: "monospace" }}>
+                {feedbackId}
+              </Text>
             </Section>
 
             <Section className="px-8 pb-8 text-center">
               <Button
                 href={adminUrl}
-                className="rounded-lg bg-violet-600 px-6 py-3 text-sm font-semibold text-white no-underline shadow-sm"
+                style={{
+                  backgroundColor: "#8b5cf6",
+                  backgroundImage:
+                    "linear-gradient(to right, #8b5cf6, #22d3ee)",
+                  color: "#ffffff",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  padding: "12px 24px",
+                  borderRadius: "9999px",
+                  display: "inline-block",
+                  boxShadow: "0 4px 14px rgba(139, 92, 246, 0.35)",
+                }}
               >
                 Open in admin dashboard
               </Button>
