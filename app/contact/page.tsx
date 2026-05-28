@@ -42,8 +42,8 @@ export default function ContactPage() {
                 {
                   icon: <Mail className="w-5 h-5" />,
                   label: "Email us direct",
-                  value: "hello@crayonsparks.com",
-                  href: "mailto:hello@crayonsparks.com",
+                  value: "crayonsparksai@gmail.com",
+                  href: "mailto:crayonsparksai@gmail.com",
                 },
                 {
                   icon: <AtSign className="w-5 h-5" />,

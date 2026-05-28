@@ -139,7 +139,7 @@ export default function PricingPage() {
             <p className="text-center text-neutral-400 mb-10">
               Still unsure?{" "}
               <Link
-                href="mailto:hello@crayonsparks.com"
+                href="mailto:crayonsparksai@gmail.com"
                 className="text-violet-300 hover:text-violet-200 underline-offset-4 hover:underline"
               >
                 Email us

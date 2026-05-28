@@ -4,10 +4,13 @@ import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { BubblePreviewOverlay } from "@/components/playground/book-studio/bubble-editor/bubble-preview-overlay";
+import type { StoryBubble } from "@/components/playground/book-studio/types";
 
 export interface CarouselImage {
   url: string;
   label: string;
+  bubbles?: StoryBubble[];
 }
 
 interface ImageCarouselModalProps {
@@ -128,15 +131,24 @@ export function ImageCarouselModal({
               </button>
             )}
 
-            <motion.img
+            <motion.div
               key={index}
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.15 }}
-              src={images[index]?.url}
-              alt={images[index]?.label}
-              className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
-            />
+              className="relative max-h-full max-w-full"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={images[index]?.url}
+                alt={images[index]?.label}
+                className="max-h-[80vh] max-w-full object-contain rounded-lg shadow-2xl"
+              />
+              {images[index]?.bubbles &&
+                images[index].bubbles.length > 0 && (
+                  <BubblePreviewOverlay bubbles={images[index].bubbles} />
+                )}
+            </motion.div>
 
             {hasMany && (
               <button

@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM ?? "CrayonSparks <onboarding@resend.dev>";
-  const to = process.env.CONTACT_TO ?? "hello@crayonsparks.com";
+  const to = process.env.CONTACT_TO ?? "crayonsparksai@gmail.com";
   if (!apiKey) {
     console.warn("[contact] RESEND_API_KEY not set — accepting but not sending.");
     return NextResponse.json({

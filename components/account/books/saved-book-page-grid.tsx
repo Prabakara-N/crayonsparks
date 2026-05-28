@@ -4,6 +4,7 @@ import { Download, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { downloadImageByKey } from "@/lib/functions/client/download-image-by-key";
 import { downloadBakedPage } from "@/lib/functions/client/download-baked-page";
+import { BubblePreviewOverlay } from "@/components/playground/book-studio/bubble-editor/bubble-preview-overlay";
 import type { StoryBubble } from "@/lib/story-bubble-seed";
 
 interface ImageVariant {
@@ -89,7 +90,7 @@ export function SavedBookPageGrid({
             onClick={() => onPageClick(i)}
             className="w-full text-left"
           >
-            <div className="aspect-3/4 bg-black/40">
+            <div className="aspect-3/4 bg-black/40 relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={page.image.medium.url}
@@ -97,6 +98,11 @@ export function SavedBookPageGrid({
                 className="w-full h-full object-contain"
                 loading="lazy"
               />
+              {page.bubbles &&
+                page.bubbles.length > 0 &&
+                !page.bubblesFlattened && (
+                  <BubblePreviewOverlay bubbles={page.bubbles} />
+                )}
             </div>
             <span className="block px-2 py-1.5 text-[11px] text-neutral-400 truncate">
               {page.index + 1}. {page.name}

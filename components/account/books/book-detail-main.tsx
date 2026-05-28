@@ -34,6 +34,7 @@ import { PublishToPinterestButton } from "./publish-to-pinterest-button";
 import { SavedBookPageGrid, type SavedPage } from "./saved-book-page-grid";
 import { BookActionsMenu } from "./book-actions-menu";
 import { BubbleEditorModal } from "@/components/playground/book-studio/bubble-editor/bubble-editor-modal";
+import { applyBubbleStyle } from "@/lib/bubble-style";
 import type { StoryBubble } from "@/lib/story-bubble-seed";
 
 interface ImageVariant {
@@ -162,9 +163,14 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
   const { carouselImages, indexByRole } = useMemo(() => {
     const images: CarouselImage[] = [];
     const idx = new Map<string, number>();
-    const push = (role: string, url: string, label: string) => {
+    const push = (
+      role: string,
+      url: string,
+      label: string,
+      bubbles?: StoryBubble[],
+    ) => {
       idx.set(role, images.length);
-      images.push({ url, label });
+      images.push({ url, label, bubbles });
     };
     if (!book) return { carouselImages: images, indexByRole: idx };
 
@@ -177,6 +183,7 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
         `page-${p.id}`,
         p.image.full.url,
         `Page ${p.index + 1} · ${p.name}`,
+        !p.bubblesFlattened ? p.bubbles : undefined,
       );
     }
     if (book.mode === "story" && book.theEndPage) {
@@ -464,6 +471,29 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
               ),
             );
             queueBubbleSave(editingPage.id, next);
+          }}
+          onApplyStyleToBook={(style) => {
+            let touchedPages = 0;
+            let touchedBubbles = 0;
+            setPages((prev) =>
+              prev.map((p) => {
+                if (!p.bubbles || p.bubbles.length === 0) return p;
+                touchedPages += 1;
+                touchedBubbles += p.bubbles.length;
+                const next = p.bubbles.map((b) => applyBubbleStyle(b, style));
+                queueBubbleSave(p.id, next);
+                return { ...p, bubbles: next };
+              }),
+            );
+            if (touchedPages > 0) {
+              toast.success(
+                `Style applied to ${touchedBubbles} bubble${touchedBubbles === 1 ? "" : "s"} across ${touchedPages} page${touchedPages === 1 ? "" : "s"}.`,
+              );
+            } else {
+              toast.info(
+                "No other pages have editable bubbles. Pages saved before the bubble editor feature have their bubbles baked into the image — open each page and add bubbles via the editor to make them editable.",
+              );
+            }
           }}
         />
       )}

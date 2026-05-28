@@ -46,7 +46,7 @@ const SECTIONS: Section[] = [
     title: "Eligibility and accounts",
     list: [
       "You must be at least 18 years old (or the age of majority in your jurisdiction) to create an account. If you act on behalf of a business, you confirm you are authorised to bind that business to these Terms.",
-      "You are responsible for keeping your sign-in credentials and any connected third-party tokens (Etsy, Pinterest, Gumroad, etc.) secure. Notify us immediately at security@crayonsparks.com if you suspect unauthorised access.",
+      "You are responsible for keeping your sign-in credentials and any connected third-party tokens (Etsy, Pinterest, Gumroad, etc.) secure. Notify us immediately at crayonsparksai@gmail.com if you suspect unauthorised access.",
       "One person may not maintain multiple accounts to circumvent free-tier limits or evade enforcement actions. We may suspend or merge duplicate accounts.",
       "You are responsible for all activity that occurs under your account.",
     ],
@@ -91,7 +91,7 @@ const SECTIONS: Section[] = [
   {
     icon: <RefreshCcw className="w-5 h-5" />,
     title: "Refunds",
-    body: "We want you to be satisfied. If a paid plan does not meet your expectations, contact billing@crayonsparks.com within 14 days of purchase for a full refund of that billing cycle, provided you have used less than 25% of the credits in that cycle. Add-on credit packs are non-refundable once any credits in the pack have been consumed. Refunds for chargebacks or disputed transactions are subject to Lemon Squeezy's policies.",
+    body: "We want you to be satisfied. If a paid plan does not meet your expectations, contact crayonsparksai@gmail.com within 14 days of purchase for a full refund of that billing cycle, provided you have used less than 25% of the credits in that cycle. Add-on credit packs are non-refundable once any credits in the pack have been consumed. Refunds for chargebacks or disputed transactions are subject to Lemon Squeezy's policies.",
   },
   {
     icon: <ShieldAlert className="w-5 h-5" />,
@@ -136,7 +136,7 @@ const SECTIONS: Section[] = [
   {
     icon: <Mail className="w-5 h-5" />,
     title: "Contact",
-    body: "Questions about these Terms? Email hello@crayonsparks.com. For legal notices, write to legal@crayonsparks.com.",
+    body: "Questions about these Terms? Email crayonsparksai@gmail.com.",
   },
 ];
 
@@ -215,7 +215,7 @@ export default function TermsPage() {
           </div>
 
           <div className="mt-12 text-center text-sm text-neutral-500">
-            CrayonSparks · hello@crayonsparks.com ·{" "}
+            CrayonSparks · crayonsparksai@gmail.com ·{" "}
             <a
               href="/contact"
               className="text-violet-300 hover:text-violet-200 font-medium"

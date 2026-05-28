@@ -1036,7 +1036,9 @@ export function BookStudio({
                         `Style applied to ${touchedBubbles} bubble${touchedBubbles === 1 ? "" : "s"} across ${touchedPages} page${touchedPages === 1 ? "" : "s"}.`,
                       );
                     } else {
-                      toast.info("No other pages have bubbles to update.");
+                      toast.info(
+                        "No other pages have editable bubbles yet. Generate or add bubbles on each page first.",
+                      );
                     }
                   }}
                   bookTitle={plan?.coverTitle ?? plan?.title}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlignLeft,
   Cloud,
@@ -42,6 +42,7 @@ interface BubbleToolbarProps {
   onChangeFontSize: (id: string, size: number) => void;
   onApplyToAll?: (id: string) => void;
   applyToAllLabel?: string;
+  inline?: boolean;
 }
 
 interface ShapeOption {
@@ -70,8 +71,23 @@ export function BubbleToolbar({
   onChangeFontSize,
   onApplyToAll,
   applyToAllLabel = "Apply to all",
+  inline = false,
 }: BubbleToolbarProps) {
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!openMenu) return;
+    const onDocPointer = (e: PointerEvent) => {
+      const node = rootRef.current;
+      if (!node) return;
+      if (node.contains(e.target as Node)) return;
+      setOpenMenu(null);
+    };
+    document.addEventListener("pointerdown", onDocPointer);
+    return () => document.removeEventListener("pointerdown", onDocPointer);
+  }, [openMenu]);
+
   const currentShape = bubble.shape ?? "speech";
   const currentFont =
     (bubble.fontFamily as BubbleFont | undefined) ??
@@ -104,18 +120,27 @@ export function BubbleToolbar({
         ? "-90%"
         : "-50%";
 
+  const wrapperProps = inline
+    ? {
+        className: "pointer-events-auto",
+        onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+      }
+    : {
+        style: {
+          left: `${bubble.x * 100}%`,
+          top: `${bubble.y * 100}%`,
+          transform: `translate(${horizontalShift}, ${verticalShift})`,
+        },
+        className: "absolute pointer-events-auto z-30",
+        onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+      };
+
   return (
-    <div
-      style={{
-        left: `${bubble.x * 100}%`,
-        top: `${bubble.y * 100}%`,
-        transform: `translate(${horizontalShift}, ${verticalShift})`,
-      }}
-      className="absolute pointer-events-auto z-30"
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      <div className="flex flex-col gap-1 bg-zinc-900/95 backdrop-blur-sm border border-white/10 rounded-lg p-1 shadow-xl">
-        <div className="flex items-center justify-center gap-1">
+    <div {...wrapperProps} ref={rootRef}>
+      <div
+        className={`flex flex-col gap-2 bg-zinc-900/95 backdrop-blur-sm border border-white/10 rounded-lg ${inline ? "p-3" : "p-1"} shadow-xl`}
+      >
+        <div className="flex items-center justify-center gap-1 flex-wrap">
           {SHAPES.map(({ shape, label, Icon }) => {
             const active = currentShape === shape;
             return (
@@ -359,19 +384,6 @@ export function BubbleToolbar({
 
         <div className="w-px h-5 bg-white/10 mx-0.5" />
 
-        {onApplyToAll && (
-          <button
-            type="button"
-            onClick={() => onApplyToAll(bubble.id)}
-            aria-label={applyToAllLabel}
-            title={applyToAllLabel}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-violet-500/15 text-violet-200 hover:bg-violet-500/30 hover:text-white text-[11px] font-semibold whitespace-nowrap"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            {applyToAllLabel}
-          </button>
-        )}
-
         <button
           type="button"
           onClick={() => onDelete(bubble.id)}
@@ -382,6 +394,19 @@ export function BubbleToolbar({
           <Trash2 className="w-3.5 h-3.5" />
         </button>
         </div>
+
+        {onApplyToAll && (
+          <button
+            type="button"
+            onClick={() => onApplyToAll(bubble.id)}
+            aria-label={applyToAllLabel}
+            title={applyToAllLabel}
+            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-violet-500/15 text-violet-200 hover:bg-violet-500/30 hover:text-white text-xs font-semibold whitespace-nowrap"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            {applyToAllLabel}
+          </button>
+        )}
       </div>
     </div>
   );

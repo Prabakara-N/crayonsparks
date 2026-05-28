@@ -144,7 +144,7 @@ const SECTIONS: Section[] = [
   {
     icon: <Mail className="w-5 h-5" />,
     title: "Contact us",
-    body: "Questions about this Privacy Policy or your data? Email privacy@crayonsparks.com. We aim to respond within 5 business days. For data-subject access, correction, or deletion requests, please use the same address and include enough information for us to verify your identity.",
+    body: "Questions about this Privacy Policy or your data? Email crayonsparksai@gmail.com. We aim to respond within 5 business days. For data-subject access, correction, or deletion requests, please use the same address and include enough information for us to verify your identity.",
   },
 ];
 
@@ -235,7 +235,7 @@ export default function PrivacyPage() {
           </div>
 
           <div className="mt-12 text-center text-sm text-neutral-500">
-            CrayonSparks · privacy@crayonsparks.com ·{" "}
+            CrayonSparks · crayonsparksai@gmail.com ·{" "}
             <a
               href="/contact"
               className="text-violet-300 hover:text-violet-200 font-medium"
