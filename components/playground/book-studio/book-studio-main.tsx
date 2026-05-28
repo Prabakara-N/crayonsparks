@@ -20,7 +20,7 @@ import { MockupGate } from "@/components/ui/mockup-gate";
 import { useDialog } from "@/components/ui/confirm-dialog";
 import { ImagePreviewDialog } from "@/components/ui/image-preview-dialog";
 import { useNavigationGuard } from "@/lib/use-navigation-guard";
-import { applyBubbleStyle } from "@/lib/bubble-style";
+import { applyBubbleStyle, type BubbleStyleSnapshot } from "@/lib/bubble-style";
 import { DownloadMenu } from "@/components/playground/download-menu";
 import { fireConfettiBurst } from "@/components/ui/confetti-burst";
 import { SaveBookButton } from "./save-book-button";
@@ -45,6 +45,9 @@ import { Carousel } from "./carousel";
 import { BookGenerationLoader } from "./book-generation-loader";
 import { useStudioPersistence } from "./hooks/use-studio-persistence";
 import { toast } from "sonner";
+import { FeedbackSurveyModal } from "@/components/feedback/feedback-survey-modal";
+import { useFeedback } from "@/lib/hooks/use-feedback";
+import { useAuthContext } from "@/components/auth/auth-provider";
 import { useBookPlan } from "./hooks/use-book-plan";
 import { useCharacterLock } from "./hooks/use-character-lock";
 import { useCoverGeneration } from "./hooks/use-cover-generation";
@@ -95,6 +98,7 @@ export function BookStudio({
   const abortRef = useRef<AbortController | null>(null);
   const characterLockBlockRef = useRef<string | undefined>(undefined);
   const itemsRef = useRef<PromptItem[]>([]);
+  const bookBubbleStyleRef = useRef<BubbleStyleSnapshot | null>(null);
   const setItemsHandoff = useRef<((items: PromptItem[]) => void) | null>(null);
   const setIndexHandoff = useRef<((n: number) => void) | null>(null);
   const setCoverPendingHandoff = useRef<(() => void) | null>(null);
@@ -189,6 +193,7 @@ export function BookStudio({
     setPhase,
     abortRef,
     itemsRef,
+    bookBubbleStyleRef,
   });
 
   setItemsHandoff.current = pageGen.setItems;
@@ -296,6 +301,29 @@ export function BookStudio({
     progress.doneCount === progress.total &&
     coverGen.cover.status === "done" &&
     coverGen.backCover.status === "done";
+
+  const { user } = useAuthContext();
+  const feedback = useFeedback();
+  const [surveyOpen, setSurveyOpen] = useState(false);
+  const surveyCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!allDone) return;
+    if (!user) return;
+    if (surveyCheckedRef.current) return;
+    surveyCheckedRef.current = true;
+    void (async () => {
+      try {
+        const state = await feedback.getSurveyState(bookPlan.bookKind);
+        if (state.shouldShow) {
+          await feedback.markSurveyShown(bookPlan.bookKind);
+          const id = window.setTimeout(() => setSurveyOpen(true), 1500);
+          return () => window.clearTimeout(id);
+        }
+      } catch {
+        // non-fatal — never break the studio over a survey check
+      }
+    })();
+  }, [allDone, user, feedback, bookPlan.bookKind]);
 
   const inUnconfirmedReview =
     phase === "review" && !planConfirmed && !!bookPlan.plan;
@@ -1016,6 +1044,7 @@ export function BookStudio({
                   }
                   onStartGeneration={pageGen.startGeneration}
                   onApplyBubbleStyleToBook={(style) => {
+                    bookBubbleStyleRef.current = style;
                     let touchedPages = 0;
                     let touchedBubbles = 0;
                     pageGen.setItems((prev) =>
@@ -1052,6 +1081,13 @@ export function BookStudio({
           </AnimatePresence>
         </div>
       )}
+
+      <FeedbackSurveyModal
+        open={surveyOpen}
+        onOpenChange={setSurveyOpen}
+        bookKind={bookPlan.bookKind}
+        bookTitle={bookPlan.plan?.coverTitle ?? bookPlan.plan?.title}
+      />
 
       <ImageRefineModal
         open={refine.open}

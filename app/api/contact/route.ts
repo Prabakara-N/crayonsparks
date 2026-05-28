@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { render } from "@react-email/render";
+import { ContactEmail } from "@/lib/email/contact-email";
+import { getEmailBrand } from "@/lib/email/brand";
 import { rateLimitByIp } from "@/lib/api/rate-limit";
 
 export const runtime = "nodejs";
@@ -69,39 +72,19 @@ export async function POST(req: Request) {
     });
   }
 
-  const esc = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-  const html = `<!doctype html>
-<html>
-  <body style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#05050a;color:#fafafa;padding:24px;">
-    <table width="100%" cellspacing="0" cellpadding="0">
-      <tr>
-        <td align="center">
-          <table width="560" cellspacing="0" cellpadding="0" style="background:#0a0a15;border:1px solid rgba(139,92,246,.2);border-radius:16px;overflow:hidden;">
-            <tr>
-              <td style="padding:24px 28px;border-bottom:1px solid rgba(255,255,255,.08);">
-                <h1 style="margin:0;font-size:20px;color:#fff;">📬 New message from CrayonSparks</h1>
-                <p style="margin:6px 0 0;color:#a1a1aa;font-size:13px;">Submitted via /contact</p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:24px 28px;">
-                <table width="100%" cellspacing="0" cellpadding="0" style="font-size:14px;line-height:1.65;">
-                  <tr><td style="color:#a1a1aa;padding:4px 0;width:90px;">From</td><td style="color:#fff;"><strong>${esc(name)}</strong> &lt;${esc(email)}&gt;</td></tr>
-                  ${subject ? `<tr><td style="color:#a1a1aa;padding:4px 0;">Subject</td><td style="color:#fff;">${esc(subject)}</td></tr>` : ""}
-                </table>
-                <div style="margin-top:18px;padding:16px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.25);border-radius:12px;color:#e4e4e7;font-size:14px;line-height:1.7;white-space:pre-wrap;">${esc(message)}</div>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>`;
-
   try {
+    const { logoUrl } = getEmailBrand();
+    const node = ContactEmail({
+      name,
+      email,
+      subject: subject || undefined,
+      message,
+      logoUrl,
+    });
+    const [html, text] = await Promise.all([
+      render(node),
+      render(node, { plainText: true }),
+    ]);
     const resend = new Resend(apiKey);
     await resend.emails.send({
       from,
@@ -111,6 +94,7 @@ export async function POST(req: Request) {
         ? `[CrayonSparks] ${subject}`
         : `[CrayonSparks] New message from ${name}`,
       html,
+      text,
     });
     return NextResponse.json({ ok: true, queued: true });
   } catch (err) {

@@ -11,7 +11,11 @@ interface SubmitFeedbackInput {
   page?: string;
   userAgent?: string;
   screenshotBase64?: string;
+  source?: "widget" | "post-book-survey";
+  bookKind?: "coloring" | "story";
 }
+
+type SurveyKind = "coloring" | "story";
 
 type FeedbackStatusFilter = "all" | FeedbackStatus;
 type FeedbackKindFilter = "all" | FeedbackKind;
@@ -47,6 +51,18 @@ export function useFeedback() {
     ),
     updateAdmin: useCallback(
       (input: UpdateFeedbackInput) => orpc.admin.feedback.update(input),
+      [],
+    ),
+    getSurveyState: useCallback(
+      (kind: SurveyKind) => orpc.feedback.getSurveyState({ kind }),
+      [],
+    ),
+    markSurveyShown: useCallback(
+      (kind: SurveyKind) => orpc.feedback.markSurveyShown({ kind }),
+      [],
+    ),
+    skipSurvey: useCallback(
+      (kind: SurveyKind) => orpc.feedback.skipSurvey({ kind }),
       [],
     ),
   };

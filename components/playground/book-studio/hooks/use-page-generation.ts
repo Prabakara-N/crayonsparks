@@ -13,6 +13,10 @@ import {
   showCreditsExhaustedDialog,
 } from "../credits-error";
 import { creditCost, type BookKind } from "@/lib/credits/costs";
+import {
+  applyBubbleStyle,
+  type BubbleStyleSnapshot,
+} from "@/lib/bubble-style";
 import type {
   AgeRange,
   Aspect,
@@ -47,6 +51,7 @@ interface UsePageGenerationArgs {
   setPhase: (p: Phase) => void;
   abortRef: React.MutableRefObject<AbortController | null>;
   itemsRef: React.MutableRefObject<PromptItem[]>;
+  bookBubbleStyleRef?: React.MutableRefObject<BubbleStyleSnapshot | null>;
 }
 
 export function usePageGeneration({
@@ -67,6 +72,7 @@ export function usePageGeneration({
   setPhase,
   abortRef,
   itemsRef,
+  bookBubbleStyleRef,
 }: UsePageGenerationArgs) {
   const dialog = useDialog();
   const router = useRouter();
@@ -201,13 +207,19 @@ export function usePageGeneration({
             throw new Error(json.error || "Story page failed");
           }
           const existingBubbles = item.bubbles;
+          const baseBubbles =
+            existingBubbles && existingBubbles.length > 0
+              ? existingBubbles
+              : json.bubbles ?? [];
+          const styleToApply = bookBubbleStyleRef?.current;
+          const styledBubbles =
+            styleToApply && (!existingBubbles || existingBubbles.length === 0)
+              ? baseBubbles.map((b) => applyBubbleStyle(b, styleToApply))
+              : baseBubbles;
           updateItem(item.id, {
             status: "done",
             dataUrl: json.dataUrl,
-            bubbles:
-              existingBubbles && existingBubbles.length > 0
-                ? existingBubbles
-                : json.bubbles ?? [],
+            bubbles: styledBubbles,
             bubblesFlattened: false,
             quality: null,
             model: interiorModel,

@@ -3,6 +3,7 @@ import "server-only";
 import { FieldValue, type Timestamp } from "firebase-admin/firestore";
 import { db } from "./admin";
 import { SIGNUP_FREE_CREDITS } from "@/lib/credits/costs";
+import { sendWelcomeEmail } from "@/lib/email/send-welcome-email";
 
 export interface UserProfileSnapshot {
   uid: string;
@@ -47,6 +48,7 @@ export async function ensureUserDocument(
       createdAt: now,
       updatedAt: now,
       lastSignInAt: now,
+      welcomedAt: now,
     });
     batch.set(ref.collection("credits").doc(), {
       delta: SIGNUP_FREE_CREDITS,
@@ -59,6 +61,15 @@ export async function ensureUserDocument(
       createdAt: now,
     });
     await batch.commit();
+
+    if (input.email) {
+      const firstName = input.displayName?.trim().split(/\s+/)[0] ?? null;
+      sendWelcomeEmail({ to: input.email, firstName }).then((result) => {
+        if (!result.ok) {
+          console.warn("[users] welcome email send failed:", result.error);
+        }
+      });
+    }
   } else {
     await ref.set(
       {

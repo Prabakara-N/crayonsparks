@@ -18,6 +18,8 @@
     "@google/genai": "^1.50.1",
     "@orpc/client": "^1.14.3",
     "@orpc/server": "^1.14.3",
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.0.8",
     "@radix-ui/react-hover-card": "^1.1.15",
     "@sentry/nextjs": "^10.53.1",
     "@tabler/icons-react": "^3.41.1",

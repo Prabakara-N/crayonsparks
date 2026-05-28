@@ -83,11 +83,9 @@ export default function ContactPage() {
                   Based in
                 </p>
                 <p className="font-display text-lg font-semibold text-white">
-                  Tiruppur, Tamil Nadu
+                  Tamil Nadu, India
                 </p>
-                <p className="text-xs text-neutral-400 mt-1">
-                  India · IST (UTC+5:30)
-                </p>
+                <p className="text-xs text-neutral-400 mt-1">IST (UTC+5:30)</p>
               </div>
             </div>
 
