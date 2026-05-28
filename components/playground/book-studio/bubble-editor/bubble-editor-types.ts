@@ -1,3 +1,4 @@
+import type { BubbleStyleSnapshot } from "@/lib/bubble-style";
 import type { StoryBubble } from "../types";
 
 export type DragMode = "move" | "resize" | "tail";
@@ -17,6 +18,10 @@ export interface BubbleEditorProps {
   imageSrc?: string;
   className?: string;
   showAddButton?: boolean;
+  onApplyStyleToBook?: (style: BubbleStyleSnapshot) => void;
+  selectedId?: string | null;
+  onSelectedChange?: (id: string | null) => void;
+  hideFloatingToolbar?: boolean;
 }
 
 export const MIN_BUBBLE_WIDTH = 0.12;

@@ -20,6 +20,7 @@ import { MockupGate } from "@/components/ui/mockup-gate";
 import { useDialog } from "@/components/ui/confirm-dialog";
 import { ImagePreviewDialog } from "@/components/ui/image-preview-dialog";
 import { useNavigationGuard } from "@/lib/use-navigation-guard";
+import { applyBubbleStyle } from "@/lib/bubble-style";
 import { DownloadMenu } from "@/components/playground/download-menu";
 import { fireConfettiBurst } from "@/components/ui/confetti-burst";
 import { SaveBookButton } from "./save-book-button";
@@ -41,6 +42,9 @@ import { AGE_LABELS } from "./book-studio-constants";
 import { buildRefineBookContext } from "./book-studio-helpers";
 import { IdeaForm } from "./idea-form";
 import { Carousel } from "./carousel";
+import { BookGenerationLoader } from "./book-generation-loader";
+import { useStudioPersistence } from "./hooks/use-studio-persistence";
+import { toast } from "sonner";
 import { useBookPlan } from "./hooks/use-book-plan";
 import { useCharacterLock } from "./hooks/use-character-lock";
 import { useCoverGeneration } from "./hooks/use-cover-generation";
@@ -192,6 +196,46 @@ export function BookStudio({
   setCoverPendingHandoff.current = () =>
     coverGen.setCover({ status: "pending" });
 
+  const studioPersistence = useStudioPersistence({
+    storageKey: "current-book-draft",
+    enabled: !initialPlan,
+    values: {
+      version: 1,
+      bookKind: bookPlan.bookKind,
+      idea: bookPlan.idea,
+      pageCount: bookPlan.pageCount,
+      age: bookPlan.age,
+      aspectRatio: bookPlan.aspectRatio,
+      detailLevel: bookPlan.detailLevel,
+      coverStyle: coverGen.coverStyle,
+      coverBorder: coverGen.coverBorder,
+      plan: bookPlan.plan,
+      items: pageGen.items,
+      cover: coverGen.cover,
+      backCover: coverGen.backCover,
+      belongsTo: coverGen.belongsTo,
+      theEndPage: coverGen.theEndPage,
+      phase,
+    },
+    setters: {
+      setBookKind: bookPlan.setBookKind,
+      setIdea: bookPlan.setIdea,
+      setPageCount: bookPlan.setPageCount,
+      setAge: bookPlan.setAge,
+      setAspectRatio: bookPlan.setAspectRatio,
+      setDetailLevel: bookPlan.setDetailLevel,
+      setCoverStyle: coverGen.setCoverStyle,
+      setCoverBorder: coverGen.setCoverBorder,
+      setPlan: bookPlan.setPlan,
+      setItems: pageGen.setItems,
+      setCover: coverGen.setCover,
+      setBackCover: coverGen.setBackCover,
+      setBelongsTo: coverGen.setBelongsTo,
+      setTheEndPage: coverGen.setTheEndPage,
+      setPhase,
+    },
+  });
+
   const refineState = useRefineState();
 
   const download = useBookDownload({
@@ -234,6 +278,7 @@ export function BookStudio({
     setPlanConfirmed(false);
     setPlanReviewOpen(false);
     planReviewAutoOpenedRef.current = false;
+    studioPersistence.clearDraft();
     onReset?.();
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -254,6 +299,13 @@ export function BookStudio({
 
   const inUnconfirmedReview =
     phase === "review" && !planConfirmed && !!bookPlan.plan;
+  if (phase === "planning" && !bookPlan.plan) {
+    return (
+      <div className="py-6 sm:py-12">
+        <BookGenerationLoader mode={bookPlan.bookKind} />
+      </div>
+    );
+  }
   if (phase === "idea" || phase === "planning" || inUnconfirmedReview) {
     return (
       <>
@@ -879,6 +931,10 @@ export function BookStudio({
                   pages={items.map((it, i) => ({
                     imageUrl: it.dataUrl,
                     label: `${it.name} · Page ${i + 1}`,
+                    bubbles:
+                      mode === "story" && !it.bubblesFlattened
+                        ? it.bubbles
+                        : undefined,
                   }))}
                   alternateBlankPages={mode !== "story"}
                   fullBleedInterior={mode === "story"}
@@ -958,6 +1014,31 @@ export function BookStudio({
                   onUpdateBubbles={(id, bubbles) =>
                     pageGen.updateItem(id, { bubbles })
                   }
+                  onStartGeneration={pageGen.startGeneration}
+                  onApplyBubbleStyleToBook={(style) => {
+                    let touchedPages = 0;
+                    let touchedBubbles = 0;
+                    pageGen.setItems((prev) =>
+                      prev.map((it) => {
+                        if (!it.bubbles || it.bubbles.length === 0) return it;
+                        touchedPages += 1;
+                        touchedBubbles += it.bubbles.length;
+                        return {
+                          ...it,
+                          bubbles: it.bubbles.map((b) =>
+                            applyBubbleStyle(b, style),
+                          ),
+                        };
+                      }),
+                    );
+                    if (touchedPages > 0) {
+                      toast.success(
+                        `Style applied to ${touchedBubbles} bubble${touchedBubbles === 1 ? "" : "s"} across ${touchedPages} page${touchedPages === 1 ? "" : "s"}.`,
+                      );
+                    } else {
+                      toast.info("No other pages have bubbles to update.");
+                    }
+                  }}
                   bookTitle={plan?.coverTitle ?? plan?.title}
                   coverScene={plan?.coverScene}
                   characterLockBlock={characterLock.block}
@@ -990,6 +1071,7 @@ export function BookStudio({
         bookDescription={plan?.description}
         pageSubjects={items.map((it) => it.subject).filter(Boolean).slice(0, 12)}
         pageCount={items.length}
+        bubbles={items.find((it) => it.id === refine.targetId)?.bubbles}
         bookContext={
           plan
             ? buildRefineBookContext({

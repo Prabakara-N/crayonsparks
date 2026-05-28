@@ -93,18 +93,53 @@ export function BubblePreviewOverlay({ bubbles }: BubblePreviewOverlayProps) {
                   strokeWidth={1.4}
                 />
               ))}
-              <text
-                x={cx}
-                y={cy}
-                fontFamily={`'${font}', 'Patrick Hand', 'Comic Sans MS', system-ui, sans-serif`}
-                fontSize={Math.max(8, rx * 0.22)}
-                fontWeight={600}
-                fill={textColor}
-                textAnchor="middle"
-                dominantBaseline="central"
-              >
-                {b.text.length > 24 ? `${b.text.slice(0, 22)}…` : b.text}
-              </text>
+              {(() => {
+                const fontSize = b.fontSize
+                  ? (b.fontSize / 16) * Math.max(8, rx * 0.22)
+                  : Math.max(8, rx * 0.22);
+                const lineHeight = fontSize * 1.2;
+                const charW = fontSize * 0.58;
+                const innerWidth = Math.max(8, rx * 1.6);
+                const maxChars = Math.max(1, Math.floor(innerWidth / charW));
+                const words = b.text.trim().split(/\s+/).filter(Boolean);
+                const lines: string[] = [];
+                let cur = "";
+                for (const w of words) {
+                  const next = cur ? `${cur} ${w}` : w;
+                  if (next.length <= maxChars) cur = next;
+                  else {
+                    if (cur) lines.push(cur);
+                    cur = w;
+                  }
+                }
+                if (cur) lines.push(cur);
+                const visible = lines.slice(0, 3);
+                if (lines.length > 3 && visible.length === 3) {
+                  visible[2] =
+                    visible[2].length > maxChars - 1
+                      ? `${visible[2].slice(0, maxChars - 1)}…`
+                      : `${visible[2]}…`;
+                }
+                const startY = cy - ((visible.length - 1) * lineHeight) / 2;
+                return (
+                  <text
+                    x={cx}
+                    y={startY}
+                    fontFamily={`'${font}', 'Patrick Hand', 'Comic Sans MS', system-ui, sans-serif`}
+                    fontSize={fontSize}
+                    fontWeight={600}
+                    fill={textColor}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                  >
+                    {visible.map((line, i) => (
+                      <tspan key={i} x={cx} dy={i === 0 ? 0 : lineHeight}>
+                        {line}
+                      </tspan>
+                    ))}
+                  </text>
+                );
+              })()}
             </g>
           );
         })}

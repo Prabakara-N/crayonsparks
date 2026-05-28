@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 import { bubbleVisualPaths } from "@/lib/bubble-shapes";
+import { applyBubbleStyle, extractBubbleStyle } from "@/lib/bubble-style";
 import { BubbleItem } from "./bubble-item";
 import { BubbleTailHandle } from "./bubble-tail-handle";
 import { BubbleToolbar } from "./bubble-toolbar";
@@ -43,10 +45,27 @@ export function BubbleEditor({
   imageSrc,
   className,
   showAddButton = true,
+  onApplyStyleToBook,
+  selectedId: controlledSelectedId,
+  onSelectedChange,
+  hideFloatingToolbar = false,
 }: BubbleEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState<EditorSize>({ width: 0, height: 0 });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [internalSelectedId, setInternalSelectedId] = useState<string | null>(
+    null,
+  );
+  const selectedId =
+    controlledSelectedId !== undefined
+      ? controlledSelectedId
+      : internalSelectedId;
+  const setSelectedId = useCallback(
+    (id: string | null) => {
+      if (controlledSelectedId === undefined) setInternalSelectedId(id);
+      onSelectedChange?.(id);
+    },
+    [controlledSelectedId, onSelectedChange],
+  );
 
   const { beginDrag } = useBubbleDrag({ containerRef, bubbles, onChange });
 
@@ -73,9 +92,9 @@ export function BubbleEditor({
   const deleteBubble = useCallback(
     (id: string) => {
       onChange(bubbles.filter((b) => b.id !== id));
-      setSelectedId((curr) => (curr === id ? null : curr));
+      if (selectedId === id) setSelectedId(null);
     },
-    [bubbles, onChange],
+    [bubbles, onChange, selectedId, setSelectedId],
   );
 
   const addBubble = useCallback(() => {
@@ -124,6 +143,24 @@ export function BubbleEditor({
       onChange(bubbles.map((b) => (b.id === id ? { ...b, fontSize } : b)));
     },
     [bubbles, onChange],
+  );
+
+  const applyStyleToAll = useCallback(
+    (id: string) => {
+      const source = bubbles.find((b) => b.id === id);
+      if (!source) return;
+      const style = extractBubbleStyle(source);
+      const others = bubbles.length - 1;
+      onChange(bubbles.map((b) => applyBubbleStyle(b, style)));
+      if (onApplyStyleToBook) {
+        onApplyStyleToBook(style);
+      } else if (others > 0) {
+        toast.success(
+          `Style applied to ${others} other bubble${others === 1 ? "" : "s"} on this page.`,
+        );
+      }
+    },
+    [bubbles, onChange, onApplyStyleToBook],
   );
 
   const handleBackgroundPointerDown = useCallback(() => {
@@ -226,16 +263,22 @@ export function BubbleEditor({
         {selected && (
           <>
             <BubbleTailHandle bubble={selected} onBegin={beginDrag} />
-            <BubbleToolbar
-              bubble={selected}
-              onDelete={deleteBubble}
-              onChangeShape={changeShape}
-              onChangeFont={changeFont}
-              onChangeFill={changeFill}
-              onChangeText={changeText}
-              onChangeStroke={changeStroke}
-              onChangeFontSize={changeFontSize}
-            />
+            {!hideFloatingToolbar && (
+              <BubbleToolbar
+                bubble={selected}
+                onDelete={deleteBubble}
+                onChangeShape={changeShape}
+                onChangeFont={changeFont}
+                onChangeFill={changeFill}
+                onChangeText={changeText}
+                onChangeStroke={changeStroke}
+                onChangeFontSize={changeFontSize}
+                onApplyToAll={applyStyleToAll}
+                applyToAllLabel={
+                  onApplyStyleToBook ? "Apply to whole book" : "Apply to all"
+                }
+              />
+            )}
           </>
         )}
       </div>

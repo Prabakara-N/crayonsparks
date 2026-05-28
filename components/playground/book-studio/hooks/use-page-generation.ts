@@ -9,8 +9,10 @@ import { downscaleReferenceImage } from "@/lib/functions/client/downscale-image"
 import { isAbortError, shareKeyNoun } from "../book-studio-helpers";
 import {
   isCreditsError,
+  precheckCredits,
   showCreditsExhaustedDialog,
 } from "../credits-error";
+import { creditCost, type BookKind } from "@/lib/credits/costs";
 import type {
   AgeRange,
   Aspect,
@@ -120,6 +122,7 @@ export function usePageGeneration({
       item: PromptItem,
       improvementHint?: string,
       chainReferenceDataUrl?: string,
+      forwardReferenceDataUrl?: string,
     ): Promise<string | undefined> => {
       if (!plan) return undefined;
       if (cover.status !== "done" || !cover.dataUrl) {
@@ -141,11 +144,13 @@ export function usePageGeneration({
         : item.id;
 
       try {
-        const [coverRefSmall, chainRefSmall, referenceSmall] = await Promise.all([
-          downscaleReferenceImage(cover.dataUrl),
-          downscaleReferenceImage(chainReferenceDataUrl),
-          downscaleReferenceImage(reference ?? undefined),
-        ]);
+        const [coverRefSmall, chainRefSmall, forwardRefSmall, referenceSmall] =
+          await Promise.all([
+            downscaleReferenceImage(cover.dataUrl),
+            downscaleReferenceImage(chainReferenceDataUrl),
+            downscaleReferenceImage(forwardReferenceDataUrl),
+            downscaleReferenceImage(reference ?? undefined),
+          ]);
 
         if (mode === "story") {
           if (!plan.characters?.length || !plan.palette) {
@@ -174,6 +179,12 @@ export function usePageGeneration({
                   ? coverRefSmall
                   : undefined,
               chainReferenceDataUrl: chainRefSmall,
+              forwardReferenceDataUrl:
+                forwardRefSmall &&
+                forwardRefSmall !== chainRefSmall &&
+                forwardRefSmall !== coverRefSmall
+                  ? forwardRefSmall
+                  : undefined,
               model: interiorModel,
               coverStyle,
               locationId: item.locationId,
@@ -281,19 +292,55 @@ export function usePageGeneration({
 
   const regeneratePage = useCallback(
     async (item: PromptItem, improvementHint?: string) => {
-      const anchorItem = items.find(
-        (it) => it.id !== item.id && it.status === "done" && it.dataUrl,
+      updateItem(item.id, { status: "generating", error: undefined });
+      const kind: BookKind = mode === "story" ? "story" : "coloring";
+      const ok = await precheckCredits(
+        creditCost(kind, "page"),
+        dialog,
+        router,
       );
+      if (!ok) {
+        updateItem(item.id, { status: "pending", error: undefined });
+        return;
+      }
+      const myIndex = items.findIndex((it) => it.id === item.id);
+      const isDone = (it: PromptItem) =>
+        it.status === "done" && !!it.dataUrl;
+      let prevDone: PromptItem | undefined;
+      let nextDone: PromptItem | undefined;
+      if (myIndex >= 0) {
+        for (let i = myIndex - 1; i >= 0; i--) {
+          if (isDone(items[i])) {
+            prevDone = items[i];
+            break;
+          }
+        }
+        for (let i = myIndex + 1; i < items.length; i++) {
+          if (isDone(items[i])) {
+            nextDone = items[i];
+            break;
+          }
+        }
+      }
+      const fallback =
+        !prevDone && !nextDone
+          ? items.find((it) => it.id !== item.id && isDone(it))
+          : undefined;
+      const chainCandidate = prevDone ?? nextDone ?? fallback;
       const useChain =
-        anchorItem &&
-        (mode === "story" || shareKeyNoun(anchorItem.subject, item.subject));
+        chainCandidate &&
+        (mode === "story" ||
+          shareKeyNoun(chainCandidate.subject, item.subject));
+      const forwardCandidate =
+        mode === "story" && prevDone && nextDone ? nextDone : undefined;
       await generatePage(
         item,
         improvementHint,
-        useChain ? anchorItem.dataUrl : undefined,
+        useChain ? chainCandidate.dataUrl : undefined,
+        forwardCandidate?.dataUrl,
       );
     },
-    [items, generatePage, mode],
+    [items, generatePage, mode, dialog, router, updateItem],
   );
 
   const startGeneration = useCallback(async () => {
@@ -304,6 +351,17 @@ export function usePageGeneration({
     pausedRef.current = false;
     abortRef.current = new AbortController();
     setPhase("generating");
+    const kind: BookKind = mode === "story" ? "story" : "coloring";
+    const ok = await precheckCredits(
+      creditCost(kind, "page"),
+      dialog,
+      router,
+    );
+    if (!ok) {
+      runningRef.current = false;
+      setPhase("review");
+      return;
+    }
 
     try {
       if (mode !== "story" && characterLockStatus !== "done") {
@@ -403,6 +461,8 @@ export function usePageGeneration({
     setPhase,
     itemsRef,
     abortRef,
+    dialog,
+    router,
   ]);
 
   const pause = useCallback(() => {

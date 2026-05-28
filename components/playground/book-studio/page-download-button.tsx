@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type { StoryBubble } from "./types";
 
 interface PageDownloadButtonProps {
@@ -41,10 +42,13 @@ export function PageDownloadButton({
       });
       const json = (await res.json()) as { dataUrl?: string; error?: string };
       if (!res.ok || !json.dataUrl) {
-        throw new Error(json.error || "Bake failed");
+        throw new Error(json.error || `Bake failed (${res.status})`);
       }
       triggerDownload(json.dataUrl);
-    } catch {
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Bake failed — downloaded raw image without bubbles.";
+      toast.error(msg);
       triggerDownload(dataUrl);
     } finally {
       setBaking(false);

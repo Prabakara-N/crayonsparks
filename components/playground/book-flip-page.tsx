@@ -1,6 +1,8 @@
 "use client";
 
 import { forwardRef } from "react";
+import { BubblePreviewOverlay } from "./book-studio/bubble-editor/bubble-preview-overlay";
+import type { StoryBubble } from "./book-studio/types";
 
 export interface BookFlipPageProps {
   imageUrl?: string;
@@ -10,6 +12,7 @@ export interface BookFlipPageProps {
   pageNumber?: number;
   brandMark?: boolean;
   fullBleed?: boolean;
+  bubbles?: StoryBubble[];
 }
 
 /**
@@ -26,6 +29,7 @@ export const BookFlipPage = forwardRef<HTMLDivElement, BookFlipPageProps>(
       pageNumber,
       brandMark = false,
       fullBleed = false,
+      bubbles,
     },
     ref,
   ) {
@@ -56,6 +60,9 @@ export const BookFlipPage = forwardRef<HTMLDivElement, BookFlipPageProps>(
           <div className="absolute inset-0 flex items-center justify-center text-neutral-400 text-sm">
             Not generated yet
           </div>
+        )}
+        {imageUrl && bubbles && bubbles.length > 0 && (
+          <BubblePreviewOverlay bubbles={bubbles} />
         )}
         {/* Border is drawn by Gemini directly into the interior page
             image now (per master prompt's DRAW_BORDER_RULE) so the

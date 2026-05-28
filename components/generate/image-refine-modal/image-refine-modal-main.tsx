@@ -14,6 +14,7 @@ import {
 } from "@/lib/constants";
 import { ChatComposer, type ChatComposerHandle } from "../chat-composer";
 import { BackCoverRefinePanel } from "@/components/playground/back-cover-refine-panel";
+import { BubblePreviewOverlay } from "@/components/playground/book-studio/bubble-editor/bubble-preview-overlay";
 import { useStateMounted } from "./use-state-mounted";
 import { fallbackSuggestions } from "./image-refine-modal-constants";
 import { RefineHeader } from "./refine-header";
@@ -57,6 +58,7 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
     bookDescription,
     pageSubjects,
     pageCount,
+    bubbles,
   } = props;
 
   const [versions, setVersions] = useState<Version[]>([]);
@@ -861,15 +863,16 @@ export function ImageRefineModal(props: ImageRefineModalProps) {
           >
             {/* Image pane */}
             <div className="relative bg-black flex items-center justify-center lg:min-h-[320px] overflow-hidden">
-              <div className="relative w-full flex items-center justify-center">
+              <div className="relative inline-flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={current.dataUrl}
                   alt={title ?? "Preview"}
-                  className="max-h-[28vh] lg:max-h-[92vh] w-auto h-auto max-w-full object-contain"
+                  className="max-h-[28vh] lg:max-h-[92vh] w-auto h-auto max-w-full object-contain block"
                 />
-                {/* Border is now drawn by Gemini into the image itself
-                    (per master prompt's DRAW_BORDER_RULE). No CSS overlay. */}
+                {bubbles && bubbles.length > 0 && (
+                  <BubblePreviewOverlay bubbles={bubbles} />
+                )}
               </div>
               {versions.length > 1 && (
                 <VersionNavStrip

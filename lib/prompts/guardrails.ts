@@ -112,6 +112,14 @@ export const NO_REAL_BRAND_RULE =
 export const ANATOMY_GUARDRAIL =
   "Anatomy must be correct and natural-looking: exactly the right number of legs, arms, ears, eyes, tail, fingers, and wings for the species — symmetrical facial features, both eyes on the face, mouth properly placed — nothing duplicated, nothing fused, nothing misaligned, nothing out of place. No extra limbs, no missing limbs.";
 
+// The most common anatomy bug in painted character pages is an extra ARM
+// appearing when a character interacts with an object or fabric. The model
+// sometimes renders one arm to support the action AND a second arm at rest
+// AND then re-uses one of those arms with a different pose, ending up with
+// three arms total. Used by story interior pages AND the THE END page.
+export const ACTION_POSE_LIMB_CHECK =
+  "Action-pose limb check — STRICT, applies whenever a character is interacting with an object OR a piece of fabric / cloth / blanket / sheet / curtain / scarf / clothing flap. Universal counts: a bipedal humanoid character has EXACTLY 2 arms and 2 hands TOTAL — never 3 arms, never 4 hands, never an extra paw or hand poking out from behind the body, behind the head, beside the cheek, beside the chin, under a blanket, or anywhere else. Before drawing, mentally inventory the character's visible limbs: 'left arm = doing X, right arm = doing Y, NO third arm exists, NO third hand exists'. If the pose seems to need more than two hands, PICK ONE action that uses both hands TOGETHER, or split it: one hand on one element, one hand on another, the rest of the body relaxed — never invent a third hand. Common bugs to actively avoid: (a) a yawning character who has one hand at the mouth AND two hands holding the blanket = three hands; allowed pose is one hand at mouth + one hand on blanket OR both hands on blanket with mouth open and no hand near it. (b) a sleeping/lying character with arms shown above the blanket AND a third hand visible from under the blanket = three hands; allowed pose is two arms total whether above or below the blanket. (c) a character pointing at something while holding an object with two hands = three hands; allowed pose picks one. (d) a character waving while holding something — waving counts as ONE arm raised; the other arm holds the object — total 2 arms, NOT 3. Body parts behind the character (a tail tip, a leg, a haunch, a fold of fabric, a pillow corner, an ear) MUST NOT be shaped or shaded so they look like an extra limb. A single object held in two hands shows the SAME object touched by both hands, not duplicated. After sketching the pose mentally, recount: 'arms = 2, hands = 2, fingers per hand = 5'. If any of those numbers are wrong, restart the pose.";
+
 // Stricter version that enumerates per-species body-part counts. Used by
 // every illustrative surface that draws living creatures (story interior
 // pages, story covers, coloring covers, etc.) — applies whenever the

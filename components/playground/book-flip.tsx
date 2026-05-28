@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef } from "react";
 import { BookFlipPage } from "./book-flip-page";
+import type { StoryBubble } from "./book-studio/types";
 
 interface PageFlipApi {
   flipNext: () => void;
@@ -45,6 +46,7 @@ export function prefetchBookFlip(): void {
 export interface BookFlipPageInput {
   imageUrl?: string;
   label?: string;
+  bubbles?: StoryBubble[];
 }
 
 interface BookFlipProps {
@@ -122,6 +124,7 @@ export function BookFlip({
           variant="interior"
           pageNumber={i + 1}
           fullBleed={fullBleedInterior}
+          bubbles={p.bubbles}
         />,
       );
     });

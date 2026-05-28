@@ -9,6 +9,7 @@ import {
   Minus,
   Palette,
   Plus,
+  Sparkles,
   Square,
   Trash2,
   Type,
@@ -39,6 +40,8 @@ interface BubbleToolbarProps {
   onChangeText: (id: string, color: string) => void;
   onChangeStroke: (id: string, color: string) => void;
   onChangeFontSize: (id: string, size: number) => void;
+  onApplyToAll?: (id: string) => void;
+  applyToAllLabel?: string;
 }
 
 interface ShapeOption {
@@ -65,6 +68,8 @@ export function BubbleToolbar({
   onChangeText,
   onChangeStroke,
   onChangeFontSize,
+  onApplyToAll,
+  applyToAllLabel = "Apply to all",
 }: BubbleToolbarProps) {
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const currentShape = bubble.shape ?? "speech";
@@ -87,38 +92,51 @@ export function BubbleToolbar({
   const toggle = (m: OpenMenu) =>
     setOpenMenu((curr) => (curr === m ? null : m));
 
+  const halfHeightPct = (bubble.height ?? 0.14) * 50;
+  const placeBelow = bubble.y < 0.3;
+  const verticalShift = placeBelow
+    ? `calc(50% + ${halfHeightPct}% + 1rem)`
+    : `calc(-50% - ${halfHeightPct}% - 5rem)`;
+  const horizontalShift =
+    bubble.x < 0.2
+      ? "-10%"
+      : bubble.x > 0.8
+        ? "-90%"
+        : "-50%";
+
   return (
     <div
       style={{
         left: `${bubble.x * 100}%`,
         top: `${bubble.y * 100}%`,
-        transform: `translate(-50%, calc(-50% - ${(bubble.height ?? 0.14) * 50}% - 2.75rem))`,
+        transform: `translate(${horizontalShift}, ${verticalShift})`,
       }}
       className="absolute pointer-events-auto z-30"
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <div className="flex items-center gap-1 bg-zinc-900/95 backdrop-blur-sm border border-white/10 rounded-lg p-1 shadow-xl">
-        {SHAPES.map(({ shape, label, Icon }) => {
-          const active = currentShape === shape;
-          return (
-            <button
-              key={shape}
-              type="button"
-              onClick={() => onChangeShape(bubble.id, shape)}
-              aria-label={`${label} shape`}
-              title={label}
-              className={`p-1.5 rounded-md transition-colors ${
-                active
-                  ? "bg-violet-500 text-white"
-                  : "text-neutral-300 hover:bg-white/10"
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-            </button>
-          );
-        })}
+      <div className="flex flex-col gap-1 bg-zinc-900/95 backdrop-blur-sm border border-white/10 rounded-lg p-1 shadow-xl">
+        <div className="flex items-center justify-center gap-1">
+          {SHAPES.map(({ shape, label, Icon }) => {
+            const active = currentShape === shape;
+            return (
+              <button
+                key={shape}
+                type="button"
+                onClick={() => onChangeShape(bubble.id, shape)}
+                aria-label={`${label} shape`}
+                title={label}
+                className={`p-1.5 rounded-md transition-colors ${
+                  active
+                    ? "bg-violet-500 text-white"
+                    : "text-neutral-300 hover:bg-white/10"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+              </button>
+            );
+          })}
 
-        <div className="w-px h-5 bg-white/10 mx-0.5" />
+          <div className="w-px h-5 bg-white/10 mx-0.5" />
 
         <div className="relative">
           <button
@@ -180,7 +198,9 @@ export function BubbleToolbar({
             <Plus className="w-3 h-3" />
           </button>
         </div>
+        </div>
 
+        <div className="flex items-center justify-center gap-1">
         <div className="relative">
           <button
             type="button"
@@ -339,6 +359,19 @@ export function BubbleToolbar({
 
         <div className="w-px h-5 bg-white/10 mx-0.5" />
 
+        {onApplyToAll && (
+          <button
+            type="button"
+            onClick={() => onApplyToAll(bubble.id)}
+            aria-label={applyToAllLabel}
+            title={applyToAllLabel}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-violet-500/15 text-violet-200 hover:bg-violet-500/30 hover:text-white text-[11px] font-semibold whitespace-nowrap"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            {applyToAllLabel}
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => onDelete(bubble.id)}
@@ -348,6 +381,7 @@ export function BubbleToolbar({
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
+        </div>
       </div>
     </div>
   );

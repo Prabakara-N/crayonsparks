@@ -362,6 +362,7 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
             pages={pages.map((p) => ({
               imageUrl: p.image.medium.url,
               label: `${p.name} · Page ${p.index + 1}`,
+              bubbles: !p.bubblesFlattened ? p.bubbles : undefined,
             }))}
             alternateBlankPages={!isStory}
             fullBleedInterior={isStory}

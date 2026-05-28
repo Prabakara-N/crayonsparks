@@ -9,8 +9,10 @@ import { AGE_LABELS } from "../book-studio-constants";
 import { isAbortError } from "../book-studio-helpers";
 import {
   isCreditsError,
+  precheckCredits,
   showCreditsExhaustedDialog,
 } from "../credits-error";
+import { creditCost, type BookKind } from "@/lib/credits/costs";
 import { generateCover as runGenerateCover } from "@/lib/functions/client/generate-cover";
 import { generateBackCover as runGenerateBackCover } from "@/lib/functions/client/generate-back-cover";
 import { generateBelongsToPage as runGenerateBelongsTo } from "@/lib/functions/client/generate-belongs-to-page";
@@ -85,6 +87,16 @@ export function useCoverGeneration({
   const generateCover = useCallback(async () => {
     if (!plan) return;
     setCover({ status: "generating" });
+    const kind: BookKind = mode === "story" ? "story" : "coloring";
+    const ok = await precheckCredits(
+      creditCost(kind, "cover"),
+      dialog,
+      router,
+    );
+    if (!ok) {
+      setCover({ status: "pending" });
+      return;
+    }
     try {
       const result = await runGenerateCover({
         plan,
@@ -140,6 +152,16 @@ export function useCoverGeneration({
       return;
     }
     setBackCover({ status: "generating" });
+    const kind: BookKind = mode === "story" ? "story" : "coloring";
+    const ok = await precheckCredits(
+      creditCost(kind, "cover"),
+      dialog,
+      router,
+    );
+    if (!ok) {
+      setBackCover({ status: "pending" });
+      return;
+    }
     try {
       const result = await runGenerateBackCover({
         plan,
@@ -183,6 +205,16 @@ export function useCoverGeneration({
   const generateBelongsToPage = useCallback(async () => {
     if (!plan) return;
     setBelongsTo({ status: "generating" });
+    const kind: BookKind = mode === "story" ? "story" : "coloring";
+    const ok = await precheckCredits(
+      creditCost(kind, "page"),
+      dialog,
+      router,
+    );
+    if (!ok) {
+      setBelongsTo({ status: "pending" });
+      return;
+    }
     try {
       const characterSubjects = itemsRef.current
         .slice(0, 3)
@@ -216,6 +248,7 @@ export function useCoverGeneration({
     }
   }, [
     plan,
+    mode,
     itemsRef,
     belongsToStyle,
     qualityCheck,
@@ -230,6 +263,16 @@ export function useCoverGeneration({
   const generateTheEndPage = useCallback(async () => {
     if (!plan) return;
     setTheEndPage({ status: "generating" });
+    const kind: BookKind = mode === "story" ? "story" : "coloring";
+    const ok = await precheckCredits(
+      creditCost(kind, "page"),
+      dialog,
+      router,
+    );
+    if (!ok) {
+      setTheEndPage({ status: "pending" });
+      return;
+    }
     try {
       const result = await runGenerateTheEnd({
         plan,
@@ -256,6 +299,7 @@ export function useCoverGeneration({
     }
   }, [
     plan,
+    mode,
     qualityCheck,
     cover.dataUrl,
     interiorModel,

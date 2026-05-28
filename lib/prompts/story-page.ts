@@ -1,4 +1,5 @@
 import {
+  ACTION_POSE_LIMB_CHECK,
   ANATOMY_GUARDRAIL,
   ANATOMY_COUNT_RULE,
   ANTHRO_FACE_GUARDRAIL,
@@ -94,15 +95,6 @@ const RELATIVE_SCALE_RULE =
 const CHARACTER_FIDELITY_RULE =
   "Character fidelity (load-bearing): redraw each character so they match the locked descriptors above EXACTLY — same species, body proportions, head shape, color, accessories, and distinguishing features. Do not invent new clothing, new accessories, new species traits, or new colors. Each character appears at most ONCE per page; never duplicate the same character ANYWHERE in the frame — foreground, midground, far background, inside a window view, inside a mirror, on a poster, on a wall sticker, in a picture frame in the room. If the locked cast has ONE rabbit, the entire frame has ONE rabbit total, no second rabbit hopping past the window, no rabbit on a TV screen, no rabbit stuffed toy on a shelf. Only characters explicitly named in this page's scene description are drawn — no extra animals, no random side characters, no human onlookers unless the scene explicitly names them. Background scenery is just scenery: trees, hills, buildings, sky — no anonymous creatures populating it.";
 
-// The MOST COMMON anatomy bug in story-book pages is an extra ARM
-// appearing when a character interacts with an object — stacking blocks,
-// pointing at something, holding a toy while waving. The model sometimes
-// renders one arm to support the action AND a second arm at rest AND
-// then re-uses one of those arms with a different pose, ending up with
-// three arms total. This rule explicitly catches that.
-const ACTION_POSE_LIMB_CHECK =
-  "Action-pose limb check — STRICT, applies whenever a character is interacting with an object OR a piece of fabric / cloth / blanket / sheet / curtain / scarf / clothing flap. Universal counts: a bipedal humanoid character has EXACTLY 2 arms and 2 hands TOTAL — never 3 arms, never 4 hands, never an extra paw or hand poking out from behind the body, behind the head, beside the cheek, beside the chin, under a blanket, or anywhere else. Before drawing, mentally inventory the character's visible limbs: 'left arm = doing X, right arm = doing Y, NO third arm exists, NO third hand exists'. If the pose seems to need more than two hands, PICK ONE action that uses both hands TOGETHER, or split it: one hand on one element, one hand on another, the rest of the body relaxed — never invent a third hand. Common bugs to actively avoid: (a) a yawning character who has one hand at the mouth AND two hands holding the blanket = three hands; allowed pose is one hand at mouth + one hand on blanket OR both hands on blanket with mouth open and no hand near it. (b) a sleeping/lying character with arms shown above the blanket AND a third hand visible from under the blanket = three hands; allowed pose is two arms total whether above or below the blanket. (c) a character pointing at something while holding an object with two hands = three hands; allowed pose picks one. Body parts behind the character (a tail tip, a leg, a haunch, a fold of fabric, a pillow corner, an ear) MUST NOT be shaped or shaded so they look like an extra limb. A single object held in two hands shows the SAME object touched by both hands, not duplicated. After sketching the pose mentally, recount: 'arms = 2, hands = 2, fingers per hand = 5'. If any of those numbers are wrong, restart the pose.";
-
 const ACCESSORY_LOCK_RULE =
   "Accessory lock — when a character's locked descriptor names an accessory (a watch, a bow, a hat, a backpack, a scarf, a medal), render EXACTLY ONE of that accessory in the EXACT placement the descriptor specifies. Never duplicate accessories (no two watches, no two scarves), never add a new accessory not in the descriptor, never omit a named accessory. If the descriptor says 'wears a red bow tie at the neck', the bow tie sits at the neck on every page. If the descriptor doesn't mention an accessory, do not invent one for that character.";
 
@@ -135,10 +127,15 @@ export type BubbleMode = "model-drawn" | "svg-overlay";
 // Stable system rules for a specific age band + bubble mode — pass through
 // Gemini's `systemInstruction` channel so the long prefix benefits from
 // implicit context caching across every page in the same book run. The
-// returned string is stable per (band, bubbleMode) tuple.
+// Per-book stable: same (band, bubbleMode, characters, palette) → same
+// system string → Gemini implicit cache hit on every subsequent page in
+// the run. Pass characters + palette so they live in the cached prefix
+// instead of being re-billed on every page's user message.
 export function buildStoryPageSystem(
   band: AgeBand = "toddlers",
   bubbleMode: BubbleMode = "svg-overlay",
+  characters?: StoryCharacter[],
+  palette?: StoryPalette,
 ): string {
   const range = AGE_BAND_RANGE[band];
   const label = AGE_BAND_LABEL_SINGULAR[band];
@@ -146,6 +143,13 @@ export function buildStoryPageSystem(
     bubbleMode === "svg-overlay"
       ? [NO_TEXT_AT_ALL_RULE]
       : [SPEECH_BUBBLE_RULE, SPEECH_BUBBLE_OWNERSHIP_RULE, NO_TEXT_OUTSIDE_BUBBLES_RULE];
+  const lockParts: string[] = [];
+  if (characters && characters.length > 0) {
+    lockParts.push(formatCharacterLock(characters));
+  }
+  if (palette) {
+    lockParts.push(formatPalette(palette));
+  }
   return [
     `You generate single-page full-color illustrations for premium Amazon KDP children's picture books in the ${label} band (ages ${range}). Every page must be print-ready 300 DPI quality with consistent character design across the whole book.`,
     AGE_BAND_PAGE_NOTE[band],
@@ -175,6 +179,7 @@ export function buildStoryPageSystem(
     ANATOMY_COUNT_RULE,
     ACTION_POSE_LIMB_CHECK,
     NO_HAND_DRAWN_CLAIM_RULE,
+    ...lockParts,
     "Output: a single coherent full-color full-bleed picture-book page.",
   ].join(" ");
 }
@@ -186,7 +191,21 @@ function formatCharacterLock(characters: StoryCharacter[]): string {
   const lines = characters
     .map((c) => `${c.name.trim()}: ${c.descriptor.trim()}`)
     .join(" / ");
-  return `Locked characters for this book (each character that appears on this page MUST match these descriptors EXACTLY): ${lines}.`;
+  const names = characters.map((c) => c.name.trim()).join(", ");
+  const inventoryRows = characters
+    .map(
+      (c) =>
+        `${c.name.trim()} = MAX 1 instance (count the visible bodies that match the descriptor; if more than one body matches, ERASE the extras before submitting)`,
+    )
+    .join("; ");
+  const firstName = characters[0].name.trim();
+  return [
+    `Locked characters for this book (each character that appears on this page MUST match these descriptors EXACTLY): ${lines}.`,
+    `CAST EXCLUSIVITY — the ONLY characters allowed on this page are from this list: ${names}. Render only the subset of these characters that this page's scene description names; never invent extras.`,
+    `ZERO unnamed creatures, ZERO duplicate copies of the same locked character (one ${firstName} per page, not two — even in window views, mirrors, posters, picture frames, distant background, wall art, reflections, snow globes, photographs, paintings, magazine covers, stuffed toys, dolls, costumes, statues, signposts, or any prop with a creature on it), ZERO species swaps (do not turn an elephant into a different animal just because the page is set elsewhere).`,
+    `PAGE CAST INVENTORY (mandatory count BEFORE submitting): ${inventoryRows}. ZERO instances of any creature whose name is not in the above list. Trace each silhouette in your finished rendering and tally: if the tally exceeds the MAX for any locked character, or if ANY unnamed creature appears, remove the extras before submitting.`,
+    `Common duplicate-character bugs to actively guard against: (a) the cover reference shows the cast as a group portrait → on a new page you accidentally render a second instance of the protagonist further back in the scene; only ONE protagonist body exists. (b) the previous-page chain reference shows the same characters → you accidentally include a small "memory" or "echo" of them off to the side; only the bodies in THIS page's scene are rendered. (c) a window, mirror, frame, or picture inside the scene → that decorative surface MUST NOT depict a locked character at all; if a frame appears, leave it empty or fill with abstract pattern. (d) the protagonist and another character are facing each other → render exactly one of each, not two of the protagonist arguing with themselves.`,
+  ].join(" ");
 }
 
 function formatPalette(palette: StoryPalette): string {
@@ -252,8 +271,6 @@ export function buildStoryPageUser(opts: StoryPageTemplateOptions): string {
   const parts: string[] = [
     `${label.charAt(0).toUpperCase() + label.slice(1)} picture-book page (ages ${range}).`,
     pageStyleDirective(opts.coverStyle),
-    formatCharacterLock(opts.characters),
-    formatPalette(opts.palette),
   ];
   const locationLine = formatLocation(
     opts.locationId,

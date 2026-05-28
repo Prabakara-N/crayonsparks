@@ -11,6 +11,7 @@ import {
 import { RegenerateCardButton } from "@/components/playground/regenerate-card-button";
 import { BubbleEditorModal } from "./bubble-editor/bubble-editor-modal";
 import { BubblePreviewOverlay } from "./bubble-editor/bubble-preview-overlay";
+import type { BubbleStyleSnapshot } from "@/lib/bubble-style";
 import { EditBubblesButton } from "./bubble-editor/edit-bubbles-button";
 import { PageCover } from "./page-cover";
 import { PageDownloadButton } from "./page-download-button";
@@ -65,6 +66,8 @@ export interface CarouselProps {
   onSetBackCover: (dataUrl: string) => void;
   onSetItem: (id: string, dataUrl: string) => void;
   onUpdateBubbles?: (id: string, bubbles: StoryBubble[]) => void;
+  onStartGeneration?: () => void;
+  onApplyBubbleStyleToBook?: (style: BubbleStyleSnapshot) => void;
   bookTitle?: string;
   coverScene?: string;
   characterLockBlock?: string;
@@ -91,6 +94,8 @@ export function Carousel({
   onSetBackCover,
   onSetItem,
   onUpdateBubbles,
+  onApplyBubbleStyleToBook,
+  onStartGeneration,
   bookTitle,
   coverScene,
   characterLockBlock,
@@ -263,10 +268,18 @@ export function Carousel({
           return;
         } else {
           if (isStory) {
+            const noneStartedYet = items.every(
+              (page) => page.status === "pending" || page.status === "queued",
+            );
+            const isFirstInterior = i === 0;
+            if (noneStartedYet && isFirstInterior && onStartGeneration) {
+              onStartGeneration();
+              return;
+            }
             void dialog.alert({
               title: "Story pages generate in order",
               message:
-                "Each story page references the previous one so characters stay consistent across the book. Use the main Generate / Resume button to render this page — single-page regeneration would break the chain.",
+                "Each story page references the previous one so characters stay consistent across the book. Click the first interior page (or the main Generate / Resume button) to start the chain.",
               variant: "info",
               okText: "Got it",
             });
@@ -292,6 +305,7 @@ export function Carousel({
     onOpenRefine,
     onSetItem,
     onUpdateBubbles,
+    onStartGeneration,
     refineStatus,
     isStory,
     dialog,
@@ -468,6 +482,7 @@ export function Carousel({
             imageSrc={editingBubblesItem.dataUrl}
             bubbles={editingBubblesItem.bubbles}
             onChange={(next) => onUpdateBubbles(editingBubblesItem.id, next)}
+            onApplyStyleToBook={onApplyBubbleStyleToBook}
           />
         )}
     </div>

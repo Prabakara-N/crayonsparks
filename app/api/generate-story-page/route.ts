@@ -37,6 +37,7 @@ interface Body {
   coverStyle?: "flat" | "illustrated";
   coverReferenceDataUrl?: string;
   chainReferenceDataUrl?: string;
+  forwardReferenceDataUrl?: string;
   locationId?: string;
   locationDescriptor?: string;
   previousLocationId?: string;
@@ -252,9 +253,25 @@ export async function POST(req: Request) {
       hasChain = true;
     }
   }
+  if (
+    body.forwardReferenceDataUrl &&
+    body.forwardReferenceDataUrl !== body.coverReferenceDataUrl &&
+    body.forwardReferenceDataUrl !== body.chainReferenceDataUrl
+  ) {
+    const parsed = parseDataUrl(body.forwardReferenceDataUrl);
+    if (parsed) {
+      extraImages.push(parsed);
+      hasChain = true;
+    }
+  }
 
   const bubbleMode = "svg-overlay" as const;
-  const systemInstruction = buildStoryPageSystem(band, bubbleMode);
+  const systemInstruction = buildStoryPageSystem(
+    band,
+    bubbleMode,
+    characters,
+    palette,
+  );
   const userText = buildStoryPageUser({
     ageBand: band,
     characters,

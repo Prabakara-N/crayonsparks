@@ -7,8 +7,11 @@ import {
   ChevronDown,
   ClipboardList,
   Lightbulb,
+  Loader2,
+  Wand2,
   XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ReferenceImageField } from "@/components/ui/reference-image-field";
@@ -93,8 +96,45 @@ export function IdeaForm({
 }) {
   const [showIdeas, setShowIdeas] = useState(false);
   const [showHelper, setShowHelper] = useState(false);
+  const [improving, setImproving] = useState(false);
   const isStory = bookKind === "story";
   const ideasPanelRef = useRef<HTMLDivElement>(null);
+
+  const handleImprove = async () => {
+    if (improving || idea.trim().length < 5) return;
+    setImproving(true);
+    try {
+      const endpoint = isStory
+        ? "/api/improve-story-idea"
+        : "/api/improve-coloring-idea";
+      const payload: Record<string, unknown> = { idea, ageBand: age, pageCount };
+      if (isStory) {
+        if (storyType) payload.storyType = storyType;
+        if (dialogueStyle) payload.dialogueStyle = dialogueStyle;
+        if (storyCharacterNames)
+          payload.characterNames = storyCharacterNames;
+      } else {
+        if (detailLevel) payload.detailLevel = detailLevel;
+      }
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = (await res.json()) as { idea?: string; error?: string };
+      if (!res.ok || !json.idea) {
+        throw new Error(json.error || `Improve failed (${res.status})`);
+      }
+      setIdea(json.idea);
+      toast.success("Polished — your idea is now richer.");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Couldn't improve the idea.";
+      toast.error(message);
+    } finally {
+      setImproving(false);
+    }
+  };
 
   // When the user toggles ideas on, scroll the panel into view. Use
   // `nearest` so the browser only scrolls the minimum needed — bringing
@@ -381,18 +421,36 @@ export function IdeaForm({
             {showIdeas ? "Hide ideas" : "Show me ideas"}
           </button>
         </div>
-        <textarea
-          value={idea}
-          onChange={(e) => setIdea(e.target.value)}
-          placeholder={
-            isStory
-              ? "e.g. The Tortoise and the Hare for ages 3-6, or a story I made up about a tiny dragon learning to fly. 8-12 scenes."
-              : "e.g. A coloring book for ages 3-6 about space adventures — astronauts, rockets, planets, friendly aliens. 20 unique pages."
-          }
-          rows={5}
-          className="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/10 text-white text-sm placeholder:text-neutral-500 focus:outline-none focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20 resize-y min-h-[120px]"
-          disabled={planning}
-        />
+        <div className="relative">
+          <textarea
+            value={idea}
+            onChange={(e) => setIdea(e.target.value)}
+            placeholder={
+              isStory
+                ? "e.g. The Tortoise and the Hare for ages 3-6, or a story I made up about a tiny dragon learning to fly. 8-12 scenes."
+                : "e.g. A coloring book for ages 3-6 about space adventures — astronauts, rockets, planets, friendly aliens. 20 unique pages."
+            }
+            rows={5}
+            className="w-full px-4 py-3 pb-12 rounded-xl bg-black/50 border border-white/10 text-white text-sm placeholder:text-neutral-500 focus:outline-none focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20 resize-y min-h-[120px]"
+            disabled={planning || improving}
+          />
+          <button
+            type="button"
+            onClick={handleImprove}
+            disabled={
+              planning || improving || idea.trim().length < 5
+            }
+            title="Polish my idea — AI rewrites it into a richer brief"
+            className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/90 hover:bg-violet-500 text-white text-xs font-semibold shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {improving ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Wand2 className="w-3.5 h-3.5" />
+            )}
+            {improving ? "Polishing…" : "Polish my idea"}
+          </button>
+        </div>
         {showIdeas && (
           <div ref={ideasPanelRef} className="mt-3 scroll-mt-4">
             <IdeaSuggestionsPanel

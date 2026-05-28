@@ -1,5 +1,6 @@
 import type { ModelMessage } from "ai";
 import type { QualityScore } from "@/components/playground/types";
+import type { StoryBubble } from "@/components/playground/book-studio/types";
 import type { PageMeta, PageStatus } from "@/lib/refine-chat";
 import type { ImageModel } from "@/lib/constants";
 
@@ -81,6 +82,7 @@ export interface ImageRefineModalProps {
     explicitTargetId?: string,
   ) => void;
   openNonce?: number;
+  bubbles?: StoryBubble[];
 }
 
 export type SessionEntry = {
