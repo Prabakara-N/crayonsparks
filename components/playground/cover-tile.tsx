@@ -1,5 +1,6 @@
 "use client";
 
+import { type ReactNode } from "react";
 import { CheckCircle2, Eye, Loader2, RefreshCw, Download, MessageSquare, BookPlus, XCircle } from "lucide-react";
 
 export interface CoverTileStatus {
@@ -22,6 +23,7 @@ interface CoverTileProps {
   downloadName?: string;
   aspect?: string;
   refineState?: "running" | "done";
+  extraAction?: ReactNode;
 }
 
 /**
@@ -42,6 +44,7 @@ export function CoverTile({
   downloadName,
   aspect = "3 / 4",
   refineState,
+  extraAction,
 }: CoverTileProps) {
   // Click behaviour priority: refine when not disabled and onRefine is wired,
   // otherwise view-only (opens lightbox) so the user can still see the
@@ -166,6 +169,7 @@ export function CoverTile({
           </a>
         )}
       </div>
+      {extraAction}
       {disabled && disabledReason && !state.dataUrl && (
         <p className="text-[10px] text-violet-300/80 italic leading-snug">
           🔒 {disabledReason}

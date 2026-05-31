@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Plus,
   Lightbulb,
+  LayoutGrid,
 } from "lucide-react";
 import { prefetchBookFlip, BookFlip } from "@/components/playground/book-flip";
 import { ImageRefineModal } from "@/components/generate/image-refine-modal/image-refine-modal-main";
@@ -26,6 +27,13 @@ import { fireConfettiBurst } from "@/components/ui/confetti-burst";
 import { SaveBookButton } from "./save-book-button";
 import { KdpMetadataPanel } from "@/components/playground/kdp-metadata/kdp-metadata-main";
 import { CoverPair } from "@/components/playground/cover-pair";
+import { BackCoverEditorModal } from "./back-cover-grid/editor/back-cover-editor-modal";
+import { composeBackCover } from "./back-cover-grid/compose-grid";
+import {
+  makeDefaultDesign,
+  toSelectableImages,
+  type BackCoverDesign,
+} from "./back-cover-grid/back-cover-grid-types";
 import { ModelPicker } from "@/components/playground/model-picker";
 import {
   PlanReviewButton,
@@ -42,7 +50,6 @@ import { AGE_LABELS } from "./book-studio-constants";
 import { buildRefineBookContext } from "./book-studio-helpers";
 import { IdeaForm } from "./idea-form";
 import { Carousel } from "./carousel";
-import { BookGenerationLoader } from "./book-generation-loader";
 import { useStudioPersistence } from "./hooks/use-studio-persistence";
 import { toast } from "sonner";
 import { FeedbackSurveyModal } from "@/components/feedback/feedback-survey-modal";
@@ -70,6 +77,7 @@ export function BookStudio({
   initialMode,
   onSwitchToChat,
   onReset,
+  onPlanningChange,
 }: {
   initialPlan?: Plan;
   initialAge?: AgeRange;
@@ -77,6 +85,7 @@ export function BookStudio({
   initialMode?: "qa" | "story";
   onSwitchToChat?: (idea: string, mode: "qa" | "story") => void;
   onReset?: () => void;
+  onPlanningChange?: (planning: boolean) => void;
 } = {}) {
   const dialog = useDialog();
   const [phase, setPhase] = useState<Phase>(initialPlan ? "review" : "idea");
@@ -105,6 +114,11 @@ export function BookStudio({
 
   const [qualityCheck] = useState(false);
   const [viewMode, setViewMode] = useState<"carousel" | "book">("carousel");
+  const [gridEditorOpen, setGridEditorOpen] = useState(false);
+  const [backCoverDesign, setBackCoverDesign] = useState<BackCoverDesign | null>(
+    null,
+  );
+  const autoSeededBackCoverRef = useRef(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mq = window.matchMedia("(max-width: 767px)");
@@ -325,15 +339,40 @@ export function BookStudio({
     })();
   }, [allDone, user, feedback, bookPlan.bookKind]);
 
+  useEffect(() => {
+    if (autoSeededBackCoverRef.current) return;
+    if (coverGen.cover.status !== "done") return;
+    if (coverGen.backCover.status === "done") {
+      autoSeededBackCoverRef.current = true;
+      return;
+    }
+    const done = pageGen.items.filter((it) => it.status === "done" && it.dataUrl);
+    if (done.length < 4) return;
+    autoSeededBackCoverRef.current = true;
+    const design = makeDefaultDesign(
+      bookPlan.plan?.backCoverTagline ?? bookPlan.plan?.description ?? "",
+    );
+    design.imageIds = done.slice(0, 4).map((it) => it.id);
+    void composeBackCover({
+      design,
+      imageDataUrls: done.slice(0, 4).map((it) => it.dataUrl as string),
+      aspect: bookPlan.mode === "story" ? "2 / 3" : "3 / 4",
+    })
+      .then((dataUrl) => {
+        setBackCoverDesign(design);
+        coverGen.setBackCover({ status: "done", dataUrl });
+      })
+      .catch(() => {
+        autoSeededBackCoverRef.current = false;
+      });
+  }, [coverGen, pageGen.items, bookPlan.plan, bookPlan.mode]);
+
+  useEffect(() => {
+    onPlanningChange?.(bookPlan.planning);
+  }, [bookPlan.planning, onPlanningChange]);
+
   const inUnconfirmedReview =
     phase === "review" && !planConfirmed && !!bookPlan.plan;
-  if (phase === "planning" && !bookPlan.plan) {
-    return (
-      <div className="py-6 sm:py-12">
-        <BookGenerationLoader mode={bookPlan.bookKind} />
-      </div>
-    );
-  }
   if (phase === "idea" || phase === "planning" || inUnconfirmedReview) {
     return (
       <>
@@ -664,12 +703,25 @@ export function BookStudio({
           }
           frontCover={cover}
           backCover={backCover}
+          backCoverAction={
+            progress.doneCount >= 4 ? (
+              <button
+                type="button"
+                onClick={() => setGridEditorOpen(true)}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white hover:shadow-lg transition-all"
+                title="Design the back cover from your interior pages"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                {backCoverDesign ? "Edit back cover" : "Design back cover"}
+              </button>
+            ) : undefined
+          }
           coverStyle={coverStyle}
           coverBorder={coverBorder}
           onCoverStyleChange={coverGen.setCoverStyle}
           onCoverBorderChange={coverGen.setCoverBorder}
           onRegenerateFront={() => void coverGen.generateCover()}
-          onRegenerateBack={() => void coverGen.generateBackCover()}
+          onRegenerateBack={() => setGridEditorOpen(true)}
           frontLocked={
             phase === "generating" ||
             phase === "paused" ||
@@ -705,26 +757,7 @@ export function BookStudio({
                 }),
             });
           }}
-          onRefineBack={(dataUrl) => {
-            openRefine({
-              context: mode === "story" ? "story-back-cover" : "back-cover",
-              targetId: "back-cover",
-              dataUrl,
-              title: "Back cover",
-              subtitle:
-                mode === "story"
-                  ? "Describe changes. The minimal tagline-only back cover stays minimal — no illustrations added."
-                  : "Describe changes. Gemini edits while preserving the tagline box and barcode safe-zone.",
-              downloadName: "back-cover.png",
-              model: backCover.model ?? coverModel,
-              onRefined: (d) =>
-                coverGen.setBackCover({
-                  status: "done",
-                  dataUrl: d,
-                  model: backCover.model ?? coverModel,
-                }),
-            });
-          }}
+          onRefineBack={() => setGridEditorOpen(true)}
           onViewFront={(dataUrl) => openStoryPreview(dataUrl, "Front cover")}
           onViewBack={(dataUrl) => openStoryPreview(dataUrl, "Back cover")}
           belongsTo={mode === "story" ? undefined : belongsTo}
@@ -993,7 +1026,9 @@ export function BookStudio({
                   onRemove={pageGen.removeItem}
                   onRegenerateItem={pageGen.regeneratePage}
                   onRegenerateCover={coverGen.generateCover}
-                  onRegenerateBackCover={coverGen.generateBackCover}
+                  onRegenerateBackCover={async () => {
+                    setGridEditorOpen(true);
+                  }}
                   onOpenRefine={(kind, payload) => {
                     const sourceModel: ImageModel | undefined =
                       kind === "cover"
@@ -1156,6 +1191,31 @@ export function BookStudio({
           🔒 KDP Metadata generator unlocks once all {items.length} pages are
           generated. Currently {progress.doneCount}/{progress.total} done.
         </div>
+      )}
+
+      {gridEditorOpen && (
+        <BackCoverEditorModal
+          aspect={mode === "story" ? "2 / 3" : "3 / 4"}
+          available={toSelectableImages(items)}
+          frontCoverDataUrl={cover.dataUrl}
+          bookTitle={plan?.coverTitle ?? plan?.title ?? "Coloring book"}
+          coverScene={plan?.coverScene ?? plan?.scene}
+          bookDescription={plan?.description}
+          audience={AGE_LABELS[age]}
+          pageCount={items.length}
+          bookKind={mode === "story" ? "story" : "coloring"}
+          initialDesign={backCoverDesign ?? undefined}
+          onClose={() => setGridEditorOpen(false)}
+          onApply={({ dataUrl, design }) => {
+            setBackCoverDesign(design);
+            coverGen.setBackCover({
+              status: "done",
+              dataUrl,
+              model: backCover.model ?? coverModel,
+            });
+            setGridEditorOpen(false);
+          }}
+        />
       )}
     </div>
   );

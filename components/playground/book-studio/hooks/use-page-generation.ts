@@ -304,6 +304,7 @@ export function usePageGeneration({
 
   const regeneratePage = useCallback(
     async (item: PromptItem, improvementHint?: string) => {
+      if (runningRef.current) return;
       updateItem(item.id, { status: "generating", error: undefined });
       const kind: BookKind = mode === "story" ? "story" : "coloring";
       const ok = await precheckCredits(
@@ -363,19 +364,19 @@ export function usePageGeneration({
     pausedRef.current = false;
     abortRef.current = new AbortController();
     setPhase("generating");
-    const kind: BookKind = mode === "story" ? "story" : "coloring";
-    const ok = await precheckCredits(
-      creditCost(kind, "page"),
-      dialog,
-      router,
-    );
-    if (!ok) {
-      runningRef.current = false;
-      setPhase("review");
-      return;
-    }
 
     try {
+      const kind: BookKind = mode === "story" ? "story" : "coloring";
+      const ok = await precheckCredits(
+        creditCost(kind, "page"),
+        dialog,
+        router,
+      );
+      if (!ok) {
+        setPhase("review");
+        return;
+      }
+
       if (mode !== "story" && characterLockStatus !== "done") {
         void extractCharacterLock().catch(() => { });
       }
@@ -388,14 +389,12 @@ export function usePageGeneration({
         let cursor = 0;
         const workers: Promise<void>[] = [];
         const runNext = async (): Promise<void> => {
-          while (!cancelRef.current) {
-            while (pausedRef.current && !cancelRef.current) {
-              await new Promise((r) => setTimeout(r, 200));
-            }
-            if (cancelRef.current) return;
+          while (!cancelRef.current && !pausedRef.current) {
             const idx = cursor++;
             if (idx >= pending.length) return;
             const item = pending[idx];
+            const live = itemsRef.current.find((it) => it.id === item.id);
+            if (live?.status === "done" && live.dataUrl) continue;
             const globalIdx = itemsRef.current.findIndex(
               (it) => it.id === item.id,
             );
@@ -407,7 +406,13 @@ export function usePageGeneration({
           workers.push(runNext());
         }
         await Promise.all(workers);
-        setPhase(cancelRef.current ? "review" : "done");
+        setPhase(
+          cancelRef.current
+            ? "review"
+            : pausedRef.current
+              ? "paused"
+              : "done",
+        );
         return;
       }
 
@@ -489,8 +494,15 @@ export function usePageGeneration({
     if (abortRef.current?.signal.aborted) {
       abortRef.current = new AbortController();
     }
-    if (!runningRef.current) void startGeneration();
-    else setPhase("generating");
+    setPhase("generating");
+    const tryStart = (attempt: number) => {
+      if (runningRef.current) {
+        if (attempt < 30) setTimeout(() => tryStart(attempt + 1), 100);
+        return;
+      }
+      void startGeneration();
+    };
+    tryStart(0);
   }, [startGeneration, setPhase]);
 
   const cancel = useCallback(() => {

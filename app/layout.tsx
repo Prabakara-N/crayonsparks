@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Space_Grotesk, JetBrains_Mono, Geist } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono, Geist } from "next/font/google";
 import "./globals.css";
 import { buildOrganization, buildWebSite } from "@/lib/seo-schema";
 import { Analytics } from "@vercel/analytics/next";
@@ -11,7 +11,7 @@ import { ReferralSurvey } from "@/components/onboarding/referral-survey";
 import { FeedbackWidget } from "@/components/feedback/feedback-widget";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",

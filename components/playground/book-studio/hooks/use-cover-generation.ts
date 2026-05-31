@@ -14,7 +14,6 @@ import {
 } from "../credits-error";
 import { creditCost, type BookKind } from "@/lib/credits/costs";
 import { generateCover as runGenerateCover } from "@/lib/functions/client/generate-cover";
-import { generateBackCover as runGenerateBackCover } from "@/lib/functions/client/generate-back-cover";
 import { generateBelongsToPage as runGenerateBelongsTo } from "@/lib/functions/client/generate-belongs-to-page";
 import { generateTheEndPage as runGenerateTheEnd } from "@/lib/functions/client/generate-the-end-page";
 import type {
@@ -136,67 +135,6 @@ export function useCoverGeneration({
     itemsRef,
     qualityCheck,
     coverModel,
-    abortRef,
-    dialog,
-    router,
-  ]);
-
-  const generateBackCover = useCallback(async () => {
-    if (!plan) return;
-    if (!cover.dataUrl) {
-      setBackCover({
-        status: "error",
-        error:
-          "Generate the front cover first — back cover matches its style.",
-      });
-      return;
-    }
-    setBackCover({ status: "generating" });
-    const kind: BookKind = mode === "story" ? "story" : "coloring";
-    const ok = await precheckCredits(
-      creditCost(kind, "cover"),
-      dialog,
-      router,
-    );
-    if (!ok) {
-      setBackCover({ status: "pending" });
-      return;
-    }
-    try {
-      const result = await runGenerateBackCover({
-        plan,
-        mode,
-        age,
-        coverStyle,
-        coverBorder,
-        coverDataUrl: cover.dataUrl,
-        qualityCheck,
-        coverModel,
-        signal: abortRef.current?.signal,
-      });
-      setBackCover({ status: "done", ...result });
-    } catch (e) {
-      if (isAbortError(e)) {
-        setBackCover({ status: "pending" });
-        return;
-      }
-      const message = e instanceof Error ? e.message : "Back cover failed";
-      if (isCreditsError(message)) {
-        setBackCover({ status: "pending" });
-        void showCreditsExhaustedDialog(dialog, router);
-        return;
-      }
-      setBackCover({ status: "error", error: message });
-    }
-  }, [
-    plan,
-    mode,
-    cover.dataUrl,
-    coverStyle,
-    coverBorder,
-    qualityCheck,
-    coverModel,
-    age,
     abortRef,
     dialog,
     router,
@@ -330,7 +268,6 @@ export function useCoverGeneration({
     interiorModel,
     setInteriorModel,
     generateCover,
-    generateBackCover,
     generateBelongsToPage,
     theEndPage,
     setTheEndPage,

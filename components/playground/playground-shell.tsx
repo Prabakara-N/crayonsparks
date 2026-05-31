@@ -11,6 +11,7 @@ import type { BookBrief } from "@/lib/book-chat";
 import { createCustomCategory } from "@/lib/custom-categories";
 import { CATEGORIES, type ColoringCategory } from "@/lib/prompts";
 import { useAuthContext } from "@/components/auth/auth-provider";
+import { useDialog } from "@/components/ui/confirm-dialog";
 import {
   savePendingAction,
   consumePendingAction,
@@ -117,7 +118,9 @@ export function PlaygroundShell() {
   // in-progress edits.
   const consumedCategoryRef = useRef(false);
   const consumedChatPlanRef = useRef(false);
+  const bulkPlanningRef = useRef(false);
   const { user } = useAuthContext();
+  const dialog = useDialog();
 
   const activeTab: TabSlug = useMemo(() => {
     const raw = searchParams.get("tab");
@@ -316,7 +319,23 @@ export function PlaygroundShell() {
                   key={t.slug}
                   role="tab"
                   aria-selected={active}
-                  onClick={() => setTab(t.slug)}
+                  onClick={() => {
+                    if (
+                      activeTab === "bulk-book" &&
+                      t.slug !== "bulk-book" &&
+                      bulkPlanningRef.current
+                    ) {
+                      void dialog.alert({
+                        title: "Your book is being planned",
+                        message:
+                          "Sparky is still building your book plan. Please wait for it to finish before switching tabs — switching now would interrupt it.",
+                        variant: "info",
+                        okText: "Got it",
+                      });
+                      return;
+                    }
+                    setTab(t.slug);
+                  }}
                   className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 sm:gap-2.5 px-2 sm:px-5 md:px-7 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold whitespace-nowrap transition-colors ${active
                     ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow-lg shadow-violet-500/30"
                     : "text-neutral-300 hover:text-white"
@@ -399,6 +418,9 @@ export function PlaygroundShell() {
             initialReference={seedReference ?? undefined}
             initialMode={seedMode ?? undefined}
             onSwitchToChat={switchToChat}
+            onPlanningChange={(planning) => {
+              bulkPlanningRef.current = planning;
+            }}
             onReset={() => {
               setSeedPlan(null);
               setSeedReference(null);

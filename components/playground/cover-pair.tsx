@@ -36,6 +36,7 @@ interface CoverPairProps {
   frontLocked?: boolean;
   frontLockedReason?: string;
   rightExtras?: ReactNode;
+  backCoverAction?: ReactNode;
   refineStatus?: Record<string, "running" | "done">;
 }
 
@@ -78,6 +79,7 @@ export function CoverPair({
   frontLocked = false,
   frontLockedReason,
   rightExtras,
+  backCoverAction,
   refineStatus,
 }: CoverPairProps) {
   // Default order: FRONT cover on LEFT, BACK cover on RIGHT.
@@ -119,6 +121,7 @@ export function CoverPair({
       downloadName={`back_cover_${bookSlug}.png`}
       aspect={coverAspect}
       refineState={refineStatus?.["back-cover"]}
+      extraAction={backCoverAction}
     />
   );
 
