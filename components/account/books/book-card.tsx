@@ -1,19 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Sparkles, Palette } from "lucide-react";
+import { BookOpen, Sparkles, Palette, PencilRuler } from "lucide-react";
+
+export type SavedBookKind = "coloring" | "story" | "activity";
 
 export interface SavedBookSummary {
   bookId: string;
   title: string;
   coverTitle: string;
-  mode: "qa" | "story";
-  kind: "coloring" | "story";
+  mode: "qa" | "story" | "activity";
+  kind: SavedBookKind;
   age: string;
   pageCount: number;
   coverThumbUrl: string | null;
   createdAt: number | null;
 }
+
+const KIND_BADGE: Record<SavedBookKind, { label: string; classes: string }> = {
+  story: {
+    label: "Story",
+    classes: "bg-violet-500/20 border border-violet-500/40 text-violet-100",
+  },
+  activity: {
+    label: "Activity",
+    classes: "bg-amber-500/20 border border-amber-500/40 text-amber-100",
+  },
+  coloring: {
+    label: "Coloring",
+    classes: "bg-cyan-500/20 border border-cyan-500/40 text-cyan-100",
+  },
+};
 
 function fmtDate(ms: number | null): string {
   if (!ms) return "";
@@ -25,7 +42,7 @@ function fmtDate(ms: number | null): string {
 }
 
 export function BookCard({ book }: { book: SavedBookSummary }) {
-  const isStory = book.kind === "story";
+  const badge = KIND_BADGE[book.kind] ?? KIND_BADGE.coloring;
   return (
     <Link
       href={`/account/books/${book.bookId}`}
@@ -47,18 +64,16 @@ export function BookCard({ book }: { book: SavedBookSummary }) {
       </div>
       <div className="p-3">
         <span
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${
-            isStory
-              ? "bg-violet-500/20 border border-violet-500/40 text-violet-100"
-              : "bg-cyan-500/20 border border-cyan-500/40 text-cyan-100"
-          }`}
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${badge.classes}`}
         >
-          {isStory ? (
+          {book.kind === "story" ? (
             <Sparkles className="w-3 h-3" />
+          ) : book.kind === "activity" ? (
+            <PencilRuler className="w-3 h-3" />
           ) : (
             <Palette className="w-3 h-3" />
           )}
-          {isStory ? "Story" : "Coloring"}
+          {badge.label}
         </span>
         <p className="text-sm font-semibold text-white truncate group-hover:text-violet-200">
           {book.coverTitle || book.title}

@@ -6,6 +6,7 @@ import type { Plan, QualityScore } from "@/components/playground/book-studio/typ
 export interface GenerateCoverArgs {
   plan: Plan;
   mode: "qa" | "story";
+  bookKind?: "coloring" | "story" | "activity";
   age: "toddlers" | "kids" | "tweens";
   ageLabel: string;
   coverStyle: "flat" | "illustrated";
@@ -67,6 +68,7 @@ export async function generateCover(args: GenerateCoverArgs): Promise<CoverResul
     signal: args.signal,
     body: JSON.stringify({
       mode: "cover",
+      bookKind: args.bookKind,
       coverTitle: args.plan.coverTitle,
       coverScene: args.plan.coverScene,
       coverStyle: args.coverStyle,

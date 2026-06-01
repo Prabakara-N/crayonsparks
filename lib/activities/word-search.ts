@@ -101,17 +101,17 @@ export function generateWordSearch(spec: ActivitySpec): ActivityResult {
       );
   const gridBox = `<rect x="${ox}" y="${oy}" width="${gridW}" height="${gridW}" fill="none" stroke="#bbb" stroke-width="1.5"/>`;
 
+  const visibleWords = words.filter((w) => placedWords.has(w));
   const listTop = oy + gridW + 50;
-  const cols = words.length > 8 ? 3 : 2;
+  const cols = visibleWords.length > 8 ? 3 : 2;
   const colW = contentW / cols;
-  const listItems = words
+  const listItems = visibleWords
     .map((w, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
       const x = PAGE.margin + col * colW + 16;
       const y = listTop + row * 34;
-      const mark = placedWords.has(w) ? "" : ' opacity="0.4"';
-      return `<text x="${x}" y="${y}" font-family="${SANS}" font-size="22" fill="#222"${mark}>• ${escapeXml(w)}</text>`;
+      return `<text x="${x}" y="${y}" font-family="${SANS}" font-size="22" fill="#222">• ${escapeXml(w)}</text>`;
     })
     .join("");
 

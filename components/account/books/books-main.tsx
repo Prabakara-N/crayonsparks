@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "../page-header";
 import { BookCard, type SavedBookSummary } from "./book-card";
 
-type KindFilter = "all" | "coloring" | "story";
+type KindFilter = "all" | "coloring" | "story" | "activity";
 
 export function BooksMain() {
   const { list } = useBooks();
@@ -56,7 +56,7 @@ export function BooksMain() {
             />
           </div>
           <div className="inline-flex p-1 rounded-full bg-zinc-900/60 border border-white/10">
-            {(["all", "coloring", "story"] as const).map((k) => (
+            {(["all", "coloring", "story", "activity"] as const).map((k) => (
               <button
                 key={k}
                 type="button"

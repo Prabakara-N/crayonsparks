@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useDialog } from "@/components/ui/confirm-dialog";
 import { downloadBookZip } from "@/lib/functions/client/download-book-zip";
 import { downloadColoringBook } from "@/lib/functions/client/download-coloring-book";
+import { downloadActivityBook } from "@/lib/functions/client/download-activity-book";
 import { downloadStoryBook } from "@/lib/functions/client/download-story-book";
 import type { Plan, PromptItem } from "../types";
 
@@ -21,6 +22,7 @@ interface UseBookDownloadArgs {
   belongsToStyle: "bw" | "color";
   theEndPage?: CoverSlice;
   mode: "qa" | "story";
+  bookKind?: "coloring" | "story" | "activity";
 }
 
 export function useBookDownload({
@@ -32,6 +34,7 @@ export function useBookDownload({
   belongsToStyle,
   theEndPage,
   mode,
+  bookKind,
 }: UseBookDownloadArgs) {
   const dialog = useDialog();
   const [pdfBuilding, setPdfBuilding] = useState(false);
@@ -56,7 +59,17 @@ export function useBookDownload({
   const downloadPdf = useCallback(async () => {
     setPdfBuilding(true);
     try {
-      if (mode === "story") {
+      if (bookKind === "activity") {
+        await downloadActivityBook({
+          plan,
+          items,
+          cover,
+          backCover,
+          belongsTo,
+          belongsToStyle,
+          includeAnswerKey: true,
+        });
+      } else if (mode === "story") {
         await downloadStoryBook({
           plan,
           items,
@@ -92,6 +105,7 @@ export function useBookDownload({
     theEndPage,
     plan,
     mode,
+    bookKind,
     dialog,
   ]);
 

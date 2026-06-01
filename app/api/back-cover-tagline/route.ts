@@ -13,6 +13,7 @@ import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { OPENAI_TEXT_MODEL } from "@/lib/constants";
 import {
+  ACTIVITY_BACK_COVER_TAGLINE_SYSTEM_PROMPT,
   BACK_COVER_TAGLINE_SYSTEM_PROMPT,
   STORY_BACK_COVER_TAGLINE_SYSTEM_PROMPT,
 } from "@/lib/prompts/back-cover-tagline";
@@ -27,7 +28,7 @@ interface Body {
   pageSubjects?: string[];
   pageCount?: number;
   variantSeed?: number;
-  bookKind?: "coloring" | "story";
+  bookKind?: "coloring" | "story" | "activity";
 }
 
 
@@ -56,11 +57,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const bookKind: "coloring" | "story" =
-    body.bookKind === "story" ? "story" : "coloring";
+  const bookKind: "coloring" | "story" | "activity" =
+    body.bookKind === "story" ? "story" : body.bookKind === "activity" ? "activity" : "coloring";
   const title =
     (body.bookTitle ?? "").trim() ||
-    (bookKind === "story" ? "a kids' picture book" : "a kids' coloring book");
+    (bookKind === "story"
+      ? "a kids' picture book"
+      : bookKind === "activity"
+        ? "a kids' activity book"
+        : "a kids' coloring book");
   const scene = (body.coverScene ?? "").trim();
   const audience = (body.audience ?? "").trim();
   const subjects = (body.pageSubjects ?? [])
@@ -91,7 +96,9 @@ export async function POST(req: Request) {
       system:
         bookKind === "story"
           ? STORY_BACK_COVER_TAGLINE_SYSTEM_PROMPT
-          : BACK_COVER_TAGLINE_SYSTEM_PROMPT,
+          : bookKind === "activity"
+            ? ACTIVITY_BACK_COVER_TAGLINE_SYSTEM_PROMPT
+            : BACK_COVER_TAGLINE_SYSTEM_PROMPT,
       schema: SCHEMA,
       prompt: userPrompt,
     });

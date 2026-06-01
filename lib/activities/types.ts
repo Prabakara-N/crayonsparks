@@ -68,6 +68,7 @@ export interface ActivityParams {
   lineStyle?: "straight" | "zigzag" | "curved";
   pairs?: { left: string; right: string }[];
   counts?: number[];
+  icon?: string;
 }
 
 // What the planner produces per page; what the generator consumes.

@@ -1,6 +1,6 @@
 import type { ActivityResult, ActivitySpec } from "./types";
 import { makeRng, specSeed } from "./rng";
-import { PAGE, svgDocument, titleBlock } from "./page";
+import { PAGE, SANS, svgDocument, titleBlock } from "./page";
 
 interface Cell {
   top: boolean;
@@ -115,8 +115,8 @@ export function generateMaze(spec: ActivitySpec): ActivityResult {
   const oy = PAGE.bodyTop + (PAGE.h - PAGE.bodyTop - PAGE.margin - gridH) / 2;
 
   const walls = renderWalls(cells, cols, rows, ox, oy, cs);
-  const start = `<text x="${ox}" y="${oy - 10}" font-family="sans-serif" font-size="22" fill="#111">Start</text>`;
-  const finish = `<text x="${ox + gridW}" y="${oy + gridH + 28}" text-anchor="end" font-family="sans-serif" font-size="22" fill="#111">End</text>`;
+  const start = `<text x="${ox}" y="${oy - 10}" font-family="${SANS}" font-size="22" font-weight="700" fill="#111">Start</text>`;
+  const finish = `<text x="${ox + gridW}" y="${oy + gridH + 28}" text-anchor="end" font-family="${SANS}" font-size="22" font-weight="700" fill="#111">End</text>`;
   const body = titleBlock(spec.title || "Maze", "Find your way from Start to End.") + walls + start + finish;
 
   const pathPts = path

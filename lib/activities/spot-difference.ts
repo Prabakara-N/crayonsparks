@@ -1,6 +1,6 @@
 import type { ActivityResult, ActivitySpec } from "./types";
 import { makeRng, specSeed } from "./rng";
-import { PAGE, svgDocument, titleBlock } from "./page";
+import { PAGE, SANS, svgDocument, titleBlock } from "./page";
 
 const DIFF_COUNT: Record<string, number> = { easy: 4, medium: 5, hard: 6 };
 
@@ -35,8 +35,8 @@ export function generateSpotDifference(spec: ActivitySpec, assetDataUrl?: string
       ? `<image href="${assetDataUrl}" x="${imgX}" y="${y}" width="${imgW}" height="${imgH}" preserveAspectRatio="xMidYMid slice"/>`
       : `<rect x="${imgX}" y="${y}" width="${imgW}" height="${imgH}" fill="#f4f4f5"/>`;
   const frame = (y: number) => `<rect x="${imgX}" y="${y}" width="${imgW}" height="${imgH}" fill="none" stroke="#111" stroke-width="2"/>`;
-  const labelLeft = `<text x="${imgX + 8}" y="${topY - 8}" font-family="sans-serif" font-size="18" fill="#111">Picture 1</text>`;
-  const labelRight = `<text x="${imgX + 8}" y="${bottomY - 8}" font-family="sans-serif" font-size="18" fill="#111">Picture 2 — find ${count}</text>`;
+  const labelLeft = `<text x="${imgX + 8}" y="${topY - 8}" font-family="${SANS}" font-size="18" font-weight="700" fill="#111">Picture 1</text>`;
+  const labelRight = `<text x="${imgX + 8}" y="${bottomY - 8}" font-family="${SANS}" font-size="18" font-weight="700" fill="#111">Picture 2 — find ${count}</text>`;
 
   const pad = 40;
   const positions: [number, number][] = [];

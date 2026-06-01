@@ -1,13 +1,16 @@
 import type { ActivityResult, ActivitySpec } from "./types";
 import { makeRng, specSeed } from "./rng";
+import { iconSvg } from "./icons";
 import { escapeXml, PAGE, SANS, svgDocument, titleBlock } from "./page";
 
+// `left` is the word the child reads; `right` is an icon name from the icon
+// library, drawn as a picture so pre-readers can match word -> image.
 const DEFAULT_PAIRS = [
-  { left: "1", right: "one" },
-  { left: "2", right: "two" },
-  { left: "3", right: "three" },
-  { left: "4", right: "four" },
-  { left: "5", right: "five" },
+  { left: "STAR", right: "star" },
+  { left: "SUN", right: "sun" },
+  { left: "FISH", right: "fish" },
+  { left: "TREE", right: "tree" },
+  { left: "HOUSE", right: "house" },
 ];
 
 export function generateMatching(spec: ActivitySpec): ActivityResult {
@@ -32,11 +35,13 @@ export function generateMatching(spec: ActivitySpec): ActivityResult {
       `<circle cx="${leftDotX}" cy="${y}" r="6" fill="#111"/>`,
     );
   });
+  const iconSize = Math.min(72, rowGap * 0.62);
+  const iconCx = (rightDotX + rightX) / 2 + 10;
   rightOrder.forEach((pi, j) => {
     const y = rowY(j);
     items.push(
       `<circle cx="${rightDotX}" cy="${y}" r="6" fill="#111"/>`,
-      `<text x="${rightX}" y="${y + 8}" text-anchor="end" font-family="${SANS}" font-size="30" fill="#111">${escapeXml(pairs[pi].right)}</text>`,
+      iconSvg(pairs[pi].right, iconCx, y, iconSize, 3),
     );
   });
 

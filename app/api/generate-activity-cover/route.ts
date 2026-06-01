@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const charge = await preauthorizeCharge(req, { kind: "coloring", op: "cover" });
+  const charge = await preauthorizeCharge(req, { kind: "activity", op: "cover" });
   if (!charge.ok) return charge.response;
 
   try {

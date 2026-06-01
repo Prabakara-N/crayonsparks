@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Eye, EyeOff, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Eye, EyeOff, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDialog } from "@/components/ui/confirm-dialog";
+import { downloadSavedActivityBook } from "@/lib/functions/client/download-saved-activity-book";
 
 interface ImageVariant {
   url: string;
@@ -19,6 +21,9 @@ interface ActivityBook {
   coverTitle: string;
   pageCount: number;
   cover?: ImageVariants;
+  backCover?: ImageVariants;
+  belongsTo?: ImageVariants;
+  belongsToStyle?: "bw" | "color";
 }
 interface ActivitySavedPage {
   id: string;
@@ -36,8 +41,40 @@ interface ActivityBookDetailProps {
 }
 
 export function ActivityBookDetail({ book, pages, onDelete, deleting }: ActivityBookDetailProps) {
+  const dialog = useDialog();
   const [showAnswers, setShowAnswers] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const hasAnswers = pages.some((p) => p.solution?.full?.url);
+  const canDownload = !!book.cover?.full?.url && pages.length > 0;
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      await downloadSavedActivityBook({
+        title: book.title,
+        coverTitle: book.coverTitle,
+        coverUrl: book.cover?.full?.url,
+        backCoverUrl: book.backCover?.full?.url,
+        belongsToUrl: book.belongsTo?.full?.url,
+        belongsToStyle: book.belongsToStyle,
+        pages: pages.map((p) => ({
+          id: p.id,
+          name: p.activity?.type ?? p.name,
+          imageUrl: p.image.full.url,
+          solutionUrl: p.solution?.full?.url,
+        })),
+        includeAnswerKey: true,
+      });
+    } catch (e) {
+      void dialog.alert({
+        title: "Download failed",
+        message: e instanceof Error ? e.message : "Could not build the print package.",
+        variant: "danger",
+      });
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div>
@@ -63,6 +100,17 @@ export function ActivityBookDetail({ book, pages, onDelete, deleting }: Activity
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {canDownload && (
+            <button
+              type="button"
+              onClick={() => void handleDownload()}
+              disabled={downloading}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold bg-violet-500/20 text-violet-100 hover:bg-violet-500/30 border border-violet-400/40 disabled:opacity-60"
+            >
+              {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              {downloading ? "Building…" : "Download print package"}
+            </button>
+          )}
           {hasAnswers && (
             <button
               type="button"

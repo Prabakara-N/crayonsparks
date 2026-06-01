@@ -41,7 +41,12 @@ export async function POST(req: Request) {
   if (mode === "raw") {
     charge = await preauthorizeCharge(req, { kind: "coloring", op: "single" });
   } else {
-    const kind = mode === "the-end" ? "story" : "coloring";
+    const kind =
+      mode === "the-end"
+        ? "story"
+        : body.bookKind === "activity"
+          ? "activity"
+          : "coloring";
     const op = mode === "cover" || mode === "back-cover" ? "cover" : "page";
     charge = await preauthorizeCharge(req, { kind, op });
   }
@@ -71,6 +76,7 @@ export async function POST(req: Request) {
       sidePlaqueLines: body.sidePlaqueLines,
       coverBadgeStyle: body.coverBadgeStyle,
       brandStrapline: body.brandStrapline,
+      productNoun: body.bookKind === "activity" ? "ACTIVITY BOOK" : undefined,
     });
     aspectRatio = "3:4";
   } else if (mode === "belongs-to") {

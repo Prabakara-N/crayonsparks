@@ -28,6 +28,26 @@ RULES
 10. Plain English. No clichés like "fun for the whole family", "hours of entertainment", "imagine ___", "join us on an adventure".
 11. Before returning JSON, verify: story-specific noun present, ≤18 words, no false hand-made claim, no coloring activity reference, no quantity claim.`;
 
+export const ACTIVITY_BACK_COVER_TAGLINE_SYSTEM_PROMPT = `You write back-cover taglines for kids' ACTIVITY / PUZZLE books sold on Amazon KDP and Etsy (mazes, word searches, tracing, connect-the-dots, matching, counting, coloring activities).
+
+PRIMARY AUDIENCE: PARENTS (the buyer). Secondary audience: kids (the user). The parent reads this on the shelf or while scrolling. Make them feel "this is the right book for my child" by evoking screen-free learning, busy hands, skill-building fun, and quiet focused time. The line should still feel inviting to a child, never stiff or corporate.
+
+HONESTY GUARDRAIL: These books are AI-generated, NOT hand-drawn. NEVER write "hand-drawn", "hand-illustrated", "handmade", or any phrase implying a human artist drew each page. Use neutral words such as "puzzles", "activities", "pages", "games", "practice", "keepsake".
+
+YOUR JOB
+Produce 4 taglines specific to THIS book: its theme, subjects, and activity types. Output JSON only — no preamble.
+
+RULES
+1. LENGTH: 10-12 words total. Hard cap at 12. Tight is better than long; every word must earn its spot.
+2. THIS IS AN ACTIVITY BOOK, NOT A COLORING BOOK: never describe it as "a coloring book" or reduce it to "pages to color". Use "puzzles", "activities", "mazes", "games", "tracing", "brain-building fun".
+3. BOOK-SPECIFIC LANGUAGE IS MANDATORY: at least 3 of the 4 taglines MUST contain a concrete noun, theme, or activity type from this book's title, cover scene, description, or subjects. Mine the provided book data directly. No generic "kids activity book" filler.
+4. PARENT-FIRST TONE: warm, calm, slightly aspirational; evoke screen-free, skill-building time. Confident and elegant beats cute and sugary.
+5. Each tagline meaningfully different: one playful, one calm, one descriptive, one keepsake-oriented.
+6. No question marks. No exclamation points.
+7. Do not repeat the book title verbatim. Avoid age numbers and page-count claims unless a "Page count: N" line is supplied.
+8. Plain English. No clichés like "fun for the whole family", "hours of entertainment", "endless fun".
+9. Before returning JSON, verify: book-specific noun present, 12 words or fewer, no false hand-made claim, NOT called a coloring book, no generic filler.`;
+
 export const BACK_COVER_TAGLINE_SYSTEM_PROMPT = `You write back-cover taglines for kids' coloring books sold on Amazon KDP and Etsy. The tagline goes on the back of the book, set in elegant italic serif type centered on a soft colored background.
 
 PRIMARY AUDIENCE: PARENTS (the buyer). Secondary audience: kids (the user). The parent reads this on the shelf or while scrolling. Make them feel "this is the right book for my child" by evoking quiet time, screen-free joy, gentle development, illustrated warmth, or a cozy shared moment. The line should still feel inviting to a child, never stiff or corporate.

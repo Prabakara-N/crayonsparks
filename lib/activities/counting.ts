@@ -1,27 +1,29 @@
 import type { ActivityResult, ActivitySpec } from "./types";
 import { makeRng, specSeed } from "./rng";
+import { iconSvg } from "./icons";
 import { PAGE, SANS, svgDocument, titleBlock } from "./page";
 
-const RANGE: Record<string, number> = { easy: 5, medium: 10, hard: 15 };
+const RANGE: Record<string, number> = { easy: 5, medium: 8, hard: 12 };
 
-function dots(count: number, bx: number, by: number, bw: number): string {
-  const perRow = Math.ceil(Math.sqrt(count * 1.4));
-  const r = Math.min(16, (bw - 30) / (perRow * 2.4));
-  const gapX = (bw - 30) / perRow;
+function shapes(count: number, icon: string, bx: number, by: number, bw: number): string {
+  const perRow = Math.min(count, Math.ceil(Math.sqrt(count * 1.4)));
+  const cell = (bw - 36) / perRow;
+  const iconSize = Math.min(64, cell * 0.78);
   const out: string[] = [];
   for (let i = 0; i < count; i++) {
     const col = i % perRow;
     const row = Math.floor(i / perRow);
-    const cx = bx + 18 + col * gapX + gapX / 2;
-    const cy = by + 30 + row * (r * 2 + 10);
-    out.push(`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="#111"/>`);
+    const cx = bx + 22 + col * cell + cell / 2;
+    const cy = by + 36 + row * (iconSize + 16) + iconSize / 2;
+    out.push(iconSvg(icon, cx, cy, iconSize, 3));
   }
   return out.join("");
 }
 
 export function generateCounting(spec: ActivitySpec): ActivityResult {
   const rng = makeRng(specSeed(spec.params.seed, spec.id));
-  const max = RANGE[spec.difficulty] ?? 10;
+  const max = RANGE[spec.difficulty] ?? 8;
+  const icon = spec.params.icon ?? "star";
   const cols = 2;
   const rowsN = 3;
   const total = cols * rowsN;
@@ -43,7 +45,7 @@ export function generateCounting(spec: ActivitySpec): ActivityResult {
     const by = top + row * (boxH + 30);
     boxes.push(
       `<rect x="${bx}" y="${by}" width="${boxW}" height="${boxH}" rx="14" fill="none" stroke="#9ca3af" stroke-width="2"/>`,
-      dots(count, bx, by, boxW),
+      shapes(count, icon, bx, by, boxW),
       `<rect x="${bx + boxW - 70}" y="${by + boxH - 60}" width="50" height="44" rx="8" fill="none" stroke="#111" stroke-width="2"/>`,
       `<text x="${bx + 20}" y="${by + boxH - 26}" font-family="${SANS}" font-size="22" fill="#444">How many?</text>`,
     );

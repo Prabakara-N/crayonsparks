@@ -88,8 +88,18 @@ const DEFAULT_BOTTOM_STRIP_PHRASES = [
   "HOURS OF FUN",
 ] as const;
 
+const ACTIVITY_BOTTOM_STRIP_PHRASES = [
+  "FUN PUZZLES & GAMES",
+  "BUILDS SKILLS",
+  "HOURS OF FUN",
+] as const;
+
 function defaultSidePlaqueLines(band: AgeBand): readonly string[] {
   return ["BIG & EASY", "PAGES", AGE_BAND_PLAQUE_TAGLINE[band]] as const;
+}
+
+function activitySidePlaqueLines(band: AgeBand): readonly string[] {
+  return ["PACKED WITH", "FUN ACTIVITIES", AGE_BAND_PLAQUE_TAGLINE[band]] as const;
 }
 
 function normalizePhraseList(
@@ -125,23 +135,27 @@ export const COLOR_COVER_PROMPT_TEMPLATE = (opts: {
   sidePlaqueLines?: string[];
   coverBadgeStyle?: string;
   brandStrapline?: string;
+  productNoun?: "COLORING BOOK" | "ACTIVITY BOOK";
 }) => {
   const style = opts.style ?? "flat";
   const border = opts.border ?? "framed";
   const band = opts.ageBand ?? "toddlers";
+  const noun = opts.productNoun ?? "COLORING BOOK";
+  const isActivity = noun === "ACTIVITY BOOK";
   const ageLabel = opts.ageLabel?.trim() || `Ages ${AGE_BAND_RANGE[band]}`;
+  const unitLabel = isActivity ? "FUN ACTIVITIES" : "CUTE & FUN DESIGNS";
   const designsLabel =
     typeof opts.pageCount === "number" && opts.pageCount > 0
-      ? `${opts.pageCount} CUTE & FUN DESIGNS`
-      : "CUTE & FUN DESIGNS";
+      ? `${opts.pageCount} ${unitLabel}`
+      : unitLabel;
   const bottomStrip = normalizePhraseList(
     opts.bottomStripPhrases,
-    DEFAULT_BOTTOM_STRIP_PHRASES,
+    isActivity ? ACTIVITY_BOTTOM_STRIP_PHRASES : DEFAULT_BOTTOM_STRIP_PHRASES,
     24,
   );
   const plaqueLines = normalizePhraseList(
     opts.sidePlaqueLines,
-    defaultSidePlaqueLines(band),
+    isActivity ? activitySidePlaqueLines(band) : defaultSidePlaqueLines(band),
     28,
   );
   const bottomStripText = bottomStrip.join("  *  ");
@@ -150,7 +164,7 @@ export const COLOR_COVER_PROMPT_TEMPLATE = (opts: {
   const brandStrapline =
     opts.brandStrapline?.trim().slice(0, 60) || DEFAULT_BRAND_STRAPLINE;
   return [
-    "Fully colored children's coloring book cover illustration, portrait 3:4 aspect ratio. Premium Amazon KDP cover quality.",
+    `Fully colored children's ${isActivity ? "activity" : "coloring"} book cover illustration, portrait 3:4 aspect ratio. Premium Amazon KDP cover quality.`,
     `TITLE TYPOGRAPHY — IMPORTANT: Render the title "${opts.title}" at the top of the cover with PLENTY of breathing room. The title must NEVER look cramped, congested, or run-together. If the title has more than 4 words or 25 characters, BREAK IT onto 2 OR 3 LINES at natural word breaks (between phrases, before "and", before "—", before "Coloring Book"). Each line is centered. Generous space between lines (line-height ~1.2-1.4). Generous space between letters (slight letter-spacing, NOT cramped kerning). The title block occupies roughly the top 28-34% of the cover with comfortable padding all around. Style: chunky multi-colored hand-drawn cartoon letters (mix of bright red, yellow, blue, pink), each letter has a subtle black outline and slight playful bounce. Letters are clearly distinguishable, not overlapping. Spell every letter exactly as given — no typos, no extra letters, no missing letters, no rearranging.`,
     `Foreground (the heroes of the cover): ${opts.scene}`,
     "Background: derive a setting that fits the foreground subjects naturally. Use environmental cues, depth, and supporting shapes that belong to this book's actual world; avoid importing generic scenery from unrelated themes. The background should feel like the natural habitat or setting of the foreground subjects, never contradict them.",
@@ -158,7 +172,7 @@ export const COLOR_COVER_PROMPT_TEMPLATE = (opts: {
     COVER_BORDER_DIRECTIVES[border],
     `SELLING-POINT OVERLAYS — render all four of these as graphic elements on the cover, in addition to the title. Spell every word EXACTLY as written in quotes. Keep them clearly readable, well-spaced, and never overlapping the main characters' faces.`,
     `OVERLAY DESIGN LANGUAGE — render the page-count badge (item 2), the side plaque (item 3), and the bottom strip (item 4) as physical objects that belong in this book's world, using this design language: ${overlayDesignLanguage}. The three overlays must read as a matching set — same material vibe, same color family, consistent edge treatment — not three random styles. Lettering inside each overlay stays bold capitals with enough contrast against the overlay's surface to be instantly readable from a thumbnail. The subtitle pill (item 1) is excluded from this design language; it stays a clean modern UI pill so the audience tag reads cleanly.`,
-    `1) SUBTITLE PILL — directly under the main title, a horizontal rounded-rectangle pill in a deep saturated color (navy, deep teal, or burgundy) with a thin contrasting outline. Inside the pill, in clean bold sans-serif white capitals: "COLORING BOOK FOR KIDS ${ageLabel.toUpperCase()}". Pill width ~55-70% of cover width, centered.`,
+    `1) SUBTITLE PILL — directly under the main title, a horizontal rounded-rectangle pill in a deep saturated color (navy, deep teal, or burgundy) with a thin contrasting outline. Inside the pill, in clean bold sans-serif white capitals: "${noun} FOR KIDS ${ageLabel.toUpperCase()}". Pill width ~55-70% of cover width, centered.`,
     `2) PAGE-COUNT BADGE — top-right corner, a circular / seal-shaped badge (about 18-22% of cover width) styled per the overlay design language above. The badge contains EXACTLY this text and NOTHING else, in bold rounded capitals: "${designsLabel}". NUMBER LOCK — CRITICAL: this book has EXACTLY ${typeof opts.pageCount === "number" && opts.pageCount > 0 ? opts.pageCount : "the stated"} pages, so the badge MUST render that exact number. DO NOT substitute a different number. DO NOT write "50 PAGES", "100 PAGES", "30 PAGES", "25 PAGES", or any other number from your training data of typical coloring books. DO NOT add the word "PAGES" if the supplied phrase does not contain it — render the supplied phrase character-for-character. The supplied phrase is the source of truth; treat it like printed type that must be reproduced verbatim. Layout: split the supplied phrase into 2-3 stacked lines at natural word breaks so it fits inside the circular badge with comfortable padding (the number on its own line at top is fine). Three small filled accent shapes (stars, dots, or a motif that fits the design language) sit under the text. Place the badge so it does NOT cover the title or any character's face.`,
     `3) SIDE PLAQUE — a small plaque / sign / banner shape (about 18-24% of cover width) styled per the overlay design language above, tilted ~5-10 degrees, with three short stacked lines of friendly capitals (the first line in an accent color from the design language, the next two in the dominant readable color): "${plaqueLines[0]}" / "${plaqueLines[1]}" / "${plaqueLines[2]}". PLACEMENT — STRICT: position on the LEFT side of the cover, vertically MID-LEVEL (the plaque's center sits between 38% and 58% from the top of the cover — neither in the title zone at the top nor on the bottom strip at the bottom). Anchor the plaque so its left edge sits 2-6% in from the cover's left edge. RENDER AS A BACKGROUND OBJECT: the plaque belongs to the BACKGROUND PLANE of the scene — like a real wooden sign / paper poster / fabric banner mounted in the world behind the characters. Foreground characters stand IN FRONT OF the plaque, NOT to the side of it. Where a character's silhouette overlaps the plaque, the character paints OVER the plaque's outline at that overlap (the plaque does not render on top of the character's body). TEXT-AREA PROTECTION — CRITICAL: even though the plaque sits behind foreground subjects, the THREE LINES OF TEXT must remain fully readable from a thumbnail. ZERO character body, face, hand, foot, tail, accessory, or prop may pass in front of the lettering. Only the plaque's outer frame / decorative border / edges may be obscured by a character — the text columns themselves stay completely clear. To guarantee this, choose a left-mid sub-zone where no character silhouette intrudes onto the inner text rectangle (the inner ~75% of the plaque area where lettering lives). If the layout would force a character across the text, SHRINK the plaque to 14-16% width or shift it 1-3% upward / downward to find a clear text channel. INTEGRATION — the plaque looks like a physical object that belongs in this book's world; the object's material, shape, and how it attaches to the surrounding scene must be DERIVED from this book's actual setting, NEVER defaulted to wood / fence / branch / chalkboard unless those genuinely fit. It must look like part of the background that belongs there, not a UI overlay floating on top.`,
     `4) BOTTOM STRIP — at the very bottom of the cover, a slightly taller full-width horizontal ribbon / band styled per the overlay design language above (height ~9-12% of cover height) so it can hold TWO stacked lines of text with comfortable padding. The strip contains exactly these two lines, top to bottom: (a) one bold ALL-CAPS line of selling phrases, separated by small filled accent shapes (stars, dots, or a motif that fits the design language): "${bottomStripText}". (b) directly under it, a smaller mixed-case brand strapline in a clean italic or rounded script with a small four-point sparkle shape between the brand name and the next word: "${brandStrapline}". The strapline reads as a soft brand signature, NOT another marketing shout — about half the type-size of line (a), elegant, calmer color (cream / off-white / soft accent) so parents notice it without it competing with the main strip. Both lines are centered. Render the brand name "CrayonSparks" exactly as written, one word, capital C and capital S, no space.`,

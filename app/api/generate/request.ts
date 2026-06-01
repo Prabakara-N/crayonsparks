@@ -11,6 +11,7 @@ import type { ImageModel } from "@/lib/constants";
 
 export interface Body {
   mode?: "subject" | "raw" | "cover" | "back-cover" | "belongs-to" | "the-end";
+  bookKind?: "coloring" | "story" | "activity";
   subject?: string;
   prompt?: string;
   age?: AgeRange;

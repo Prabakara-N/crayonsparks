@@ -25,7 +25,7 @@ interface CoverSnapshot {
 
 interface StudioSnapshot {
   version: 1;
-  bookKind: "coloring" | "story";
+  bookKind: "coloring" | "story" | "activity";
   idea: string;
   pageCount: number;
   age: AgeRange;
@@ -47,7 +47,7 @@ interface UseStudioPersistenceArgs {
   enabled?: boolean;
   values: StudioSnapshot;
   setters: {
-    setBookKind: (v: "coloring" | "story") => void;
+    setBookKind: (v: "coloring" | "story" | "activity") => void;
     setIdea: (v: string) => void;
     setPageCount: (v: number) => void;
     setAge: (v: AgeRange) => void;

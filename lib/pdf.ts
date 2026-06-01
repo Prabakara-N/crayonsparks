@@ -35,6 +35,11 @@ export interface AssembleOptions {
   interiorOnly?: boolean;
   trimWidthInches?: number;
   trimHeightInches?: number;
+  // Activity-book extras (ignored by the coloring/story flows that don't set them):
+  solutionPages?: PdfPageInput[];
+  licensePage?: boolean;
+  pageNumbers?: boolean;
+  pageBorder?: boolean;
 }
 
 function decodeDataUrl(dataUrl: string): { mime: string; bytes: Uint8Array } {
@@ -179,6 +184,63 @@ export async function assembleColoringBookPdf(opts: AssembleOptions): Promise<Ui
     }
   }
 
+  // License / copyright page — expected on KDP & Etsy kids' activity books.
+  if (opts.licensePage) {
+    const page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    const year = new Date().getFullYear();
+    const heading = "License & Copyright";
+    const headingSize = 22;
+    const hw = helv.widthOfTextAtSize(heading, headingSize);
+    page.drawText(heading, {
+      x: (PAGE_WIDTH - hw) / 2,
+      y: PAGE_HEIGHT - 2.2 * INCH_TO_PT,
+      size: headingSize,
+      font: helv,
+      color: rgb(0.1, 0.1, 0.15),
+    });
+    const lines = [
+      `(c) ${year} CrayonSparks. All rights reserved.`,
+      "",
+      "This activity book is for PERSONAL USE ONLY.",
+      "You may print copies for your own family or single classroom.",
+      "",
+      "You may not resell, redistribute, share, or sell printed or",
+      "digital copies, or alter this file in any way.",
+      "",
+      "Some illustrations were created with AI assistance.",
+      "",
+      "Made with CrayonSparks  -  crayonsparks.com",
+    ];
+    let ly = PAGE_HEIGHT - 3.1 * INCH_TO_PT;
+    const bodySize = 12;
+    for (const line of lines) {
+      if (line) {
+        const lw = helvNormal.widthOfTextAtSize(line, bodySize);
+        page.drawText(line, {
+          x: (PAGE_WIDTH - lw) / 2,
+          y: ly,
+          size: bodySize,
+          font: helvNormal,
+          color: rgb(0.3, 0.3, 0.35),
+        });
+      }
+      ly -= bodySize * 1.7;
+    }
+  }
+
+  let contentNumber = 0;
+  const drawFooter = (page: ReturnType<typeof doc.addPage>, text: string) => {
+    const size = 9;
+    const w = helvNormal.widthOfTextAtSize(text, size);
+    page.drawText(text, {
+      x: (PAGE_WIDTH - w) / 2,
+      y: MARGIN_OUTER * 0.55,
+      size,
+      font: helvNormal,
+      color: rgb(0.6, 0.6, 0.65),
+    });
+  };
+
   if (!opts.cover && includeTitle) {
     const page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     const titleSize = 40;
@@ -232,19 +294,72 @@ export async function assembleColoringBookPdf(opts: AssembleOptions): Promise<Ui
     // Vector printer border — drawn TIGHT around the rendered image
     // rectangle (same x/y/w/h as the image), so the border sits exactly
     // on the outermost edge of the artwork with NO white matte between
-    // image and border. Identical on every page (no AI variance, no
-    // "two borders" failure mode). The master prompt's NO_AI_BORDER_RULE
-    // tells Gemini not to draw a frame itself, so this is the only one.
-    page.drawRectangle({
-      x: drawX,
-      y: drawY,
-      width: drawW,
-      height: drawH,
-      borderColor: rgb(0, 0, 0),
-      borderWidth: 1.5,
-    });
+    // image and border. Skipped for activity pages, which already carry
+    // their own frame inside the artwork.
+    if (opts.pageBorder !== false) {
+      page.drawRectangle({
+        x: drawX,
+        y: drawY,
+        width: drawW,
+        height: drawH,
+        borderColor: rgb(0, 0, 0),
+        borderWidth: 1.5,
+      });
+    }
+
+    contentNumber += 1;
+    if (opts.pageNumbers) drawFooter(page, String(contentNumber));
 
     if (includeBlanks) doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  }
+
+  // Answer-key section — grouped at the BACK (KDP/Etsy norm: never on the
+  // puzzle page). A divider page, then each solution captioned with its
+  // activity name so the key is bound to its puzzle.
+  if (opts.solutionPages?.length) {
+    const divider = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    const heading = "Answer Key";
+    const headingSize = 40;
+    const hw = helv.widthOfTextAtSize(heading, headingSize);
+    divider.drawText(heading, {
+      x: (PAGE_WIDTH - hw) / 2,
+      y: PAGE_HEIGHT / 2,
+      size: headingSize,
+      font: helv,
+      color: rgb(0.1, 0.1, 0.15),
+    });
+    const sub = "Solutions to the puzzles in this book.";
+    const sw = helvNormal.widthOfTextAtSize(sub, 13);
+    divider.drawText(sub, {
+      x: (PAGE_WIDTH - sw) / 2,
+      y: PAGE_HEIGHT / 2 - 30,
+      size: 13,
+      font: helvNormal,
+      color: rgb(0.45, 0.45, 0.5),
+    });
+    if (includeBlanks) doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+
+    for (const input of opts.solutionPages) {
+      const embedded = await embedImage(doc, input.dataUrl);
+      const page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      const drawable = {
+        x: MARGIN_GUTTER,
+        y: MARGIN_OUTER,
+        w: PAGE_WIDTH - MARGIN_GUTTER * 2,
+        h: PAGE_HEIGHT - 2 * MARGIN_OUTER,
+      };
+      const imgRatio = embedded.width / embedded.height;
+      const boxRatio = drawable.w / drawable.h;
+      let drawW = drawable.w;
+      let drawH = drawable.h;
+      if (imgRatio > boxRatio) drawH = drawable.w / imgRatio;
+      else drawW = drawable.h * imgRatio;
+      const drawX = drawable.x + (drawable.w - drawW) / 2;
+      const drawY = drawable.y + (drawable.h - drawH) / 2;
+      page.drawImage(embedded, { x: drawX, y: drawY, width: drawW, height: drawH });
+      if (opts.pageNumbers) drawFooter(page, `Answers - ${input.name}`);
+      if (includeBlanks) doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    }
   }
 
   // Back cover — final page, FULL BLEED (matches front cover treatment).

@@ -35,6 +35,23 @@ export function titleBlock(title: string, instruction?: string): string {
   return titleEl + instrEl;
 }
 
-export function svgDocument(body: string): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${PAGE.w}" height="${PAGE.h}" viewBox="0 0 ${PAGE.w} ${PAGE.h}"><rect width="${PAGE.w}" height="${PAGE.h}" fill="#ffffff"/>${body}</svg>`;
+const FRAME_INSET = 32;
+
+export function pageFrame(): string {
+  const x = FRAME_INSET;
+  const y = FRAME_INSET;
+  const w = PAGE.w - FRAME_INSET * 2;
+  const h = PAGE.h - FRAME_INSET * 2;
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="22" fill="none" stroke="#d4d4d8" stroke-width="3"/>`;
+}
+
+export function footer(label: string): string {
+  return `<text x="${PAGE.w / 2}" y="${PAGE.h - 26}" text-anchor="middle" font-family="${SANS}" font-size="20" fill="#9ca3af">${escapeXml(
+    label,
+  )}</text>`;
+}
+
+export function svgDocument(body: string, opts: { frame?: boolean } = {}): string {
+  const frame = opts.frame === false ? "" : pageFrame();
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${PAGE.w}" height="${PAGE.h}" viewBox="0 0 ${PAGE.w} ${PAGE.h}"><rect width="${PAGE.w}" height="${PAGE.h}" fill="#ffffff"/>${frame}${body}</svg>`;
 }

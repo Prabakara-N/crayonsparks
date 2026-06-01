@@ -10,7 +10,7 @@ interface TaglineGeneratorProps {
   audience?: string;
   pageSubjects?: string[];
   pageCount?: number;
-  bookKind: "coloring" | "story";
+  bookKind: "coloring" | "story" | "activity";
   value: string;
   onChange: (text: string) => void;
 }

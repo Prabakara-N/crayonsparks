@@ -37,6 +37,7 @@ interface UseCoverGenerationArgs {
   plan: Plan | null;
   initialPlan?: Plan;
   mode: "qa" | "story";
+  bookKind?: "coloring" | "story" | "activity";
   age: AgeRange;
   itemsRef: React.MutableRefObject<PromptItem[]>;
   qualityCheck: boolean;
@@ -48,6 +49,7 @@ export function useCoverGeneration({
   plan,
   initialPlan,
   mode,
+  bookKind,
   age,
   itemsRef,
   qualityCheck,
@@ -86,7 +88,8 @@ export function useCoverGeneration({
   const generateCover = useCallback(async () => {
     if (!plan) return;
     setCover({ status: "generating" });
-    const kind: BookKind = mode === "story" ? "story" : "coloring";
+    const kind: BookKind =
+      bookKind === "activity" ? "activity" : mode === "story" ? "story" : "coloring";
     const ok = await precheckCredits(
       creditCost(kind, "cover"),
       dialog,
@@ -100,6 +103,7 @@ export function useCoverGeneration({
       const result = await runGenerateCover({
         plan,
         mode,
+        bookKind,
         age,
         ageLabel: AGE_LABELS[age],
         coverStyle,
@@ -128,6 +132,7 @@ export function useCoverGeneration({
   }, [
     plan,
     mode,
+    bookKind,
     age,
     coverStyle,
     coverBorder,

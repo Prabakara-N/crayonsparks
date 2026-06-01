@@ -29,7 +29,7 @@ interface BackCoverEditorModalProps {
   bookDescription?: string;
   audience?: string;
   pageCount?: number;
-  bookKind: "coloring" | "story";
+  bookKind: "coloring" | "story" | "activity";
   initialDesign?: BackCoverDesign;
   onApply: (result: { dataUrl: string; design: BackCoverDesign }) => void;
   onClose: () => void;

@@ -180,6 +180,7 @@ export function BookStudio({
     plan: bookPlan.plan,
     initialPlan,
     mode: bookPlan.mode,
+    bookKind: bookPlan.bookKind,
     age: bookPlan.age,
     itemsRef,
     qualityCheck,
@@ -227,7 +228,7 @@ export function BookStudio({
     enabled: !initialPlan,
     values: {
       version: 1,
-      bookKind: bookPlan.bookKind === "activity" ? "coloring" : bookPlan.bookKind,
+      bookKind: bookPlan.bookKind,
       idea: bookPlan.idea,
       pageCount: bookPlan.pageCount,
       age: bookPlan.age,
@@ -273,6 +274,7 @@ export function BookStudio({
     belongsToStyle: coverGen.belongsToStyle,
     theEndPage: coverGen.theEndPage,
     mode: bookPlan.mode,
+    bookKind: bookPlan.bookKind,
   });
   const downloadPdf = useCallback(async () => {
     await download.downloadPdf();
@@ -1266,7 +1268,7 @@ export function BookStudio({
           bookDescription={plan?.description}
           audience={AGE_LABELS[age]}
           pageCount={items.length}
-          bookKind={mode === "story" ? "story" : "coloring"}
+          bookKind={bookPlan.bookKind}
           initialDesign={backCoverDesign ?? undefined}
           onClose={() => setGridEditorOpen(false)}
           onApply={({ dataUrl, design }) => {

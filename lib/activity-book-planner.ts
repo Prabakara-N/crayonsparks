@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { GEMINI_TEXT_MODEL } from "@/lib/constants";
+import { ICON_NAMES, isIconName } from "@/lib/activities/icons";
 import {
   PLANNABLE_TYPES,
   type ActivityAgeBand,
@@ -9,6 +10,10 @@ import {
 } from "@/lib/activities/types";
 
 export { PLANNABLE_TYPES };
+
+// Reading/spelling puzzles a pre-reader (ages 3-5) cannot do — hard-excluded
+// for the toddler band per KDP/Etsy kids-activity norms.
+const READING_TYPES: ActivityType[] = ["crossword", "word-search"];
 
 export interface ActivityBookPlanInput {
   idea: string;
@@ -44,6 +49,7 @@ interface ContentPool {
   matchingSets: { left: string; right: string }[][];
   findLists: { label: string; count: number }[][];
   colorLegends: { n: number; label: string }[][];
+  iconPool: string[];
 }
 
 const SHAPES = ["heart", "star", "flower", "circle"];
@@ -58,18 +64,20 @@ function rampDifficulty(i: number, n: number): ActivityDifficulty {
 // mix / all types). Each type gets a quota proportional to its weight, then we
 // round-robin so types alternate rather than clustering.
 function buildSequence(input: ActivityBookPlanInput, pageCount: number): ActivityType[] {
+  const allowed = (t: ActivityType): boolean =>
+    PLANNABLE_TYPES.includes(t) && !(input.age === "toddlers" && READING_TYPES.includes(t));
   let entries: [ActivityType, number][];
   const weights = input.weights;
   if (weights && Object.values(weights).some((w) => (w ?? 0) > 0)) {
     entries = (Object.entries(weights) as [ActivityType, number][]).filter(
-      ([t, w]) => PLANNABLE_TYPES.includes(t) && (w ?? 0) > 0,
+      ([t, w]) => allowed(t) && (w ?? 0) > 0,
     );
   } else if (input.mix?.length) {
-    entries = input.mix.filter((t) => PLANNABLE_TYPES.includes(t)).map((t) => [t, 1]);
+    entries = input.mix.filter(allowed).map((t) => [t, 1]);
   } else {
-    entries = PLANNABLE_TYPES.map((t) => [t, 1]);
+    entries = PLANNABLE_TYPES.filter(allowed).map((t) => [t, 1]);
   }
-  if (!entries.length) entries = PLANNABLE_TYPES.map((t) => [t, 1]);
+  if (!entries.length) entries = PLANNABLE_TYPES.filter(allowed).map((t) => [t, 1]);
 
   const totalW = entries.reduce((s, [, w]) => s + w, 0);
   const quotas = entries.map(([t, w]) => ({ t, q: Math.max(1, Math.round((w / totalW) * pageCount)) }));
@@ -125,10 +133,10 @@ function assemblePlan(input: ActivityBookPlanInput, pool: ContentPool): Activity
       case "word-search":
         return { ...base, title: "Word Search", params: { words: take(pool.wordSets, "ws", ["FUN", "PLAY"]), seed: i + 1 } };
       case "crossword": {
-        const start = (counters.cw ?? 0) * 6;
+        const start = (counters.cw ?? 0) * 8;
         counters.cw = (counters.cw ?? 0) + 1;
-        const slice = pool.crosswordWords.slice(start, start + 6);
-        return { ...base, title: "Crossword", params: { clues: slice.length >= 3 ? slice : pool.crosswordWords.slice(0, 6), seed: i + 1 } };
+        const slice = pool.crosswordWords.slice(start, start + 10);
+        return { ...base, title: "Crossword", params: { clues: slice.length >= 4 ? slice : pool.crosswordWords.slice(0, 10), seed: i + 1 } };
       }
       case "letter-tracing":
         return { ...base, title: "Trace the Letter", params: { letters: [take(pool.letters, "lt", "A")] } };
@@ -143,7 +151,7 @@ function assemblePlan(input: ActivityBookPlanInput, pool: ContentPool): Activity
       case "matching":
         return { ...base, title: "Match Them Up", params: { pairs: take(pool.matchingSets, "mt", []), seed: i + 1 } };
       case "counting":
-        return { ...base, title: "Count & Write", params: { seed: i + 1 } };
+        return { ...base, title: "Count & Write", params: { seed: i + 1, icon: take(pool.iconPool, "cnt", "star") } };
       case "seek-and-find":
         return { ...base, title: "Seek & Find", params: { findList: take(pool.findLists, "sf", [{ label: "stars", count: 5 }]), seed: i + 1 } };
       case "color-by-number":
@@ -193,12 +201,13 @@ function fallbackPool(idea: string): ContentPool {
     shapes: SHAPES,
     matchingSets: [
       [
-        { left: "1", right: "one" },
-        { left: "2", right: "two" },
-        { left: "3", right: "three" },
-        { left: "4", right: "four" },
+        { left: "STAR", right: "star" },
+        { left: "SUN", right: "sun" },
+        { left: "FISH", right: "fish" },
+        { left: "TREE", right: "tree" },
       ],
     ],
+    iconPool: ["star", "heart", "apple", "fish", "balloon", "flower"],
     findLists: [
       [
         { label: "stars", count: 5 },
@@ -224,6 +233,8 @@ function buildContentPrompt(input: ActivityBookPlanInput): string {
 User idea: "${input.idea}".${hint}
 Produce a themed content pool the puzzle engine will use. Words must be UPPERCASE A-Z only, 3-8 letters, age-appropriate, and on-theme. Crossword answers should share letters so they interlock.
 
+For matching and counting, the engine can only DRAW these picture icons (use exactly these names, lowercase): ${ICON_NAMES.join(", ")}. Pick the icons from this list that best fit the theme.
+
 Respond with ONLY a JSON object (no prose, no code fences):
 {
   "title": "full KDP title under 150 chars, includes 'Activity Book' and age range",
@@ -232,12 +243,13 @@ Respond with ONLY a JSON object (no prose, no code fences):
   "coverScene": "one vibrant colored cover scene with puzzle motifs",
   "theme": "1-2 word theme",
   "wordSets": [["WORD","WORD", ... 8 words], ... 4 sets],
-  "crosswordWords": [{"answer":"CAT","clue":"..."}, ... 10 interlocking words],
+  "crosswordWords": [{"answer":"CAT","clue":"..."}, ... 12 interlocking words],
   "phrases": ["short sight-word phrase", ... 6],
   "letters": ["A","B", ... 8 relevant letters],
   "numbers": [1,2, ... 8],
   "shapes": ["heart","star","flower","circle"],
-  "matchingSets": [[{"left":"...","right":"..."}, ... 4 pairs], ... 2 sets],
+  "matchingSets": [[{"word":"STAR","icon":"star"}, ... 4 pairs where icon is from the allowed list], ... 2 sets],
+  "iconPool": ["icon names from the allowed list that fit the theme, 6-8 of them"],
   "findLists": [[{"label":"on-theme thing","count":5}, ... 3 items], ... 2 sets],
   "colorLegends": [[{"n":1,"label":"red"}, ... 4 entries], ... 2 sets]
 }`;
@@ -269,8 +281,22 @@ function parsePool(text: string, fb: ContentPool): ContentPool {
     const phrases = Array.isArray(o.phrases) ? (o.phrases as unknown[]).filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(Boolean) : [];
     const matchingSets = Array.isArray(o.matchingSets)
       ? (o.matchingSets as unknown[])
-          .map((set) => (Array.isArray(set) ? set.map((p) => p as Record<string, unknown>).filter((p) => typeof p.left === "string" && typeof p.right === "string").map((p) => ({ left: (p.left as string).trim(), right: (p.right as string).trim() })) : []))
+          .map((set) =>
+            Array.isArray(set)
+              ? set
+                  .map((p) => p as Record<string, unknown>)
+                  .map((p) => {
+                    const word = typeof p.word === "string" ? p.word : typeof p.left === "string" ? p.left : "";
+                    const iconRaw = typeof p.icon === "string" ? p.icon : typeof p.right === "string" ? p.right : "";
+                    return { left: word.trim().toUpperCase().slice(0, 12), right: iconRaw.trim().toLowerCase() };
+                  })
+                  .filter((p) => p.left && isIconName(p.right))
+              : [],
+          )
           .filter((s) => s.length >= 2)
+      : [];
+    const iconPool = Array.isArray(o.iconPool)
+      ? (o.iconPool as unknown[]).filter((x): x is string => typeof x === "string").map((x) => x.toLowerCase().trim()).filter(isIconName)
       : [];
     return {
       title: coerceStr(o, "title", fb.title),
@@ -285,6 +311,7 @@ function parsePool(text: string, fb: ContentPool): ContentPool {
       numbers: Array.isArray(o.numbers) && o.numbers.length ? (o.numbers as unknown[]).filter((x): x is number => typeof x === "number") : fb.numbers,
       shapes: SHAPES,
       matchingSets: matchingSets.length ? matchingSets : fb.matchingSets,
+      iconPool: iconPool.length ? iconPool : fb.iconPool,
       findLists: parseFindLists(o.findLists, fb.findLists),
       colorLegends: parseColorLegends(o.colorLegends, fb.colorLegends),
     };
