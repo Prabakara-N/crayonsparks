@@ -142,6 +142,46 @@ export function usePageGeneration({
       }
       updateItem(item.id, { status: "generating", error: undefined });
 
+      // Activity pages render via the procedural / illustrated activity
+      // engine (not the coloring-page model), but still gate on cover-first.
+      if (item.activity) {
+        try {
+          const res = await fetch("/api/generate-activity-page", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: abortRef.current?.signal,
+            body: JSON.stringify({ spec: item.activity }),
+          });
+          const json = await readJsonOrThrow<{
+            dataUrl?: string;
+            solutionDataUrl?: string | null;
+            error?: string;
+          }>(res);
+          if (!json.dataUrl) throw new Error(json.error || "Activity page failed");
+          updateItem(item.id, {
+            status: "done",
+            dataUrl: json.dataUrl,
+            solutionDataUrl: json.solutionDataUrl ?? undefined,
+            quality: null,
+            model: interiorModel,
+          });
+          return json.dataUrl;
+        } catch (e) {
+          if (isAbortError(e)) {
+            updateItem(item.id, { status: "pending", error: undefined });
+            return undefined;
+          }
+          const message = e instanceof Error ? e.message : "Failed";
+          if (isCreditsError(message)) {
+            updateItem(item.id, { status: "pending", error: undefined });
+            void showCreditsExhaustedDialog(dialog, router);
+            return undefined;
+          }
+          updateItem(item.id, { status: "error", error: message });
+          return undefined;
+        }
+      }
+
       const flawSuffix = improvementHint
         ? ` (PREVIOUS ATTEMPT WAS POOR — vision rater said: "${improvementHint}". The new image MUST fix this specific issue.)`
         : "";

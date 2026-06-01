@@ -2,6 +2,7 @@ import type { DialogueStyle } from "@/lib/prompts";
 import type { ImageModel } from "@/lib/constants";
 import { type StoryType } from "@/lib/story-book-planner";
 import type { StoryBubble } from "@/lib/story-bubble-seed";
+import type { ActivitySpec } from "@/lib/activities/types";
 
 export type { StoryBubble };
 
@@ -49,6 +50,8 @@ export interface PromptItem {
   composition?: string;
   locationId?: string;
   locationDescriptor?: string;
+  activity?: ActivitySpec;
+  solutionDataUrl?: string;
 }
 
 // Story-mode locked character — reused across every page in the book.

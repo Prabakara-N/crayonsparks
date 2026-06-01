@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Lightbulb,
   Loader2,
+  PencilRuler,
   Wand2,
   XCircle,
 } from "lucide-react";
@@ -26,6 +27,12 @@ import { type StoryType } from "@/lib/story-book-planner";
 import { StoryTypePicker } from "@/components/playground/story-type-picker";
 import { DialogueStylePicker } from "@/components/playground/dialogue-style-picker";
 import type { DialogueStyle } from "@/lib/prompts";
+import type { ActivityDifficulty } from "@/lib/activities/types";
+import {
+  ActivityMixPicker,
+  type MixWeights,
+} from "@/components/playground/activity-book/activity-mix-picker";
+import { SegmentedControl } from "@/components/playground/activity-book/segmented-control";
 import { PlanButton } from "./plan-button";
 import {
   AGE_LABELS,
@@ -53,6 +60,10 @@ export function IdeaForm({
   error,
   bookKind,
   setBookKind,
+  activityWeights,
+  setActivityWeights,
+  activityDifficulty,
+  setActivityDifficulty,
   storyType,
   setStoryType,
   storyCharacterNames,
@@ -80,8 +91,12 @@ export function IdeaForm({
   planning: boolean;
   onPlan: () => void;
   error: string | null;
-  bookKind: "coloring" | "story";
-  setBookKind: (v: "coloring" | "story") => void;
+  bookKind: "coloring" | "story" | "activity";
+  setBookKind: (v: "coloring" | "story" | "activity") => void;
+  activityWeights: MixWeights;
+  setActivityWeights: (v: MixWeights) => void;
+  activityDifficulty: ActivityDifficulty | "auto";
+  setActivityDifficulty: (v: ActivityDifficulty | "auto") => void;
   storyType: StoryType | null;
   setStoryType: (v: StoryType | null) => void;
   storyCharacterNames: string;
@@ -98,6 +113,7 @@ export function IdeaForm({
   const [showHelper, setShowHelper] = useState(false);
   const [improving, setImproving] = useState(false);
   const isStory = bookKind === "story";
+  const isActivity = bookKind === "activity";
   const ideasPanelRef = useRef<HTMLDivElement>(null);
 
   const handleImprove = async () => {
@@ -198,12 +214,12 @@ export function IdeaForm({
           <button
             type="button"
             role="radio"
-            aria-checked={!isStory}
+            aria-checked={bookKind === "coloring"}
             onClick={() => setBookKind("coloring")}
             disabled={planning}
             className={cn(
               "flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors",
-              !isStory
+              bookKind === "coloring"
                 ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow"
                 : "text-neutral-400 hover:text-white",
             )}
@@ -227,11 +243,67 @@ export function IdeaForm({
             <BookOpen className="w-4 h-4" />
             Story book
           </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={isActivity}
+            onClick={() => setBookKind("activity")}
+            disabled={planning}
+            className={cn(
+              "flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors",
+              isActivity
+                ? "bg-linear-to-r from-amber-500 to-orange-500 text-white shadow"
+                : "text-neutral-400 hover:text-white",
+            )}
+          >
+            <PencilRuler className="w-4 h-4" />
+            Activity book
+          </button>
         </div>
         {/* Mode-specific helper banner — same visual treatment in both
             modes so the form reads consistently. Larger type and clearer
             copy for non-technical users. */}
-        {isStory ? (
+        {isActivity ? (
+          <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-100/95 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowHelper((v) => !v)}
+              aria-expanded={showHelper}
+              className="w-full flex items-center justify-between gap-3 px-5 py-3 text-left"
+            >
+              <span className="font-semibold text-amber-200 text-sm sm:text-base">
+                Activity book · mazes, puzzles, tracing &amp; more
+              </span>
+              <ChevronDown
+                className={cn(
+                  "w-4 h-4 shrink-0 text-amber-300 transition-transform duration-300",
+                  showHelper && "rotate-180",
+                )}
+              />
+            </button>
+            <AnimatePresence initial={false}>
+              {showHelper && (
+                <motion.div
+                  key="activity-helper"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                  className="overflow-hidden"
+                >
+                  <p className="text-sm leading-relaxed px-5 pb-4">
+                    You&apos;ll get an 8.5×11 KDP-ready activity book that mixes
+                    mazes, word searches, crosswords, tracing, dot-to-dot, and
+                    more — interleaved with a difficulty ramp. Type a theme
+                    below, pick which activities to include (or let us surprise
+                    you), and we&apos;ll plan the whole book. Most pages render
+                    free and instantly.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ) : isStory ? (
           <div className="mt-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 text-cyan-100/95 overflow-hidden">
             <button
               type="button"
@@ -405,6 +477,25 @@ export function IdeaForm({
         </div>
       )}
 
+      {isActivity && (
+        <div className="space-y-4">
+          <div className="max-w-xs">
+            <SegmentedControl
+              label="Difficulty"
+              value={activityDifficulty}
+              onChange={setActivityDifficulty}
+              options={[
+                { value: "auto", label: "Auto" },
+                { value: "easy", label: "Easy" },
+                { value: "medium", label: "Med" },
+                { value: "hard", label: "Hard" },
+              ]}
+            />
+          </div>
+          <ActivityMixPicker weights={activityWeights} onChange={setActivityWeights} />
+        </div>
+      )}
+
       <div>
         <div className="flex items-center justify-between gap-2 mb-2">
           <label className="block text-sm font-semibold text-neutral-200">
@@ -426,9 +517,11 @@ export function IdeaForm({
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
             placeholder={
-              isStory
-                ? "e.g. The Tortoise and the Hare for ages 3-6, or a story I made up about a tiny dragon learning to fly. 8-12 scenes."
-                : "e.g. A coloring book for ages 3-6 about space adventures — astronauts, rockets, planets, friendly aliens. 20 unique pages."
+              isActivity
+                ? "e.g. An ocean-themed activity book for ages 6-8 — mazes, word searches, tracing, and dot-to-dot. 24 pages."
+                : isStory
+                  ? "e.g. The Tortoise and the Hare for ages 3-6, or a story I made up about a tiny dragon learning to fly. 8-12 scenes."
+                  : "e.g. A coloring book for ages 3-6 about space adventures — astronauts, rockets, planets, friendly aliens. 20 unique pages."
             }
             rows={5}
             className="w-full px-4 py-3 pb-12 rounded-xl bg-black/50 border border-white/10 text-white text-sm placeholder:text-neutral-500 focus:outline-none focus:border-violet-500/60 focus:ring-2 focus:ring-violet-500/20 resize-y min-h-[120px]"
@@ -523,7 +616,7 @@ export function IdeaForm({
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 md:gap-10 lg:gap-14">
-        {!isStory && (
+        {bookKind === "coloring" && (
           <div>
             <label className="block text-sm font-semibold text-neutral-200 mb-2">
               Detail level{" "}

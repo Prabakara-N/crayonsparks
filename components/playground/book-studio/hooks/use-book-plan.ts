@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type StoryType } from "@/lib/story-book-planner";
 import type { DialogueStyle } from "@/lib/prompts";
+import type { ActivityBookPlan } from "@/lib/activity-book-planner";
+import type { ActivityDifficulty } from "@/lib/activities/types";
+import type { MixWeights } from "@/components/playground/activity-book/activity-mix-picker";
 import {
   getAuthIdToken,
   redirectToLogin,
@@ -54,7 +57,10 @@ export function useBookPlan({
     initialReference ?? null,
   );
   const [mode, setMode] = useState<"qa" | "story">(initialMode ?? "qa");
-  const [bookKind, setBookKind] = useState<"coloring" | "story">("coloring");
+  const [bookKind, setBookKind] = useState<"coloring" | "story" | "activity">("coloring");
+  const [activityWeights, setActivityWeights] = useState<MixWeights>({});
+  const [activityDifficulty, setActivityDifficulty] = useState<ActivityDifficulty | "auto">("auto");
+  const [activityPlan, setActivityPlan] = useState<ActivityBookPlan | null>(null);
   const [storyType, setStoryType] = useState<StoryType | null>(
     initialPlan?.storyType ?? null,
   );
@@ -110,6 +116,51 @@ export function useBookPlan({
     setPlanning(true);
     setPhase("planning");
     try {
+      if (bookKind === "activity") {
+        const res = await fetch("/api/plan-activity-book", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            idea: trimmed,
+            pageCount,
+            age,
+            difficulty: activityDifficulty === "auto" ? undefined : activityDifficulty,
+            weights: Object.keys(activityWeights).length ? activityWeights : undefined,
+            regenerationHint: hint,
+          }),
+        });
+        const json = await readJsonOrThrow<{ plan?: ActivityBookPlan; error?: string }>(res);
+        if (!json.plan) throw new Error(json.error || "Planning failed");
+        const ap = json.plan;
+        setActivityPlan(ap);
+        // Activity books reuse the coloring ("qa") generation view — cover
+        // with style/border, Apple carousel, book preview, cover-first gating.
+        setMode("qa");
+        setPlan({
+          title: ap.title,
+          coverTitle: ap.coverTitle,
+          description: ap.description,
+          scene: "",
+          coverScene: ap.coverScene,
+          prompts: ap.pages.map((p) => ({ name: p.title, subject: p.title })),
+        });
+        setItems(
+          ap.pages.map((p) => ({
+            id: p.id,
+            name: p.title,
+            subject: p.title,
+            status: "pending" as const,
+            activity: p,
+          })),
+        );
+        setCoverPending();
+        setCurrentIndex(0);
+        setPhase("review");
+        return;
+      }
       const isStoryPlan = bookKind === "story";
       const endpoint = isStoryPlan
         ? "/api/plan-story-book"
@@ -164,6 +215,8 @@ export function useBookPlan({
     pageCount,
     age,
     bookKind,
+    activityWeights,
+    activityDifficulty,
     storyType,
     storyCharacterNames,
     dialogueStyle,
@@ -236,6 +289,12 @@ export function useBookPlan({
     setMode,
     bookKind,
     setBookKind,
+    activityWeights,
+    setActivityWeights,
+    activityDifficulty,
+    setActivityDifficulty,
+    activityPlan,
+    setActivityPlan,
     storyType,
     setStoryType,
     storyCharacterNames,

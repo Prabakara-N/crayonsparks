@@ -13,6 +13,9 @@ import {
   Plus,
   Lightbulb,
   LayoutGrid,
+  Check,
+  Save,
+  Loader2,
 } from "lucide-react";
 import { prefetchBookFlip, BookFlip } from "@/components/playground/book-flip";
 import { ImageRefineModal } from "@/components/generate/image-refine-modal/image-refine-modal-main";
@@ -25,6 +28,8 @@ import { applyBubbleStyle, type BubbleStyleSnapshot } from "@/lib/bubble-style";
 import { DownloadMenu } from "@/components/playground/download-menu";
 import { fireConfettiBurst } from "@/components/ui/confetti-burst";
 import { SaveBookButton } from "./save-book-button";
+import { saveActivityBookToCloud } from "@/lib/functions/client/save-activity-book";
+import type { ActivityPageItem } from "@/components/playground/activity-book/types";
 import { KdpMetadataPanel } from "@/components/playground/kdp-metadata/kdp-metadata-main";
 import { CoverPair } from "@/components/playground/cover-pair";
 import { BackCoverEditorModal } from "./back-cover-grid/editor/back-cover-editor-modal";
@@ -114,6 +119,8 @@ export function BookStudio({
 
   const [qualityCheck] = useState(false);
   const [viewMode, setViewMode] = useState<"carousel" | "book">("carousel");
+  const [activitySaving, setActivitySaving] = useState(false);
+  const [activitySavedId, setActivitySavedId] = useState<string | null>(null);
   const [gridEditorOpen, setGridEditorOpen] = useState(false);
   const [backCoverDesign, setBackCoverDesign] = useState<BackCoverDesign | null>(
     null,
@@ -220,7 +227,7 @@ export function BookStudio({
     enabled: !initialPlan,
     values: {
       version: 1,
-      bookKind: bookPlan.bookKind,
+      bookKind: bookPlan.bookKind === "activity" ? "coloring" : bookPlan.bookKind,
       idea: bookPlan.idea,
       pageCount: bookPlan.pageCount,
       age: bookPlan.age,
@@ -327,9 +334,10 @@ export function BookStudio({
     surveyCheckedRef.current = true;
     void (async () => {
       try {
-        const state = await feedback.getSurveyState(bookPlan.bookKind);
+        const surveyKind = bookPlan.bookKind === "activity" ? "coloring" : bookPlan.bookKind;
+        const state = await feedback.getSurveyState(surveyKind);
         if (state.shouldShow) {
-          await feedback.markSurveyShown(bookPlan.bookKind);
+          await feedback.markSurveyShown(surveyKind);
           const id = window.setTimeout(() => setSurveyOpen(true), 1500);
           return () => window.clearTimeout(id);
         }
@@ -394,6 +402,10 @@ export function BookStudio({
           error={bookPlan.planError}
           bookKind={bookPlan.bookKind}
           setBookKind={bookPlan.setBookKind}
+          activityWeights={bookPlan.activityWeights}
+          setActivityWeights={bookPlan.setActivityWeights}
+          activityDifficulty={bookPlan.activityDifficulty}
+          setActivityDifficulty={bookPlan.setActivityDifficulty}
           storyType={bookPlan.storyType}
           setStoryType={bookPlan.setStoryType}
           storyCharacterNames={bookPlan.storyCharacterNames}
@@ -562,6 +574,39 @@ export function BookStudio({
         return { ...it, name: np.name, subject: np.subject };
       }),
     );
+  };
+
+  const saveActivity = async () => {
+    if (activitySaving || !bookPlan.activityPlan) return;
+    setActivitySaving(true);
+    try {
+      const activityItems: ActivityPageItem[] = items
+        .filter((it) => it.activity)
+        .map((it) => ({
+          spec: it.activity!,
+          status: it.status === "done" ? "done" : it.status === "error" ? "error" : it.status === "generating" ? "generating" : "pending",
+          dataUrl: it.dataUrl,
+          solutionDataUrl: it.solutionDataUrl,
+        }));
+      const r = await saveActivityBookToCloud({
+        plan: bookPlan.activityPlan,
+        age,
+        items: activityItems,
+        includeAnswerKey: true,
+        coverDataUrl: cover.dataUrl,
+        backCoverDataUrl: backCover.dataUrl,
+        belongsToDataUrl: belongsTo.dataUrl,
+      });
+      setActivitySavedId(r.bookId);
+    } catch (e) {
+      void dialog.alert({
+        title: "Save failed",
+        message: e instanceof Error ? e.message : "Could not save the book.",
+        variant: "danger",
+      });
+    } finally {
+      setActivitySaving(false);
+    }
   };
 
   return (
@@ -920,26 +965,44 @@ export function BookStudio({
             </div>
           </div>
           <div className="flex justify-center lg:justify-end items-center gap-3 flex-wrap order-3 lg:order-none">
-            <SaveBookButton
-              plan={plan!}
-              mode={mode}
-              age={age}
-              aspectRatio={aspectRatio}
-              coverStyle={coverStyle}
-              coverBorder={coverBorder}
-              belongsToStyle={mode === "qa" ? belongsToStyle : undefined}
-              cover={{ dataUrl: cover.dataUrl }}
-              backCover={{ dataUrl: backCover.dataUrl }}
-              belongsTo={
-                mode === "qa" ? { dataUrl: belongsTo.dataUrl } : undefined
-              }
-              theEndPage={
-                mode === "story" ? { dataUrl: theEndPage.dataUrl } : undefined
-              }
-              pages={items}
-              characterLock={characterLock.block ?? null}
-              disabled={!allDone || pdfBuilding}
-            />
+            {bookPlan.bookKind === "activity" ? (
+              <button
+                type="button"
+                onClick={() => void saveActivity()}
+                disabled={!allDone || activitySaving || !!activitySavedId}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {activitySaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : activitySavedId ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {activitySavedId ? "Saved" : activitySaving ? "Saving…" : "Save book"}
+              </button>
+            ) : (
+              <SaveBookButton
+                plan={plan!}
+                mode={mode}
+                age={age}
+                aspectRatio={aspectRatio}
+                coverStyle={coverStyle}
+                coverBorder={coverBorder}
+                belongsToStyle={mode === "qa" ? belongsToStyle : undefined}
+                cover={{ dataUrl: cover.dataUrl }}
+                backCover={{ dataUrl: backCover.dataUrl }}
+                belongsTo={
+                  mode === "qa" ? { dataUrl: belongsTo.dataUrl } : undefined
+                }
+                theEndPage={
+                  mode === "story" ? { dataUrl: theEndPage.dataUrl } : undefined
+                }
+                pages={items}
+                characterLock={characterLock.block ?? null}
+                disabled={!allDone || pdfBuilding}
+              />
+            )}
             <DownloadMenu
               onPdf={downloadPdf}
               onZip={downloadZip}
@@ -1120,7 +1183,7 @@ export function BookStudio({
       <FeedbackSurveyModal
         open={surveyOpen}
         onOpenChange={setSurveyOpen}
-        bookKind={bookPlan.bookKind}
+        bookKind={bookPlan.bookKind === "activity" ? "coloring" : bookPlan.bookKind}
         bookTitle={bookPlan.plan?.coverTitle ?? bookPlan.plan?.title}
       />
 

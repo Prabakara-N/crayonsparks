@@ -85,6 +85,13 @@ const PaletteSchema = z.object({
   hexes: z.array(z.string()).min(1).max(8),
 });
 
+const ActivityPagePayloadSchema = z.object({
+  type: z.string().max(40),
+  difficulty: z.string().max(16),
+  theme: z.string().max(80).optional(),
+  params: z.record(z.string(), z.unknown()).optional(),
+});
+
 const PageInputSchema = z.object({
   id: z.string().min(1),
   index: z.number().int().nonnegative(),
@@ -96,6 +103,8 @@ const PageInputSchema = z.object({
   image: ImageVariantsSchema,
   bubbles: z.array(BubbleSchema).max(8).optional(),
   bubblesFlattened: z.boolean().optional(),
+  activity: ActivityPagePayloadSchema.optional(),
+  solution: ImageVariantsSchema.optional(),
 });
 
 // Save shape covers BOTH book kinds via the `mode` discriminator:
@@ -104,9 +113,15 @@ const PageInputSchema = z.object({
 //                                    + characters + palette + dialogue/narration on pages
 // All kind-specific fields are optional at the schema level; the client
 // includes whichever apply.
+const ActivityMetaSchema = z.object({
+  types: z.array(z.string()).max(20).optional(),
+  difficulty: z.string().max(16).optional(),
+  hasAnswerKey: z.boolean().optional(),
+});
+
 const SaveInput = z.object({
-  bookId: z.string().min(1).max(64),
-  mode: z.enum(["qa", "story"]),
+  bookId: z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/, "Invalid bookId"),
+  mode: z.enum(["qa", "story", "activity"]),
   title: z.string().min(1).max(200),
   coverTitle: z.string().min(1).max(80),
   description: z.string().max(1000),
@@ -133,10 +148,12 @@ const SaveInput = z.object({
   theEndPage: ImageVariantsSchema.optional(),
   characters: z.array(CharacterSchema).optional(),
   palette: PaletteSchema.optional(),
+  // Activity-book-only:
+  activityMeta: ActivityMetaSchema.optional(),
   // Both kinds:
   characterLock: z.string().nullable().optional(),
-  cover: ImageVariantsSchema,
-  backCover: ImageVariantsSchema,
+  cover: ImageVariantsSchema.optional(),
+  backCover: ImageVariantsSchema.optional(),
   pages: z.array(PageInputSchema).min(1).max(100),
 });
 
@@ -220,7 +237,7 @@ export const booksRouter = {
       const items = await Promise.all(
         snap.docs.map(async (d) => {
           const data = d.data();
-          const mode = (data.mode as "qa" | "story") ?? "qa";
+          const mode = (data.mode as "qa" | "story" | "activity") ?? "qa";
           const thumbKey = data.cover?.thumb?.key as string | undefined;
           let coverThumbUrl: string | null = null;
           if (thumbKey) {
@@ -235,7 +252,7 @@ export const booksRouter = {
             title: (data.title as string) ?? "",
             coverTitle: (data.coverTitle as string) ?? "",
             mode,
-            kind: mode === "story" ? "story" : "coloring",
+            kind: mode === "story" ? "story" : mode === "activity" ? "activity" : "coloring",
             age: (data.age as string) ?? "toddlers",
             pageCount: (data.pageCount as number) ?? 0,
             coverThumbUrl,
@@ -301,6 +318,9 @@ export const booksRouter = {
         const data = d.data();
         if (data.image) {
           data.image = await reSignVariants(data.image as StoredVariants);
+        }
+        if (data.solution) {
+          data.solution = await reSignVariants(data.solution as StoredVariants);
         }
         return { id: d.id, ...data };
       }),

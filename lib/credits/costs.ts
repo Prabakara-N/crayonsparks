@@ -10,7 +10,7 @@
  *   - Refines are deliberately cheaper than full generations.
  */
 
-export type BookKind = "coloring" | "story";
+export type BookKind = "coloring" | "story" | "activity";
 
 /**
  * cover  — front cover, back cover (cover-quality model surfaces)
@@ -26,6 +26,9 @@ export const SIGNUP_FREE_CREDITS = 50;
 const COST_TABLE: Record<BookKind, Record<GenOp, number>> = {
   coloring: { cover: 4, page: 4, refine: 2, single: 2 },
   story: { cover: 11, page: 11, refine: 3, single: 2 },
+  // Activity: procedural interior pages are free (the route charges nothing
+  // for them); cover + illustrated pages bill at the coloring rate.
+  activity: { cover: 4, page: 4, refine: 2, single: 2 },
 };
 
 export function creditCost(kind: BookKind, op: GenOp): number {

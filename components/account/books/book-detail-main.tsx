@@ -36,6 +36,7 @@ import { BookActionsMenu } from "./book-actions-menu";
 import { BubbleEditorModal } from "@/components/playground/book-studio/bubble-editor/bubble-editor-modal";
 import { applyBubbleStyle } from "@/lib/bubble-style";
 import type { StoryBubble } from "@/lib/story-bubble-seed";
+import { ActivityBookDetail } from "./activity-book-detail";
 
 interface ImageVariant {
   key: string;
@@ -49,13 +50,13 @@ interface ImageVariants {
 
 interface BookDoc {
   bookId: string;
-  mode: "qa" | "story";
+  mode: "qa" | "story" | "activity";
   title: string;
   coverTitle: string;
   pageCount: number;
   belongsToStyle?: "bw" | "color";
-  cover: ImageVariants;
-  backCover: ImageVariants;
+  cover?: ImageVariants;
+  backCover?: ImageVariants;
   belongsTo?: ImageVariants;
   theEndPage?: ImageVariants;
 }
@@ -136,10 +137,9 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
   // Top-of-page tile grid — covers grouped together for quick scanning.
   const coverTiles: CoverTileSpec[] = useMemo(() => {
     if (!book) return [];
-    const tiles: CoverTileSpec[] = [
-      { label: "Front cover", role: "cover", variants: book.cover },
-      { label: "Back cover", role: "backCover", variants: book.backCover },
-    ];
+    const tiles: CoverTileSpec[] = [];
+    if (book.cover) tiles.push({ label: "Front cover", role: "cover", variants: book.cover });
+    if (book.backCover) tiles.push({ label: "Back cover", role: "backCover", variants: book.backCover });
     if (book.belongsTo) {
       tiles.push({
         label: "Belongs to",
@@ -174,7 +174,7 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
     };
     if (!book) return { carouselImages: images, indexByRole: idx };
 
-    push("cover", book.cover.full.url, "Front cover");
+    if (book.cover) push("cover", book.cover.full.url, "Front cover");
     if (book.mode === "qa" && book.belongsTo) {
       push("belongsTo", book.belongsTo.full.url, "Belongs to");
     }
@@ -189,7 +189,7 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
     if (book.mode === "story" && book.theEndPage) {
       push("theEnd", book.theEndPage.full.url, "The End");
     }
-    push("backCover", book.backCover.full.url, "Back cover");
+    if (book.backCover) push("backCover", book.backCover.full.url, "Back cover");
 
     return { carouselImages: images, indexByRole: idx };
   }, [book, pages]);
@@ -258,6 +258,17 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
         </Link>
         <p className="text-sm text-red-300">{error ?? "Book not found."}</p>
       </div>
+    );
+  }
+
+  if (book.mode === "activity") {
+    return (
+      <ActivityBookDetail
+        book={book}
+        pages={pages}
+        onDelete={handleDelete}
+        deleting={deleting}
+      />
     );
   }
 
@@ -354,8 +365,8 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
             like a real book.
           </p>
           <BookFlip
-            cover={{ imageUrl: book.cover.medium.url }}
-            backCover={{ imageUrl: book.backCover.medium.url }}
+            cover={{ imageUrl: book.cover?.medium.url ?? "" }}
+            backCover={{ imageUrl: book.backCover?.medium.url ?? "" }}
             belongsTo={
               !isStory && book.belongsTo
                 ? { imageUrl: book.belongsTo.medium.url }

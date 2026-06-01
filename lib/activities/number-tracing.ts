@@ -1,0 +1,13 @@
+import type { ActivityResult, ActivitySpec } from "./types";
+import { buildTracingPage } from "./tracing-shared";
+
+export function generateNumberTracing(spec: ActivitySpec): ActivityResult {
+  const num = String(spec.params.numbers?.[0] ?? 1).slice(0, 2);
+  return buildTracingPage(spec, {
+    headerLine: num,
+    traceLine: num,
+    instruction: `Trace the number ${num}, then write your own.`,
+    repeatTrace: true,
+    rows: 5,
+  });
+}
