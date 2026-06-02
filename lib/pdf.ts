@@ -37,8 +37,8 @@ export interface AssembleOptions {
   trimHeightInches?: number;
   // Activity-book extras (ignored by the coloring/story flows that don't set them):
   solutionPages?: PdfPageInput[];
-  licensePage?: boolean;
-  pageNumbers?: boolean;
+  licensePageDataUrl?: string;
+  answerDividerDataUrl?: string;
   pageBorder?: boolean;
 }
 
@@ -60,6 +60,13 @@ async function embedImage(doc: PDFDocument, dataUrl: string): Promise<PDFImage> 
   if (mime === "image/png") return doc.embedPng(bytes);
   if (mime === "image/jpeg" || mime === "image/jpg") return doc.embedJpg(bytes);
   throw new Error(`Unsupported image type: ${mime}`);
+}
+
+// Scale an image to fit (contain) inside a box, preserving aspect ratio.
+function fitContain(img: PDFImage, boxW: number, boxH: number): { w: number; h: number } {
+  const imgRatio = img.width / img.height;
+  const boxRatio = boxW / boxH;
+  return imgRatio > boxRatio ? { w: boxW, h: boxW / imgRatio } : { w: boxH * imgRatio, h: boxH };
 }
 
 export async function assembleColoringBookPdf(opts: AssembleOptions): Promise<Uint8Array> {
@@ -86,13 +93,10 @@ export async function assembleColoringBookPdf(opts: AssembleOptions): Promise<Ui
   doc.setCreationDate(now);
   doc.setModificationDate(now);
 
-  const helv = await doc.embedFont(StandardFonts.HelveticaBold);
-  const helvNormal = await doc.embedFont(StandardFonts.Helvetica);
-  // Times Italic for the brand imprint — complements the elegant italic
-  // serif tagline rendered by Gemini on the back cover, more polished
-  // than Helvetica for a publisher-style mark.
-  const brandFont = await doc.embedFont(StandardFonts.TimesRomanItalic);
-
+  // KDP rejects books with non-embedded base-14 fonts, so we avoid pdf-lib
+  // text entirely: the license + answer-key pages come in as rendered images,
+  // and the only text-drawing path left (the no-cover fallback title page)
+  // embeds a StandardFont lazily, so a font is added ONLY if that path runs.
   if (hasCover && opts.cover) {
     const cover = await embedImage(doc, opts.cover.dataUrl);
     const page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
@@ -176,96 +180,56 @@ export async function assembleColoringBookPdf(opts: AssembleOptions): Promise<Ui
         borderWidth: 1.5,
       });
     }
-    // Honor blank-back convention: a blank page after belongs-to so the
-    // first content page lands on a right-hand spread (consistent with
-    // single-sided coloring-book printing).
-    if ((opts.includeBlankPages ?? true) && opts.belongsTo.style === "bw") {
+    // Blank-back convention: keep the first activity on a right-hand page.
+    // When a license page follows, IT occupies the left slot after belongs-to
+    // (so activities land on the right) — so only add this filler blank when
+    // there's no license page to play that role.
+    if (
+      (opts.includeBlankPages ?? true) &&
+      opts.belongsTo.style === "bw" &&
+      !opts.licensePageDataUrl
+    ) {
       doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     }
   }
 
-  // License / copyright page — expected on KDP & Etsy kids' activity books.
-  if (opts.licensePage) {
+  // License / copyright page — rendered upstream as an image (no embedded
+  // fonts), drawn within the safe margins like a content page.
+  if (opts.licensePageDataUrl) {
+    const img = await embedImage(doc, opts.licensePageDataUrl);
     const page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-    const year = new Date().getFullYear();
-    const heading = "License & Copyright";
-    const headingSize = 22;
-    const hw = helv.widthOfTextAtSize(heading, headingSize);
-    page.drawText(heading, {
-      x: (PAGE_WIDTH - hw) / 2,
-      y: PAGE_HEIGHT - 2.2 * INCH_TO_PT,
-      size: headingSize,
-      font: helv,
-      color: rgb(0.1, 0.1, 0.15),
+    const boxW = PAGE_WIDTH - MARGIN_OUTER * 2;
+    const boxH = PAGE_HEIGHT - MARGIN_OUTER * 2;
+    const { w, h } = fitContain(img, boxW, boxH);
+    page.drawImage(img, {
+      x: (PAGE_WIDTH - w) / 2,
+      y: (PAGE_HEIGHT - h) / 2,
+      width: w,
+      height: h,
     });
-    const lines = [
-      `(c) ${year} CrayonSparks. All rights reserved.`,
-      "",
-      "This activity book is for PERSONAL USE ONLY.",
-      "You may print copies for your own family or single classroom.",
-      "",
-      "You may not resell, redistribute, share, or sell printed or",
-      "digital copies, or alter this file in any way.",
-      "",
-      "Some illustrations were created with AI assistance.",
-      "",
-      "Made with CrayonSparks  -  crayonsparks.com",
-    ];
-    let ly = PAGE_HEIGHT - 3.1 * INCH_TO_PT;
-    const bodySize = 12;
-    for (const line of lines) {
-      if (line) {
-        const lw = helvNormal.widthOfTextAtSize(line, bodySize);
-        page.drawText(line, {
-          x: (PAGE_WIDTH - lw) / 2,
-          y: ly,
-          size: bodySize,
-          font: helvNormal,
-          color: rgb(0.3, 0.3, 0.35),
-        });
-      }
-      ly -= bodySize * 1.7;
-    }
   }
 
-  const drawFooter = (page: ReturnType<typeof doc.addPage>, text: string) => {
-    const size = 9;
-    const w = helvNormal.widthOfTextAtSize(text, size);
-    page.drawText(text, {
-      x: (PAGE_WIDTH - w) / 2,
-      y: MARGIN_OUTER * 0.55,
-      size,
-      font: helvNormal,
-      color: rgb(0.6, 0.6, 0.65),
-    });
-  };
-
+  // No-cover fallback title page. This is the ONLY remaining text path; it
+  // lazily embeds a StandardFont so a font is added only when this runs (our
+  // activity/coloring flows always have a cover, so it never does).
   if (!opts.cover && includeTitle) {
+    const titleFont = await doc.embedFont(StandardFonts.HelveticaBold);
     const page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     const titleSize = 40;
     const title = opts.title ?? "Coloring Book";
-    const titleLines = wrapText(title, helv, titleSize, PAGE_WIDTH - MARGIN_OUTER * 4);
+    const titleLines = wrapText(title, titleFont, titleSize, PAGE_WIDTH - MARGIN_OUTER * 4);
     let y = PAGE_HEIGHT - 3 * INCH_TO_PT;
     for (const line of titleLines) {
-      const w = helv.widthOfTextAtSize(line, titleSize);
+      const w = titleFont.widthOfTextAtSize(line, titleSize);
       page.drawText(line, {
         x: (PAGE_WIDTH - w) / 2,
         y,
         size: titleSize,
-        font: helv,
+        font: titleFont,
         color: rgb(0.05, 0.05, 0.1),
       });
       y -= titleSize * 1.15;
     }
-    const sub = "Made with CrayonSparks";
-    const subW = helvNormal.widthOfTextAtSize(sub, 12);
-    page.drawText(sub, {
-      x: (PAGE_WIDTH - subW) / 2,
-      y: 1.5 * INCH_TO_PT,
-      size: 12,
-      font: helvNormal,
-      color: rgb(0.5, 0.5, 0.55),
-    });
   }
 
   for (const input of opts.pages) {
@@ -313,28 +277,22 @@ export async function assembleColoringBookPdf(opts: AssembleOptions): Promise<Ui
   // puzzle page). A divider page, then each solution captioned with its
   // activity name so the key is bound to its puzzle.
   if (opts.solutionPages?.length) {
-    const divider = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-    const heading = "Answer Key";
-    const headingSize = 40;
-    const hw = helv.widthOfTextAtSize(heading, headingSize);
-    divider.drawText(heading, {
-      x: (PAGE_WIDTH - hw) / 2,
-      y: PAGE_HEIGHT / 2,
-      size: headingSize,
-      font: helv,
-      color: rgb(0.1, 0.1, 0.15),
-    });
-    const sub = "Solutions to the puzzles in this book.";
-    const sw = helvNormal.widthOfTextAtSize(sub, 13);
-    divider.drawText(sub, {
-      x: (PAGE_WIDTH - sw) / 2,
-      y: PAGE_HEIGHT / 2 - 30,
-      size: 13,
-      font: helvNormal,
-      color: rgb(0.45, 0.45, 0.5),
-    });
-    if (includeBlanks) doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    // Divider rendered upstream as an image (no embedded fonts).
+    if (opts.answerDividerDataUrl) {
+      const img = await embedImage(doc, opts.answerDividerDataUrl);
+      const divider = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      const boxW = PAGE_WIDTH - MARGIN_OUTER * 2;
+      const boxH = PAGE_HEIGHT - MARGIN_OUTER * 2;
+      const { w, h } = fitContain(img, boxW, boxH);
+      divider.drawImage(img, {
+        x: (PAGE_WIDTH - w) / 2,
+        y: (PAGE_HEIGHT - h) / 2,
+        width: w,
+        height: h,
+      });
+    }
 
+    // Answer key prints back-to-back — no blank fillers between solutions.
     for (const input of opts.solutionPages) {
       const embedded = await embedImage(doc, input.dataUrl);
       const page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
@@ -353,8 +311,6 @@ export async function assembleColoringBookPdf(opts: AssembleOptions): Promise<Ui
       const drawX = drawable.x + (drawable.w - drawW) / 2;
       const drawY = drawable.y + (drawable.h - drawH) / 2;
       page.drawImage(embedded, { x: drawX, y: drawY, width: drawW, height: drawH });
-      drawFooter(page, `Answers - ${input.name}`);
-      if (includeBlanks) doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     }
   }
 
@@ -377,57 +333,6 @@ export async function assembleColoringBookPdf(opts: AssembleOptions): Promise<Ui
     const drawX = (PAGE_WIDTH - drawW) / 2;
     const drawY = (PAGE_HEIGHT - drawH) / 2;
     page.drawImage(back, { x: drawX, y: drawY, width: drawW, height: drawH });
-    // Brand imprint — centered horizontally at the bottom of the back
-    // cover. The KDP barcode safe-zone is BOTTOM-RIGHT, so center-bottom
-    // is clear of it. Italic-serif wordmark + stylized 8-ray sparkle so
-    // the imprint complements the elegant italic-serif tagline drawn on
-    // the back cover by Gemini. Vector text — crisp at every DPI.
-    {
-      const brandText = "CrayonSparks";
-      const brandFontSize = 11;
-      const brandColor = rgb(0.22, 0.18, 0.28); // deep warm grey, reads on any pastel
-      const sparkleGap = 6;
-      const textWidth = brandFont.widthOfTextAtSize(brandText, brandFontSize);
-      const sparkleSize = brandFontSize * 0.7;
-      const totalWidth = textWidth + sparkleGap + sparkleSize;
-      const brandX = (PAGE_WIDTH - totalWidth) / 2;
-      const brandY = PAGE_HEIGHT * 0.025;
-      page.drawText(brandText, {
-        x: brandX,
-        y: brandY,
-        size: brandFontSize,
-        font: brandFont,
-        color: brandColor,
-      });
-      // 8-ray polished sparkle (4 long axes + 4 shorter diagonals) with a
-      // tiny center dot — reads as a publishing star, not a simple cross.
-      const cx = brandX + textWidth + sparkleGap + sparkleSize / 2;
-      const cy = brandY + sparkleSize * 0.55;
-      const rLong = sparkleSize / 2;
-      const rShort = rLong * 0.55;
-      page.drawCircle({ x: cx, y: cy, size: rLong * 0.22, color: brandColor });
-      const longRays = [
-        { dx: 0, dy: rLong },
-        { dx: 0, dy: -rLong },
-        { dx: rLong, dy: 0 },
-        { dx: -rLong, dy: 0 },
-      ];
-      const diag = rShort / Math.SQRT2;
-      const shortRays = [
-        { dx: diag, dy: diag },
-        { dx: -diag, dy: diag },
-        { dx: diag, dy: -diag },
-        { dx: -diag, dy: -diag },
-      ];
-      [...longRays, ...shortRays].forEach(({ dx, dy }) => {
-        page.drawLine({
-          start: { x: cx, y: cy },
-          end: { x: cx + dx, y: cy + dy },
-          thickness: 0.7,
-          color: brandColor,
-        });
-      });
-    }
   }
 
   return doc.save();

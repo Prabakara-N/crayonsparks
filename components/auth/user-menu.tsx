@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { LayoutDashboard, Shield, Coins } from "lucide-react";
 import type { User } from "firebase/auth";
 import { orpc } from "@/lib/orpc/client";
 import { getPlanById } from "@/lib/billing/plans";
+import { onCreditsChanged } from "@/lib/credits-events";
 import { UserAvatar } from "./user-avatar";
 import { SignOutButton } from "./sign-out-button";
 
@@ -35,22 +36,37 @@ export function UserMenu({ user }: UserMenuProps) {
     };
   }, [user.uid]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadSummary = useCallback(() => {
     orpc.billing
       .summary()
       .then((res) => {
-        if (cancelled) return;
         setCredits(res.creditsBalance);
         setPlanName(getPlanById(res.planId).name);
       })
       .catch(() => {
         // leave as null — the row shows a dash
       });
+  }, []);
+
+  // Refresh on mount, whenever the menu opens, on window focus, and whenever a
+  // generation reports it spent credits — so the balance never shows stale.
+  useEffect(() => {
+    loadSummary();
+  }, [user.uid, loadSummary]);
+
+  useEffect(() => {
+    if (open) loadSummary();
+  }, [open, loadSummary]);
+
+  useEffect(() => {
+    const onFocus = () => loadSummary();
+    window.addEventListener("focus", onFocus);
+    const off = onCreditsChanged(loadSummary);
     return () => {
-      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      off();
     };
-  }, [user.uid]);
+  }, [loadSummary]);
 
   useEffect(() => {
     if (!open) return;

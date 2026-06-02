@@ -130,7 +130,7 @@ function fallbackPool(idea: string): ContentPool {
     title: `${cap} Activity Book for Kids — Mazes, Puzzles, Tracing & More`,
     coverTitle: `${cap} Activity Book`,
     description: `A fun-packed ${cap.toLowerCase()} activity book for kids — mazes, word searches, tracing, connect-the-dots, and more. Hours of screen-free learning and play.`,
-    coverScene: `A cheerful ${cap.toLowerCase()} scene with puzzle motifs framing a bold activity-book title`,
+    coverScene: `A happy child or friendly character actively doing an activity — solving a maze with a big pencil, tracing letters, or connecting dots — surrounded by playful ${cap.toLowerCase()} details and puzzle motifs`,
     theme: cap,
     wordSets: [
       ["STAR", "MOON", "SUN", "CLOUD", "RAIN", "TREE", "BIRD", "FISH"],
@@ -190,7 +190,7 @@ Respond with ONLY a JSON object (no prose, no code fences):
   "title": "full KDP title under 150 chars, includes 'Activity Book' and age range",
   "coverTitle": "short punchy title under 45 chars",
   "description": "25-45 word Amazon description",
-  "coverScene": "one vibrant colored cover scene with puzzle motifs",
+  "coverScene": "a vibrant cover scene showing a happy child or friendly character ACTIVELY DOING an activity (solving a maze with a pencil, tracing, or connecting dots), surrounded by on-theme details and puzzle motifs",
   "theme": "1-2 word theme",
   "wordSets": [["WORD","WORD", ... 8 words], ... 4 sets],
   "crosswordWords": [{"answer":"CAT","clue":"..."}, ... 12 interlocking words],

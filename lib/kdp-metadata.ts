@@ -20,7 +20,7 @@ export type AgeBand = "toddlers" | "kids" | "tweens";
  * different SEO landscapes (keywords, categories, copy, price bands) so
  * we can't share prompt prose.
  */
-export type KdpKind = "coloring" | "story";
+export type KdpKind = "coloring" | "story" | "activity";
 
 export interface KdpMetadataInput {
   bookTitle: string;

@@ -13,7 +13,7 @@ export type IdeaAudience = "any" | "toddlers" | "kids" | "tweens";
  * shaped ("20 X with simple outlines for ages Y"); story-book ideas are
  * narrative-shaped (a fable title or a 1-line original story for ages Y).
  */
-export type IdeaKind = "coloring" | "story";
+export type IdeaKind = "coloring" | "story" | "activity";
 export type IdeaStoryType =
   | "moral"
   | "fiction"
@@ -126,6 +126,23 @@ RULES
 - Use a category tag from this set: Fable, Fairytale, Bedtime, Adventure, Mystery, Mythology, Original, Educational.
 - Each idea has ONE compact icon marker.`;
 
+const ACTIVITY_SYSTEM_PROMPT = `You are Sparky AI — the idea generator for ${PRODUCT_NAME} ACTIVITY / PUZZLE / workbook creators selling on Amazon KDP and Etsy.
+
+GOAL
+Suggest 8 distinct ACTIVITY-BOOK ideas. Each idea is one short sentence the user could paste into a "describe your activity book" field. The output is a printable workbook of puzzles and exercises (mazes, word searches, tracing, dot-to-dot, matching, counting, color-by-number, spot-the-difference) — NOT a story and NOT a plain coloring book.
+
+RULES
+- Cover a SPREAD of angles across the 8 ideas — do not make them all themed-animal packs:
+  - About 3 EDUCATIONAL ideas (alphabet ABC tracing, numbers & counting 1-20, shapes & colors, sight words, early math, phonics).
+  - About 3 THEMED ideas (a fun subject like ocean, space, dinosaurs, farm, vehicles applied across activity types).
+  - About 2 GENERAL "big fun activity book / brain games" ideas not tied to one narrow subject.
+- Match activity types to age: ages 3-5 use tracing, dot-to-dot, simple mazes, matching, counting, color-by-number — NO word searches or crosswords (pre-readers can't read). Ages 6-8 and 9-12 can include word searches and crosswords.
+- Each idea: 10-20 words. Name the focus/theme, the audience age, and the page count. Mention 2-4 activity types where natural.
+- Avoid copyrighted material (Disney, Pokemon, Marvel, brand logos, real celebrities).
+- No duplicates or near-duplicates within a single batch.
+- Use a category tag from this set: Educational, Animals, Space, Nature, Vehicles, Holiday, Preschool, General.
+- Each idea has ONE compact icon marker.`;
+
 const ideaSchema = z.object({
   ideas: z
     .array(
@@ -154,7 +171,11 @@ export async function generateIdeaSuggestions(
       ? `Selected story type: ${storyType}. ${STORY_TYPE_NOTES[storyType]} All 8 ideas must fit this type; do not mix unrelated story types.`
       : "Story type: no preference. Mix compatible story shapes naturally.";
   const system =
-    kind === "story" ? STORY_SYSTEM_PROMPT : COLORING_SYSTEM_PROMPT;
+    kind === "story"
+      ? STORY_SYSTEM_PROMPT
+      : kind === "activity"
+        ? ACTIVITY_SYSTEM_PROMPT
+        : COLORING_SYSTEM_PROMPT;
 
   const result = await generateObject({
     model: openai(MODEL_ID),

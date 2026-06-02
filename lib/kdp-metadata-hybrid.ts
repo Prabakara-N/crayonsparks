@@ -40,18 +40,23 @@ export interface PerplexityResearch {
 
 function buildResearchUserPrompt(input: KdpMetadataInput): string {
   const isStory = input.kind === "story";
+  const isActivity = input.kind === "activity";
   const productLabel = isStory
     ? "full-color children's picture book (read-aloud / bedtime story)"
-    : "coloring book";
+    : isActivity
+      ? "printable children's ACTIVITY / PUZZLE book (mazes, word search, tracing, dot-to-dot, matching, counting)"
+      : "coloring book";
   const exampleCategoryHint = isStory
     ? `e.g. "Books > Children's Books > Animals > Stories", "Books > Children's Books > Fairy Tales, Folk Tales & Myths > Fables", "Books > Children's Books > Bedtime & Dreaming"`
-    : `e.g. "Books > Children's Books > Activities, Crafts & Games > Activity Books"`;
+    : `e.g. "Books > Children's Books > Activities, Crafts & Games > Activity Books", "Books > Children's Books > Activities, Crafts & Games > Games"`;
   const sceneOrPlot = isStory
     ? `Story / cover scene: ${input.scene}`
     : `World/scene: ${input.scene}`;
   const niche = isStory
     ? "picture-book / read-aloud story-book"
-    : "coloring-book";
+    : isActivity
+      ? "kids activity & puzzle workbook"
+      : "coloring-book";
 
   return `Research a ${productLabel} for ${AGE_DESCRIPTORS[input.age]} titled: "${input.bookTitle}". Page count: ${input.pageCount}.
 ${sceneOrPlot}
@@ -60,7 +65,9 @@ Find on AMAZON.COM right now:
 1. The 7 best-converting backend keywords for this ${niche} niche — phrases buyers actually search for. Each ≤50 characters, no commas, no quotation marks.${
     isStory
       ? " Examples to consider: \"read aloud picture book\", \"bedtime story toddler\", \"fable book ages 3-5\", \"classic story for kids\"."
-      : ""
+      : isActivity
+        ? " Examples to consider: \"activity book for kids\", \"maze book ages 6-8\", \"word search for kids\", \"tracing workbook preschool\", \"dot to dot book\"."
+        : ""
   }
 2. The 2 most-relevant Amazon KDP browse-category paths (full path, ${exampleCategoryHint}). Verify these categories EXIST in Amazon's current taxonomy.
 3. (Optional) 2-3 examples of real top-selling competitor book titles in this niche.
@@ -114,19 +121,52 @@ function emptyResearch(): PerplexityResearch {
   return { keywords: Array(7).fill(""), categories: ["", ""] };
 }
 
+function hasKeywords(r: PerplexityResearch): boolean {
+  return r.keywords.some((k) => k.trim().length > 0);
+}
+
+const RESEARCH_SCHEMA = z.object({
+  keywords: z.array(z.string().max(50)).length(7),
+  categories: z.array(z.string()).length(2),
+});
+
+// Fallback when Perplexity is unavailable or returns nothing: OpenAI invents
+// plausible backend keywords + KDP browse categories from its own knowledge.
+// Less accurate than live Amazon data, but never leaves the fields blank.
+async function researchWithOpenAi(input: KdpMetadataInput): Promise<PerplexityResearch> {
+  const result = await generateObject({
+    model: openai(OPENAI_MODEL),
+    system:
+      "You are an Amazon KDP listing research expert. Output strictly via the schema — 7 backend keywords and 2 real KDP browse-category paths.",
+    schema: RESEARCH_SCHEMA,
+    prompt: buildResearchUserPrompt(input),
+  });
+  return {
+    keywords: result.object.keywords.map((k) => k.trim().slice(0, 50)),
+    categories: result.object.categories.map((c) => c.trim()),
+  };
+}
+
 async function safeResearch(
   input: KdpMetadataInput,
 ): Promise<{ research: PerplexityResearch; researchError?: string }> {
   const hasPerplexity = !!process.env.PERPLEXITY_API_KEY;
-  if (!hasPerplexity) {
-    return {
-      research: emptyResearch(),
-      researchError:
-        "PERPLEXITY_API_KEY not set — using OpenAI to invent keywords (less accurate than live Amazon data).",
-    };
+  if (hasPerplexity) {
+    try {
+      const research = await researchWithPerplexity(input);
+      if (hasKeywords(research)) return { research };
+      // Perplexity returned nothing usable — fall through to OpenAI.
+    } catch {
+      // fall through to OpenAI fallback below
+    }
   }
   try {
-    return { research: await researchWithPerplexity(input) };
+    return {
+      research: await researchWithOpenAi(input),
+      researchError: hasPerplexity
+        ? "Live Amazon research was empty — keywords invented by OpenAI (verify before publishing)."
+        : "PERPLEXITY_API_KEY not set — keywords invented by OpenAI (verify before publishing).",
+    };
   } catch (e) {
     return {
       research: emptyResearch(),
@@ -206,9 +246,12 @@ export async function generateKdpCore(
   const { research, researchError } = await safeResearch(input);
 
   const isStory = input.kind === "story";
+  const isActivity = input.kind === "activity";
   const titleFormat = isStory
     ? `Format: "[Story Name]: A [Audience] Picture Book for Read-Aloud" or "[Story Name] — Illustrated Story Book for [Audience]". Include 2-3 of the verified keywords naturally. Never call it a coloring book.`
-    : `Format: "[Theme] Coloring Book for [Audience]: [Page Count] [Hook] | [Differentiator]". Include 2-3 of the verified keywords naturally.`;
+    : isActivity
+      ? `Format: "[Theme] Activity Book for [Audience]: [Page Count] [Hook] | Mazes, Puzzles & More". Include 2-3 of the verified keywords naturally. It's an ACTIVITY / PUZZLE workbook — never call it a coloring book or a story book.`
+      : `Format: "[Theme] Coloring Book for [Audience]: [Page Count] [Hook] | [Differentiator]". Include 2-3 of the verified keywords naturally.`;
   const priceGuidance = isStory
     ? `e.g. "7.99" for short toddler picture books (8-16 pages), "9.99" for standard 20-30 page picture books, "12.99" for premium hardcover-feel editions.`
     : `e.g. "6.99" for 20-30 pages, "8.99" for 40+ pages, "9.99" for premium tween editions.`;

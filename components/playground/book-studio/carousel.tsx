@@ -181,7 +181,7 @@ export function Carousel({
   const cards = useMemo<React.ReactNode[]>(() => {
     // Covers are rendered separately above the carousel via <CoverPair>.
     // The apple carousel only holds the interior page cards now.
-    return items.map((it, i) => {
+    const interiorCards = items.map((it, i) => {
       const refineState = refineStatus?.[it.id];
       const downloadFilename = `page-${i + 1}-${it.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.png`;
       const card: CardData = {
@@ -298,6 +298,45 @@ export function Carousel({
         />
       );
     });
+
+    // Read-only answer-key cards (activity solutions) shown after the
+    // interior pages so the user can preview the back-of-book answers.
+    const answerCards = items
+      .filter((it) => it.status === "done" && it.solutionDataUrl)
+      .map((it, j) => {
+        const card: CardData = {
+          title: `Answer — ${it.name}`,
+          category: "Answer Key",
+          cover: (
+            <>
+              <PageCover
+                status="done"
+                dataUrl={it.solutionDataUrl}
+                message={it.name}
+                aspectClass={aspectRatio.replace(":", " / ")}
+                showFrame
+              />
+              <PageDownloadButton
+                dataUrl={it.solutionDataUrl as string}
+                filename={`answer-${it.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.png`}
+              />
+            </>
+          ),
+          badge: <StatusBadge status="done" />,
+          action: null,
+          content: null,
+        };
+        return (
+          <AppleCard
+            key={`answer-${j}-${it.id}`}
+            card={card}
+            index={items.length + j}
+            onClick={() => {}}
+          />
+        );
+      });
+
+    return [...interiorCards, ...answerCards];
   }, [
     items,
     aspectRatio,

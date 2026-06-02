@@ -9,7 +9,11 @@ export interface TracingOptions {
   rows: number;
 }
 
-const TRACE_GRAY = "#c7c7c7";
+// Dotted outline for trace glyphs — the child traces/joins the dots to form
+// the letter, rather than coloring a solid grey shape.
+const TRACE_STROKE = "#b8b8b8";
+const traceGlyphAttrs = (fontSize: number): string =>
+  `font-family="${SANS}" font-size="${fontSize}" fill="none" stroke="${TRACE_STROKE}" stroke-width="2.5" stroke-dasharray="2 8" stroke-linecap="round" letter-spacing="6"`;
 
 function ruledRow(y: number, rowH: number): string {
   const top = y;
@@ -27,12 +31,12 @@ function ruledRow(y: number, rowH: number): string {
 function traceGlyphs(y: number, rowH: number, text: string, repeat: boolean): string {
   const base = y + rowH * 0.85;
   const fontSize = rowH * 0.72;
-  if (!repeat) {
-    return `<text x="${PAGE.margin + 16}" y="${base}" font-family="${SANS}" font-size="${fontSize}" fill="${TRACE_GRAY}" letter-spacing="6">${escapeXml(text)}</text>`;
-  }
-  const unit = `${text} `;
-  const reps = Math.max(4, Math.floor((PAGE.w - 2 * PAGE.margin) / (fontSize * 0.7 * unit.length)));
-  return `<text x="${PAGE.margin + 16}" y="${base}" font-family="${SANS}" font-size="${fontSize}" fill="${TRACE_GRAY}" letter-spacing="6">${escapeXml(unit.repeat(reps))}</text>`;
+  const content = repeat
+    ? `${text} `.repeat(
+        Math.max(4, Math.floor((PAGE.w - 2 * PAGE.margin) / (fontSize * 0.7 * `${text} `.length))),
+      )
+    : text;
+  return `<text x="${PAGE.margin + 16}" y="${base}" ${traceGlyphAttrs(fontSize)}>${escapeXml(content)}</text>`;
 }
 
 export function buildTracingPage(spec: ActivitySpec, opts: TracingOptions): ActivityResult {

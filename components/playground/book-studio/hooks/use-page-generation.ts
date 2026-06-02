@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ImageModel } from "@/lib/constants";
 import { useDialog } from "@/components/ui/confirm-dialog";
 import { readJsonOrThrow } from "@/lib/fetch-json";
+import { emitCreditsChanged } from "@/lib/credits-events";
 import { downscaleReferenceImage } from "@/lib/functions/client/downscale-image";
 import { isAbortError, shareKeyNoun } from "../book-studio-helpers";
 import {
@@ -103,10 +104,13 @@ export function usePageGeneration({
   });
 
   const updateItem = useCallback(
-    (id: string, patch: Partial<PromptItem>) =>
+    (id: string, patch: Partial<PromptItem>) => {
+      // A finished page means a charge just landed — refresh credit displays.
+      if (patch.status === "done") emitCreditsChanged();
       setItems((prev) =>
         prev.map((it) => (it.id === id ? { ...it, ...patch } : it)),
-      ),
+      );
+    },
     [],
   );
 

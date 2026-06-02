@@ -56,20 +56,32 @@ export function useBookDownload({
     }
   }, [items, cover, backCover, belongsTo, theEndPage, mode, plan]);
 
+  const downloadActivity = useCallback(
+    async (target: "kdp" | "etsy") => {
+      setPdfBuilding(true);
+      try {
+        await downloadActivityBook(
+          { plan, items, cover, backCover, belongsTo, belongsToStyle, includeAnswerKey: true },
+          target,
+        );
+      } catch (e) {
+        void dialog.alert({
+          title: "PDF assembly failed",
+          message: e instanceof Error ? e.message : "PDF assembly failed",
+          variant: "danger",
+        });
+      } finally {
+        setPdfBuilding(false);
+      }
+    },
+    [plan, items, cover, backCover, belongsTo, belongsToStyle, dialog],
+  );
+
   const downloadPdf = useCallback(async () => {
+    if (bookKind === "activity") return downloadActivity("kdp");
     setPdfBuilding(true);
     try {
-      if (bookKind === "activity") {
-        await downloadActivityBook({
-          plan,
-          items,
-          cover,
-          backCover,
-          belongsTo,
-          belongsToStyle,
-          includeAnswerKey: true,
-        });
-      } else if (mode === "story") {
+      if (mode === "story") {
         await downloadStoryBook({
           plan,
           items,
@@ -106,13 +118,20 @@ export function useBookDownload({
     plan,
     mode,
     bookKind,
+    downloadActivity,
     dialog,
   ]);
+
+  const downloadPdfEtsy = useCallback(
+    () => downloadActivity("etsy"),
+    [downloadActivity],
+  );
 
   return {
     pdfBuilding,
     setPdfBuilding,
     downloadPdf,
+    downloadPdfEtsy,
     downloadZip,
   };
 }

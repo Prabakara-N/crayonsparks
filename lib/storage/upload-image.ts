@@ -33,25 +33,27 @@ interface UploadInput {
   buffer: Buffer;
 }
 
-const VARIANT_TARGETS = [
-  { name: "thumb", width: 200, quality: 80 },
-  { name: "medium", width: 800, quality: 85 },
-  { name: "full", width: 1024, quality: 95 },
-] as const;
+// Single full-size variant only. We used to also generate thumb (200px) and
+// medium (800px), but that tripled the sharp encodes + R2 uploads per image
+// and dominated save time. We now store ONE image and alias thumb/medium to
+// it, so every consumer of ImageVariants keeps working (it just serves the
+// full image everywhere).
+//
+// We also intentionally do NOT pass a PNG `quality` here. For PNG, `quality`
+// enables libimagequant palette quantization — it shrinks files ~5x but makes
+// each encode ~15x slower (~8ms -> ~140ms), which was a big part of slow saves.
+// These are line-art / flat-colour pages that stay small losslessly, so we
+// keep them lossless and fast.
+//
+// Width is capped at the 300-DPI 8.5x11 print width (2550px) WITHOUT enlarging,
+// so a saved book keeps print resolution for KDP — interior pages render at
+// 300 DPI, not the ~120 DPI a 1024px downscale would give.
+const FULL_TARGET = { width: 2550 } as const;
 
 /**
- * Resizes a source PNG to thumb / medium / full and uploads all three
- * to R2 under the given key prefix. Returns the variant struct ready
- * to be stored in Firestore.
- *
- * Variant sizes:
- *   thumb   200 px wide  (~50 KB)   — My Books grid + recent activity
- *   medium  800 px wide  (~250 KB)  — BookFlip preview + carousel
- *   full   1024 px wide  (~2 MB)    — Refine modal + PDF assembly
- *
- * The full variant is essentially a passthrough when the source is the
- * native Gemini 1024×1536; sharp normalises any colour profile and
- * strips metadata in the process.
+ * Encodes a source PNG once (full size) and uploads it to R2 under the given
+ * key prefix. Returns the variant struct ready to be stored in Firestore —
+ * thumb / medium / full all point to the same uploaded image.
  */
 export async function uploadImageVariants({
   keyPrefix,
@@ -59,55 +61,31 @@ export async function uploadImageVariants({
 }: UploadInput): Promise<ImageVariants> {
   const cleaned = keyPrefix.replace(/^\/+|\/+$/g, "");
 
-  const results = await Promise.all(
-    VARIANT_TARGETS.map(async (target) => {
-      const pipeline = sharp(buffer)
-        .resize({ width: target.width, withoutEnlargement: true })
-        .png({ quality: target.quality, compressionLevel: 9 });
-      const out = await pipeline.toBuffer({ resolveWithObject: true });
-      const key = `${cleaned}/${target.name}.png`;
-      await r2.send(
-        new PutObjectCommand({
-          Bucket: R2_BUCKET(),
-          Key: key,
-          Body: out.data,
-          ContentType: "image/png",
-          CacheControl: "public, max-age=31536000, immutable",
-        }),
-      );
-      return {
-        name: target.name,
-        key,
-        bytes: out.data.byteLength,
-        width: out.info.width,
-        height: out.info.height,
-      };
+  const out = await sharp(buffer)
+    .resize({ width: FULL_TARGET.width, withoutEnlargement: true })
+    .png({ compressionLevel: 6 })
+    .toBuffer({ resolveWithObject: true });
+
+  const key = `${cleaned}/full.png`;
+  await r2.send(
+    new PutObjectCommand({
+      Bucket: R2_BUCKET(),
+      Key: key,
+      Body: out.data,
+      ContentType: "image/png",
+      CacheControl: "public, max-age=31536000, immutable",
     }),
   );
 
-  const signed = await Promise.all(
-    results.map(async (r) => ({ ...r, url: await getReadUrl(r.key) })),
-  );
-
-  const find = (name: (typeof VARIANT_TARGETS)[number]["name"]): VariantRecord => {
-    const found = signed.find((s) => s.name === name);
-    if (!found) {
-      throw new Error(`Variant ${name} missing — sharp pipeline failed.`);
-    }
-    return {
-      key: found.key,
-      url: found.url,
-      bytes: found.bytes,
-      width: found.width,
-      height: found.height,
-    };
+  const record: VariantRecord = {
+    key,
+    url: await getReadUrl(key),
+    bytes: out.data.byteLength,
+    width: out.info.width,
+    height: out.info.height,
   };
 
-  return {
-    thumb: find("thumb"),
-    medium: find("medium"),
-    full: find("full"),
-  };
+  return { thumb: record, medium: record, full: record };
 }
 
 /**

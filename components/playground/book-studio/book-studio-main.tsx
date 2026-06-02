@@ -280,6 +280,10 @@ export function BookStudio({
     await download.downloadPdf();
     fireConfettiBurst(window.innerWidth / 2, window.innerHeight / 2);
   }, [download]);
+  const downloadPdfEtsy = useCallback(async () => {
+    await download.downloadPdfEtsy();
+    fireConfettiBurst(window.innerWidth / 2, window.innerHeight / 2);
+  }, [download]);
   const downloadZip = useCallback(async () => {
     await download.downloadZip();
     fireConfettiBurst(window.innerWidth / 2, window.innerHeight / 2);
@@ -288,6 +292,7 @@ export function BookStudio({
   const listing = useListingState({
     plan: bookPlan.plan,
     mode: bookPlan.mode,
+    bookKind: bookPlan.bookKind,
     age: bookPlan.age,
     items: pageGen.items,
   });
@@ -1008,6 +1013,7 @@ export function BookStudio({
             <DownloadMenu
               onPdf={downloadPdf}
               onZip={downloadZip}
+              onPdfEtsy={bookPlan.bookKind === "activity" ? downloadPdfEtsy : undefined}
               pdfBuilding={pdfBuilding}
             />
           </div>
@@ -1054,14 +1060,22 @@ export function BookStudio({
                       ? { imageUrl: theEndPage.dataUrl }
                       : undefined
                   }
-                  pages={items.map((it, i) => ({
-                    imageUrl: it.dataUrl,
-                    label: `${it.name} · Page ${i + 1}`,
-                    bubbles:
-                      mode === "story" && !it.bubblesFlattened
-                        ? it.bubbles
-                        : undefined,
-                  }))}
+                  pages={[
+                    ...items.map((it, i) => ({
+                      imageUrl: it.dataUrl,
+                      label: `${it.name} · Page ${i + 1}`,
+                      bubbles:
+                        mode === "story" && !it.bubblesFlattened
+                          ? it.bubbles
+                          : undefined,
+                    })),
+                    ...items
+                      .filter((it) => it.solutionDataUrl)
+                      .map((it) => ({
+                        imageUrl: it.solutionDataUrl,
+                        label: `Answer — ${it.name}`,
+                      })),
+                  ]}
                   alternateBlankPages={mode !== "story"}
                   fullBleedInterior={mode === "story"}
                   width={mode === "story" ? 320 : 360}

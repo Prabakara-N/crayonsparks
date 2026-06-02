@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Sparkles,
   Palette,
+  PencilRuler,
   LayoutGrid,
   BookOpen,
   Download,
@@ -36,7 +37,7 @@ import { BookActionsMenu } from "./book-actions-menu";
 import { BubbleEditorModal } from "@/components/playground/book-studio/bubble-editor/bubble-editor-modal";
 import { applyBubbleStyle } from "@/lib/bubble-style";
 import type { StoryBubble } from "@/lib/story-bubble-seed";
-import { ActivityBookDetail } from "./activity-book-detail";
+import { downloadSavedActivityBook } from "@/lib/functions/client/download-saved-activity-book";
 
 interface ImageVariant {
   key: string;
@@ -175,7 +176,7 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
     if (!book) return { carouselImages: images, indexByRole: idx };
 
     if (book.cover) push("cover", book.cover.full.url, "Front cover");
-    if (book.mode === "qa" && book.belongsTo) {
+    if (book.mode !== "story" && book.belongsTo) {
       push("belongsTo", book.belongsTo.full.url, "Belongs to");
     }
     for (const p of pages) {
@@ -186,6 +187,11 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
         !p.bubblesFlattened ? p.bubbles : undefined,
       );
     }
+    if (book.mode === "activity") {
+      for (const p of pages) {
+        if (p.solution) push(`answer-${p.id}`, p.solution.full.url, `Answer — ${p.name}`);
+      }
+    }
     if (book.mode === "story" && book.theEndPage) {
       push("theEnd", book.theEndPage.full.url, "The End");
     }
@@ -194,8 +200,43 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
     return { carouselImages: images, indexByRole: idx };
   }, [book, pages]);
 
+  const downloadActivityPackage = useCallback(
+    async (target: "kdp" | "etsy") => {
+      if (!book) return;
+      setDownloading(true);
+      try {
+        await downloadSavedActivityBook(
+          {
+            title: book.title,
+            coverTitle: book.coverTitle,
+            coverUrl: book.cover?.full.url,
+            backCoverUrl: book.backCover?.full.url,
+            belongsToUrl: book.belongsTo?.full.url,
+            belongsToStyle: book.belongsToStyle,
+            pages: pages.map((p) => ({
+              id: p.id,
+              name: p.name,
+              imageUrl: p.image.full.url,
+              solutionUrl: p.solution?.full.url,
+            })),
+            includeAnswerKey: true,
+          },
+          target,
+        );
+        toast.success(`${target === "kdp" ? "KDP" : "Etsy"} package downloaded.`);
+        fireConfettiBurst(window.innerWidth / 2, window.innerHeight / 2);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Download failed.");
+      } finally {
+        setDownloading(false);
+      }
+    },
+    [book, pages],
+  );
+
   const handleDownload = useCallback(async () => {
     if (!book) return;
+    if (book.mode === "activity") return downloadActivityPackage("kdp");
     setDownloading(true);
     try {
       await downloadSavedBook(book as SavedBookForDownload, pages);
@@ -206,7 +247,7 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
     } finally {
       setDownloading(false);
     }
-  }, [book, pages]);
+  }, [book, pages, downloadActivityPackage]);
 
   const handleDownloadZip = useCallback(async () => {
     if (!book) return;
@@ -261,18 +302,19 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
     );
   }
 
-  if (book.mode === "activity") {
-    return (
-      <ActivityBookDetail
-        book={book}
-        pages={pages}
-        onDelete={handleDelete}
-        deleting={deleting}
-      />
-    );
-  }
-
   const isStory = book.mode === "story";
+  const isActivity = book.mode === "activity";
+  // Answer-key pages shown after the activities (Book preview + their own grid).
+  const answerPages: SavedPage[] = isActivity
+    ? pages
+        .filter((p) => p.solution)
+        .map((p, i) => ({
+          id: `answer-${p.id}`,
+          index: i,
+          name: `Answer — ${p.name}`,
+          image: p.solution as SavedPage["image"],
+        }))
+    : [];
 
   return (
     <div>
@@ -291,15 +333,19 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
               isStory
                 ? "bg-violet-500/20 border border-violet-500/40 text-violet-100"
-                : "bg-cyan-500/20 border border-cyan-500/40 text-cyan-100"
+                : isActivity
+                  ? "bg-amber-500/20 border border-amber-500/40 text-amber-100"
+                  : "bg-cyan-500/20 border border-cyan-500/40 text-cyan-100"
             }`}
           >
             {isStory ? (
               <Sparkles className="w-3 h-3" />
+            ) : isActivity ? (
+              <PencilRuler className="w-3 h-3" />
             ) : (
               <Palette className="w-3 h-3" />
             )}
-            {isStory ? "Story book" : "Coloring book"}
+            {isStory ? "Story book" : isActivity ? "Activity book" : "Coloring book"}
           </span>
         }
       />
@@ -342,6 +388,9 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
           <BookActionsMenu
             onDownloadPdf={handleDownload}
             onDownloadZip={handleDownloadZip}
+            onDownloadPdfEtsy={
+              isActivity ? () => void downloadActivityPackage("etsy") : undefined
+            }
             onDelete={handleDelete}
             pdfBuilding={downloading}
             zipBuilding={zipping}
@@ -377,11 +426,17 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
                 ? { imageUrl: book.theEndPage.medium.url }
                 : undefined
             }
-            pages={pages.map((p) => ({
-              imageUrl: p.image.medium.url,
-              label: `${p.name} · Page ${p.index + 1}`,
-              bubbles: !p.bubblesFlattened ? p.bubbles : undefined,
-            }))}
+            pages={[
+              ...pages.map((p) => ({
+                imageUrl: p.image.medium.url,
+                label: `${p.name} · Page ${p.index + 1}`,
+                bubbles: !p.bubblesFlattened ? p.bubbles : undefined,
+              })),
+              ...answerPages.map((a) => ({
+                imageUrl: a.image.medium.url,
+                label: a.name,
+              })),
+            ]}
             alternateBlankPages={!isStory}
             fullBleedInterior={isStory}
             width={isStory ? 320 : 360}
@@ -454,6 +509,21 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
             }}
             onEditBubbles={(p) => setEditingBubbleId(p.id)}
           />
+
+          {answerPages.length > 0 && (
+            <>
+              <h3 className="font-display text-lg font-semibold text-white mt-8 mb-3">
+                Answer key
+              </h3>
+              <SavedBookPageGrid
+                pages={answerPages}
+                onPageClick={(pageIndex) => {
+                  const a = answerPages[pageIndex];
+                  if (a) setCarouselIndex(indexByRole.get(a.id) ?? 0);
+                }}
+              />
+            </>
+          )}
         </>
       )}
 

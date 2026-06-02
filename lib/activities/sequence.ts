@@ -34,21 +34,24 @@ export interface ActivitySequenceInput {
 // so the studio form can preview the exact split the planner will produce.
 export function buildActivitySequence(input: ActivitySequenceInput): ActivityType[] {
   const pageCount = Math.max(1, Math.floor(input.pageCount));
-  const allowed = (t: ActivityType): boolean =>
+  // Age-gate (no reading puzzles for toddlers) applies ONLY to the default
+  // all-types mix. If the user EXPLICITLY selects types (weights or mix), we
+  // honor every one of them — never silently drop a selected type.
+  const defaultAllowed = (t: ActivityType): boolean =>
     PLANNABLE_TYPES.includes(t) && !(input.age === "toddlers" && READING_TYPES.includes(t));
 
   let entries: [ActivityType, number][];
   const weights = input.weights;
   if (weights && Object.values(weights).some((w) => (w ?? 0) > 0)) {
     entries = (Object.entries(weights) as [ActivityType, number][]).filter(
-      ([t, w]) => allowed(t) && (w ?? 0) > 0,
+      ([t, w]) => PLANNABLE_TYPES.includes(t) && (w ?? 0) > 0,
     );
   } else if (input.mix?.length) {
-    entries = input.mix.filter(allowed).map((t) => [t, 1]);
+    entries = input.mix.filter((t) => PLANNABLE_TYPES.includes(t)).map((t) => [t, 1]);
   } else {
-    entries = PLANNABLE_TYPES.filter(allowed).map((t) => [t, 1]);
+    entries = PLANNABLE_TYPES.filter(defaultAllowed).map((t) => [t, 1]);
   }
-  if (!entries.length) entries = PLANNABLE_TYPES.filter(allowed).map((t) => [t, 1]);
+  if (!entries.length) entries = PLANNABLE_TYPES.filter(defaultAllowed).map((t) => [t, 1]);
 
   // Give each type its proportional FLOOR share first (equal base when all
   // weights are equal), then hand out the leftover pages across a

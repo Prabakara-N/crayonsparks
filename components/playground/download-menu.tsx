@@ -12,18 +12,21 @@ import {
 interface DownloadMenuProps {
   onPdf: () => void;
   onZip: () => void;
+  // When set (activity books), the PDF action splits into KDP + Etsy packages.
+  onPdfEtsy?: () => void;
   pdfBuilding?: boolean;
   disabled?: boolean;
 }
 
 /**
- * Single Download button that opens a small dropdown with two options:
- * "Download as PDF (KDP)" and "Download as ZIP". Replaces the previous
- * pair of separate top-level export buttons so the action row stays clean.
+ * Single Download button that opens a small dropdown. PDF export is one
+ * "print package" by default, or split into KDP + Etsy packages when
+ * onPdfEtsy is provided. Plus a "Download as ZIP" option.
  */
 export function DownloadMenu({
   onPdf,
   onZip,
+  onPdfEtsy,
   pdfBuilding = false,
   disabled = false,
 }: DownloadMenuProps) {
@@ -120,15 +123,40 @@ export function DownloadMenu({
                   <FileText className="w-4 h-4 mt-0.5 shrink-0 text-violet-300" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-white">
-                      Download print package
+                      {onPdfEtsy ? "Download KDP package" : "Download print package"}
                     </div>
                     <div className="text-[11px] text-neutral-400 mt-0.5">
-                      3 PDFs in one zip — KDP cover, KDP interior, Etsy A4
+                      {onPdfEtsy
+                        ? "Amazon KDP — cover + interior PDF"
+                        : "3 PDFs in one zip — KDP cover, KDP interior, Etsy A4"}
                     </div>
                   </div>
                 </button>
 
                 <div className="border-t border-white/10" />
+
+                {onPdfEtsy && (
+                  <>
+                    <button
+                      role="menuitem"
+                      type="button"
+                      onClick={() => pick(onPdfEtsy)}
+                      disabled={pdfBuilding}
+                      className="w-full flex items-start gap-3 px-3.5 py-2.5 text-left hover:bg-white/5 disabled:opacity-60"
+                    >
+                      <FileText className="w-4 h-4 mt-0.5 shrink-0 text-amber-300" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-white">
+                          Download Etsy package
+                        </div>
+                        <div className="text-[11px] text-neutral-400 mt-0.5">
+                          Etsy / Gumroad — US Letter + A4 PDF
+                        </div>
+                      </div>
+                    </button>
+                    <div className="border-t border-white/10" />
+                  </>
+                )}
 
                 <button
                   role="menuitem"

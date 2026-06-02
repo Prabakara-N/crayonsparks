@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 const VALID_AUDIENCES: IdeaAudience[] = ["any", "toddlers", "kids", "tweens"];
-const VALID_KINDS: IdeaKind[] = ["coloring", "story"];
+const VALID_KINDS: IdeaKind[] = ["coloring", "story", "activity"];
 const VALID_STORY_TYPES: IdeaStoryType[] = [
   "moral",
   "fiction",

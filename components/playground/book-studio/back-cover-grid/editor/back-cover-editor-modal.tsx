@@ -153,8 +153,8 @@ export function BackCoverEditorModal({
           </button>
         </div>
 
-        <div className="grid md:grid-cols-[1fr_300px] gap-5">
-          <div className="mx-auto w-full max-w-[460px]">
+        <div className="grid md:grid-cols-[1fr_300px] gap-5 md:items-start">
+          <div className="mx-auto w-full max-w-[460px] md:sticky md:top-0 md:self-start">
             <div className="rounded-xl overflow-hidden border border-white/10 shadow-lg">
               <DesignOverlay
                 design={design}
@@ -425,7 +425,7 @@ export function BackCoverEditorModal({
 
             {error && <p className="text-[11px] text-red-300">{error}</p>}
 
-            <div className="mt-auto flex flex-col gap-2 pt-1">
+            <div className="sticky bottom-0 z-10 mt-auto flex flex-col gap-2 pt-3 pb-1 bg-zinc-950 border-t border-white/10">
               <button
                 type="button"
                 onClick={() => void apply()}

@@ -13,6 +13,7 @@ import type { Plan, PromptItem, AgeRange } from "../types";
 interface UseListingStateArgs {
   plan: Plan | null;
   mode: "qa" | "story";
+  bookKind?: "coloring" | "story" | "activity";
   age: AgeRange;
   items: PromptItem[];
 }
@@ -20,6 +21,7 @@ interface UseListingStateArgs {
 export function useListingState({
   plan,
   mode,
+  bookKind,
   age,
   items,
 }: UseListingStateArgs) {
@@ -35,6 +37,7 @@ export function useListingState({
     async (only?: ListingPlatform) => {
       if (!plan) return;
       const isStory = mode === "story";
+      const kind = bookKind ?? (isStory ? "story" : "coloring");
       const body = {
         bookTitle: plan.coverTitle ?? plan.title,
         scene: isStory
@@ -43,7 +46,7 @@ export function useListingState({
         age,
         pageCount: items.length,
         samplePages: items.slice(0, 8).map((it) => it.subject),
-        kind: isStory ? "story" : "coloring",
+        kind,
       };
       const targets = only ? [only] : LISTING_PLATFORMS;
       setListingStatus((s) => {
@@ -84,7 +87,7 @@ export function useListingState({
         }),
       );
     },
-    [plan, mode, age, items],
+    [plan, mode, bookKind, age, items],
   );
 
   return {

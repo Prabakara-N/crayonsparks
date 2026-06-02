@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ImageModel } from "@/lib/constants";
 import { DEFAULT_COVER_MODEL, DEFAULT_INTERIOR_MODEL } from "@/lib/constants";
 import { useDialog } from "@/components/ui/confirm-dialog";
+import { emitCreditsChanged } from "@/lib/credits-events";
 import { AGE_LABELS } from "../book-studio-constants";
 import { isAbortError } from "../book-studio-helpers";
 import {
@@ -115,6 +116,7 @@ export function useCoverGeneration({
         signal: abortRef.current?.signal,
       });
       setCover({ status: "done", ...result });
+      emitCreditsChanged();
     } catch (e) {
       if (isAbortError(e)) {
         setCover({ status: "pending" });
@@ -175,6 +177,7 @@ export function useCoverGeneration({
         signal: abortRef.current?.signal,
       });
       setBelongsTo({ status: "done", ...result });
+      emitCreditsChanged();
     } catch (e) {
       if (isAbortError(e)) {
         setBelongsTo({ status: "pending" });
@@ -227,6 +230,7 @@ export function useCoverGeneration({
         signal: abortRef.current?.signal,
       });
       setTheEndPage({ status: "done", ...result });
+      emitCreditsChanged();
     } catch (e) {
       if (isAbortError(e)) {
         setTheEndPage({ status: "pending" });

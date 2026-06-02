@@ -15,6 +15,8 @@ export interface BookActionsMenuProps {
   onDownloadPdf: () => void;
   onDownloadZip: () => void;
   onDelete: () => void;
+  // When set (activity books), the PDF action splits into KDP + Etsy packages.
+  onDownloadPdfEtsy?: () => void;
   pdfBuilding?: boolean;
   zipBuilding?: boolean;
   deleting?: boolean;
@@ -25,6 +27,7 @@ export function BookActionsMenu({
   onDownloadPdf,
   onDownloadZip,
   onDelete,
+  onDownloadPdfEtsy,
   pdfBuilding = false,
   zipBuilding = false,
   deleting = false,
@@ -126,15 +129,40 @@ export function BookActionsMenu({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-white">
-                      Download print package
+                      {onDownloadPdfEtsy ? "Download KDP package" : "Download print package"}
                     </div>
                     <div className="text-[11px] text-neutral-400 mt-0.5">
-                      KDP cover, KDP interior, Etsy A4 — 3 PDFs in one zip
+                      {onDownloadPdfEtsy
+                        ? "Amazon KDP — cover + interior PDF"
+                        : "KDP cover, KDP interior, Etsy A4 — 3 PDFs in one zip"}
                     </div>
                   </div>
                 </button>
 
                 <div className="border-t border-white/10" />
+
+                {onDownloadPdfEtsy && (
+                  <>
+                    <button
+                      role="menuitem"
+                      type="button"
+                      onClick={() => pick(onDownloadPdfEtsy)}
+                      disabled={pdfBuilding}
+                      className="w-full flex items-start gap-3 px-3.5 py-2.5 text-left hover:bg-white/5 disabled:opacity-60"
+                    >
+                      <Download className="w-4 h-4 mt-0.5 shrink-0 text-amber-300" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-white">
+                          Download Etsy package
+                        </div>
+                        <div className="text-[11px] text-neutral-400 mt-0.5">
+                          Etsy / Gumroad — US Letter + A4 PDF
+                        </div>
+                      </div>
+                    </button>
+                    <div className="border-t border-white/10" />
+                  </>
+                )}
 
                 <button
                   role="menuitem"

@@ -1,8 +1,9 @@
 "use client";
 
-import { Shuffle } from "lucide-react";
+import { RotateCcw, Shuffle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ActivityType } from "@/lib/activities/types";
+import { READING_TYPES } from "@/lib/activities/sequence";
 import { PLANNABLE_TYPE_META } from "./activity-types-config";
 
 export type MixWeights = Partial<Record<ActivityType, number>>;
@@ -10,11 +11,12 @@ export type MixWeights = Partial<Record<ActivityType, number>>;
 interface ActivityMixPickerProps {
   weights: MixWeights;
   onChange: (next: MixWeights) => void;
+  age?: "toddlers" | "kids" | "tweens";
 }
 
 const WEIGHT_LABEL = ["", "Low", "More", "Most"];
 
-export function ActivityMixPicker({ weights, onChange }: ActivityMixPickerProps) {
+export function ActivityMixPicker({ weights, onChange, age }: ActivityMixPickerProps) {
   const active = Object.values(weights).filter((w) => (w ?? 0) > 0).length;
   const surprise = active === 0;
 
@@ -27,25 +29,48 @@ export function ActivityMixPicker({ weights, onChange }: ActivityMixPickerProps)
     onChange(copy);
   };
 
+  // "Surprise me" picks a fresh random subset of types with random weights, so
+  // it always does something. For toddlers it skips reading puzzles.
+  const surpriseMe = () => {
+    const pool = PLANNABLE_TYPE_META.map((m) => m.type).filter(
+      (t) => !(age === "toddlers" && READING_TYPES.includes(t)),
+    );
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const count = Math.min(pool.length, 4 + Math.floor(Math.random() * 4));
+    const next: MixWeights = {};
+    for (const t of pool.slice(0, count)) next[t] = 1 + Math.floor(Math.random() * 2);
+    onChange(next);
+  };
+
   return (
     <div className="space-y-3 rounded-2xl border border-white/10 bg-zinc-900/60 p-5">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-cyan-300">
           Activity mix
         </p>
-        <button
-          type="button"
-          onClick={() => onChange({})}
-          className={cn(
-            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors",
-            surprise
-              ? "bg-linear-to-r from-violet-500 to-cyan-400 text-white border-transparent shadow"
-              : "text-neutral-300 border-white/15 hover:bg-white/5",
+        <div className="flex items-center gap-2">
+          {!surprise && (
+            <button
+              type="button"
+              onClick={() => onChange({})}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-white/15 text-neutral-300 hover:bg-white/5 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset to all
+            </button>
           )}
-        >
-          <Shuffle className="w-3.5 h-3.5" />
-          Surprise me (all)
-        </button>
+          <button
+            type="button"
+            onClick={surpriseMe}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white border border-transparent shadow hover:opacity-95 transition-opacity"
+          >
+            <Shuffle className="w-3.5 h-3.5" />
+            Surprise me
+          </button>
+        </div>
       </div>
       <p className="text-xs text-neutral-400">
         {surprise

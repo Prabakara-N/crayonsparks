@@ -167,6 +167,11 @@ export const COLOR_COVER_PROMPT_TEMPLATE = (opts: {
     `Fully colored children's ${isActivity ? "activity" : "coloring"} book cover illustration, portrait 3:4 aspect ratio. Premium Amazon KDP cover quality.`,
     `TITLE TYPOGRAPHY — IMPORTANT: Render the title "${opts.title}" at the top of the cover with PLENTY of breathing room. The title must NEVER look cramped, congested, or run-together. If the title has more than 4 words or 25 characters, BREAK IT onto 2 OR 3 LINES at natural word breaks (between phrases, before "and", before "—", before "Coloring Book"). Each line is centered. Generous space between lines (line-height ~1.2-1.4). Generous space between letters (slight letter-spacing, NOT cramped kerning). The title block occupies roughly the top 28-34% of the cover with comfortable padding all around. Style: chunky multi-colored hand-drawn cartoon letters (mix of bright red, yellow, blue, pink), each letter has a subtle black outline and slight playful bounce. Letters are clearly distinguishable, not overlapping. Spell every letter exactly as given — no typos, no extra letters, no missing letters, no rearranging.`,
     `Foreground (the heroes of the cover): ${opts.scene}`,
+    ...(isActivity
+      ? [
+          "ACTIVITY COVER: the main character must be shown ACTIVELY DOING an activity — holding a chunky pencil/crayon solving a maze, tracing a dotted letter, or connecting dots — not just posing. Make the 'doing an activity' action read clearly, so the cover signals a hands-on workbook, not a coloring book.",
+        ]
+      : []),
     "Background: derive a setting that fits the foreground subjects naturally. Use environmental cues, depth, and supporting shapes that belong to this book's actual world; avoid importing generic scenery from unrelated themes. The background should feel like the natural habitat or setting of the foreground subjects, never contradict them.",
     COVER_STYLE_DIRECTIVES[style],
     COVER_BORDER_DIRECTIVES[border],

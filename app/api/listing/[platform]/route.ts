@@ -71,7 +71,12 @@ export async function POST(
     samplePages: Array.isArray(body.samplePages)
       ? body.samplePages.filter((s): s is string => typeof s === "string")
       : [],
-    kind: body.kind === "story" ? "story" : "coloring",
+    kind:
+      body.kind === "story"
+        ? "story"
+        : body.kind === "activity"
+          ? "activity"
+          : "coloring",
   };
 
   try {

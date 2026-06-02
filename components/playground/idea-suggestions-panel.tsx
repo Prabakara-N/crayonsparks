@@ -50,6 +50,49 @@ const COLORING_FALLBACK_IDEAS: IdeaSuggestion[] = [
   },
 ];
 
+const ACTIVITY_FALLBACK_IDEAS: IdeaSuggestion[] = [
+  {
+    text: "Alphabet ABC tracing & dot-to-dot workbook for preschoolers ages 3-5, 26 pages",
+    category: "Educational",
+    icon: "🔤",
+  },
+  {
+    text: "Numbers & counting 1-20 activity book — tracing, matching, and count & write, ages 3-6 (24 pages)",
+    category: "Educational",
+    icon: "🔢",
+  },
+  {
+    text: "Shapes & colors learning workbook with tracing and matching for ages 3-5, 20 pages",
+    category: "Preschool",
+    icon: "🔷",
+  },
+  {
+    text: "Ocean animals activity pack — mazes, word search, and spot-the-difference, ages 6-8 (30 pages)",
+    category: "Animals",
+    icon: "🐠",
+  },
+  {
+    text: "Space adventure activity book — mazes, dot-to-dot, and color-by-number, ages 5-8 (24 pages)",
+    category: "Space",
+    icon: "🚀",
+  },
+  {
+    text: "Dinosaur activity book with mazes, counting, and matching for ages 4-7, 28 pages",
+    category: "Animals",
+    icon: "🦕",
+  },
+  {
+    text: "Big fun brain-games activity book — mazes, word search, crosswords, and puzzles, ages 8-12 (40 pages)",
+    category: "General",
+    icon: "🧩",
+  },
+  {
+    text: "Travel busy book — quick mazes, dot-to-dot, and tracing to keep kids busy, ages 4-8 (32 pages)",
+    category: "General",
+    icon: "✏️",
+  },
+];
+
 const STORY_FALLBACK_IDEAS: IdeaSuggestion[] = [
   {
     text: "The Tortoise and the Hare retold for toddlers ages 3-6 (8 scenes)",
@@ -263,7 +306,9 @@ export function IdeaSuggestionsPanel({
                   : []),
                 ...STORY_FALLBACK_IDEAS,
               ].slice(0, 8)
-            : COLORING_FALLBACK_IDEAS,
+            : k === "activity"
+              ? ACTIVITY_FALLBACK_IDEAS
+              : COLORING_FALLBACK_IDEAS,
         );
         setUsingFallback(true);
       } finally {

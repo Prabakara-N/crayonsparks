@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -16,6 +16,7 @@ import {
 import { useUser } from "@/lib/hooks/use-user";
 import { orpc } from "@/lib/orpc/client";
 import { getPlanById } from "@/lib/billing/plans";
+import { onCreditsChanged } from "@/lib/credits-events";
 import { UserAvatar } from "@/components/auth/user-avatar";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,17 @@ export function MobileNavDrawer({
 
   useEffect(() => setMounted(true), []);
 
+  const loadSummary = useCallback(() => {
+    if (!user) return;
+    orpc.billing
+      .summary()
+      .then((r) => {
+        setCredits(r.creditsBalance);
+        setPlanName(getPlanById(r.planId).name);
+      })
+      .catch(() => {});
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -52,18 +64,22 @@ export function MobileNavDrawer({
       .me()
       .then((r) => !cancelled && setIsAdmin(r.isAdmin))
       .catch(() => {});
-    orpc.billing
-      .summary()
-      .then((r) => {
-        if (cancelled) return;
-        setCredits(r.creditsBalance);
-        setPlanName(getPlanById(r.planId).name);
-      })
-      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [user?.uid, user]);
+
+  // Keep the balance fresh: load on mount, when the drawer opens, and whenever
+  // a generation spends credits.
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
+
+  useEffect(() => {
+    if (open) loadSummary();
+  }, [open, loadSummary]);
+
+  useEffect(() => onCreditsChanged(loadSummary), [loadSummary]);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";

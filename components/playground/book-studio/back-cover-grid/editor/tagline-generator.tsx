@@ -32,10 +32,16 @@ export function TaglineGenerator({
   const [error, setError] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
 
+  // Parent passes pageSubjects as a fresh array each render; key it to a stable
+  // string so fetchTaglines doesn't change identity every render (which made
+  // the fetch effect re-fire in a loop).
+  const subjectsKey = (pageSubjects ?? []).join("");
+
   const fetchTaglines = useCallback(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    const subjects = subjectsKey ? subjectsKey.split("") : [];
     fetch("/api/back-cover-tagline", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -44,7 +50,7 @@ export function TaglineGenerator({
         coverScene,
         bookDescription,
         audience,
-        pageSubjects,
+        pageSubjects: subjects,
         pageCount,
         variantSeed: seed,
         bookKind,
@@ -80,7 +86,7 @@ export function TaglineGenerator({
     coverScene,
     bookDescription,
     audience,
-    pageSubjects,
+    subjectsKey,
     pageCount,
     seed,
     bookKind,

@@ -493,7 +493,7 @@ export function IdeaForm({
               ]}
             />
           </div>
-          <ActivityMixPicker weights={activityWeights} onChange={setActivityWeights} />
+          <ActivityMixPicker weights={activityWeights} onChange={setActivityWeights} age={age} />
           <ActivitySplitPreview pageCount={pageCount} age={age} weights={activityWeights} />
         </div>
       )}
@@ -520,7 +520,7 @@ export function IdeaForm({
             onChange={(e) => setIdea(e.target.value)}
             placeholder={
               isActivity
-                ? "e.g. An ocean-themed activity book for ages 6-8 — mazes, word searches, tracing, and dot-to-dot. 24 pages."
+                ? "e.g. ABC & 123 learning for preschoolers, OR an ocean-themed pack (mazes, word search, tracing, dot-to-dot), OR a general fun activity book for ages 6-8. 24 pages."
                 : isStory
                   ? "e.g. The Tortoise and the Hare for ages 3-6, or a story I made up about a tiny dragon learning to fly. 8-12 scenes."
                   : "e.g. A coloring book for ages 3-6 about space adventures — astronauts, rockets, planets, friendly aliens. 20 unique pages."
@@ -562,7 +562,7 @@ export function IdeaForm({
                   if (derivedType) setStoryType(derivedType as StoryType);
                 }
               }}
-              kind={isStory ? "story" : "coloring"}
+              kind={isStory ? "story" : isActivity ? "activity" : "coloring"}
               storyType={isStory ? storyType : null}
               currentAge={age}
               onAudienceChange={(slug) => {

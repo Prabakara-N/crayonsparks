@@ -22,6 +22,7 @@ export interface SavedPage {
   index: number;
   name: string;
   image: ImageVariants;
+  solution?: ImageVariants;
   bubbles?: StoryBubble[];
   bubblesFlattened?: boolean;
 }
