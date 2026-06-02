@@ -249,6 +249,21 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
     }
   }, [book, pages, downloadActivityPackage]);
 
+  const handleDownloadEtsy = useCallback(async () => {
+    if (!book) return;
+    if (book.mode === "activity") return downloadActivityPackage("etsy");
+    setDownloading(true);
+    try {
+      await downloadSavedBook(book as SavedBookForDownload, pages, "etsy");
+      toast.success("Etsy package downloaded.");
+      fireConfettiBurst(window.innerWidth / 2, window.innerHeight / 2);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed.");
+    } finally {
+      setDownloading(false);
+    }
+  }, [book, pages, downloadActivityPackage]);
+
   const handleDownloadZip = useCallback(async () => {
     if (!book) return;
     setZipping(true);
@@ -388,9 +403,7 @@ export function BookDetailMain({ bookId }: { bookId: string }) {
           <BookActionsMenu
             onDownloadPdf={handleDownload}
             onDownloadZip={handleDownloadZip}
-            onDownloadPdfEtsy={
-              isActivity ? () => void downloadActivityPackage("etsy") : undefined
-            }
+            onDownloadPdfEtsy={handleDownloadEtsy}
             onDelete={handleDelete}
             pdfBuilding={downloading}
             zipBuilding={zipping}

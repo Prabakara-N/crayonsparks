@@ -63,6 +63,7 @@ async function keyToDataUrl(key: string, idToken: string): Promise<string> {
 export async function downloadSavedBook(
   book: SavedBookForDownload,
   pages: SavedPageForDownload[],
+  target: "kdp" | "etsy" = "kdp",
 ): Promise<void> {
   const idToken = await getAuthIdToken();
   if (!idToken) {
@@ -93,29 +94,35 @@ export async function downloadSavedBook(
     const theEndDataUrl = book.theEndPage
       ? await keyToDataUrl(book.theEndPage.full.key, idToken)
       : undefined;
-    await downloadStoryBook({
-      plan,
-      items: pageItems,
-      cover: { status: "done", dataUrl: coverDataUrl },
-      backCover: { status: "done", dataUrl: backCoverDataUrl },
-      theEndPage: theEndDataUrl
-        ? { status: "done", dataUrl: theEndDataUrl }
-        : undefined,
-    });
+    await downloadStoryBook(
+      {
+        plan,
+        items: pageItems,
+        cover: { status: "done", dataUrl: coverDataUrl },
+        backCover: { status: "done", dataUrl: backCoverDataUrl },
+        theEndPage: theEndDataUrl
+          ? { status: "done", dataUrl: theEndDataUrl }
+          : undefined,
+      },
+      target,
+    );
     return;
   }
 
   const belongsToDataUrl = book.belongsTo
     ? await keyToDataUrl(book.belongsTo.full.key, idToken)
     : undefined;
-  await downloadColoringBook({
-    plan,
-    items: pageItems,
-    cover: { status: "done", dataUrl: coverDataUrl },
-    backCover: { status: "done", dataUrl: backCoverDataUrl },
-    belongsTo: belongsToDataUrl
-      ? { status: "done", dataUrl: belongsToDataUrl }
-      : { status: "pending" },
-    belongsToStyle: book.belongsToStyle ?? "bw",
-  });
+  await downloadColoringBook(
+    {
+      plan,
+      items: pageItems,
+      cover: { status: "done", dataUrl: coverDataUrl },
+      backCover: { status: "done", dataUrl: backCoverDataUrl },
+      belongsTo: belongsToDataUrl
+        ? { status: "done", dataUrl: belongsToDataUrl }
+        : { status: "pending" },
+      belongsToStyle: book.belongsToStyle ?? "bw",
+    },
+    target,
+  );
 }

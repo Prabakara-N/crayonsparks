@@ -1013,7 +1013,7 @@ export function BookStudio({
             <DownloadMenu
               onPdf={downloadPdf}
               onZip={downloadZip}
-              onPdfEtsy={bookPlan.bookKind === "activity" ? downloadPdfEtsy : undefined}
+              onPdfEtsy={downloadPdfEtsy}
               pdfBuilding={pdfBuilding}
             />
           </div>

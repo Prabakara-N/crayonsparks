@@ -17,17 +17,13 @@ export interface DownloadStoryBookArgs {
 }
 
 /**
- * Builds the full KDP print package for a STORY BOOK:
- *   - cover_KDP.pdf       (cover-wrap, color paperback sizing)
- *   - interior_KDP.pdf    (interior, full-bleed, no blank pages)
- *   - etsy_a4.pdf         (single A4 PDF for Etsy / Gumroad)
- *   - README.txt          (upload instructions)
- * Triggers a browser download of the bundled ZIP.
- *
- * Throws if any of the three PDF assembly calls fail.
+ * Builds a print package for a STORY BOOK as one zip:
+ *   target "kdp"  -> cover_KDP.pdf (6x9 cover-wrap) + interior_KDP.pdf (full-bleed)
+ *   target "etsy" -> etsy_letter.pdf + etsy_a4.pdf (full sequence, full-bleed)
  */
 export async function downloadStoryBook(
   args: DownloadStoryBookArgs,
+  target: "kdp" | "etsy" = "kdp",
 ): Promise<void> {
   const done = args.items.filter((i) => i.status === "done" && i.dataUrl);
   if (
@@ -43,6 +39,7 @@ export async function downloadStoryBook(
   }
 
   const safeName = safeFileName(args.plan?.coverTitle, "story-book");
+  const title = args.plan?.coverTitle ?? args.plan?.title;
   const storyPages = done.map((d) => ({
     id: d.id,
     name: d.name,
@@ -61,19 +58,27 @@ export async function downloadStoryBook(
     });
   }
 
-  const storyBaseBody = {
-    title: args.plan?.coverTitle ?? args.plan?.title,
-    cover: { dataUrl: args.cover.dataUrl },
-    backCover: { dataUrl: args.backCover.dataUrl },
-    pages: storyPages,
-  };
-
-  const [coverRes, interiorRes, etsyA4Res] = await Promise.all([
-    fetch("/api/assemble-pdf", {
+  const post = (url: string, body: Record<string, unknown>) =>
+    fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        category: args.plan?.coverTitle ?? "story-book",
+      body: JSON.stringify(body),
+    });
+  const ensureOk = async (res: Response, label: string): Promise<Blob> => {
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(j.error || `${label} failed`);
+    }
+    return res.blob();
+  };
+
+  const { default: JSZip } = await import("jszip");
+  const zip = new JSZip();
+
+  if (target === "kdp") {
+    const [coverRes, interiorRes] = await Promise.all([
+      post("/api/assemble-pdf", {
+        category: title ?? "story-book",
         cover: { dataUrl: args.cover.dataUrl },
         backCover: { dataUrl: args.backCover.dataUrl },
         mode: "cover-wrap",
@@ -82,94 +87,34 @@ export async function downloadStoryBook(
         trimWidthInches: 6,
         trimHeightInches: 9,
       }),
-    }),
-    fetch("/api/assemble-story-book-pdf", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: args.plan?.coverTitle ?? args.plan?.title,
+      post("/api/assemble-story-book-pdf", {
+        title,
         pages: storyPages,
         trimWidthInches: 6,
         trimHeightInches: 9,
       }),
-    }),
-    fetch("/api/assemble-story-book-pdf", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...storyBaseBody,
-        trimWidthInches: 8.27,
-        trimHeightInches: 11.69,
-      }),
-    }),
-  ]);
-
-  if (!coverRes.ok) {
-    const j = await coverRes.json().catch(() => ({}));
-    throw new Error(j.error || "Story cover-wrap PDF failed");
+    ]);
+    zip.file(`${safeName}_cover_KDP.pdf`, await ensureOk(coverRes, "Story cover-wrap PDF"));
+    zip.file(`${safeName}_interior_KDP.pdf`, await ensureOk(interiorRes, "Story interior PDF"));
+  } else {
+    const etsyBody = {
+      title,
+      cover: { dataUrl: args.cover.dataUrl },
+      backCover: { dataUrl: args.backCover.dataUrl },
+      pages: storyPages,
+    };
+    const [letterRes, a4Res] = await Promise.all([
+      post("/api/assemble-story-book-pdf", { ...etsyBody, trimWidthInches: 8.5, trimHeightInches: 11 }),
+      post("/api/assemble-story-book-pdf", { ...etsyBody, trimWidthInches: 8.27, trimHeightInches: 11.69 }),
+    ]);
+    zip.file(`${safeName}_etsy_letter.pdf`, await ensureOk(letterRes, "Story Etsy Letter PDF"));
+    zip.file(`${safeName}_etsy_a4.pdf`, await ensureOk(a4Res, "Story Etsy A4 PDF"));
   }
-  if (!interiorRes.ok) {
-    const j = await interiorRes.json().catch(() => ({}));
-    throw new Error(j.error || "Story interior PDF failed");
-  }
-  if (!etsyA4Res.ok) {
-    const j = await etsyA4Res.json().catch(() => ({}));
-    throw new Error(j.error || "Story Etsy A4 PDF failed");
-  }
-
-  const [coverBlob, interiorBlob, etsyA4Blob] = await Promise.all([
-    coverRes.blob(),
-    interiorRes.blob(),
-    etsyA4Res.blob(),
-  ]);
-
-  const { default: JSZip } = await import("jszip");
-  const zip = new JSZip();
-  zip.file(`${safeName}_cover_KDP.pdf`, await coverBlob.arrayBuffer());
-  zip.file(`${safeName}_interior_KDP.pdf`, await interiorBlob.arrayBuffer());
-  zip.file(`${safeName}_etsy_a4.pdf`, await etsyA4Blob.arrayBuffer());
-  zip.file(
-    "README.txt",
-    [
-      "CrayonSparks → Story-book print package",
-      "",
-      `Title:  ${args.plan?.coverTitle ?? args.plan?.title ?? "Story book"}`,
-      `Pages:  ${storyPages.length} interior scenes`,
-      `Trim:   6 × 9 inches (KDP color paperback standard)`,
-      "",
-      "This zip contains 3 PDFs — pick the ones that match where",
-      "you're publishing.",
-      "",
-      "── AMAZON KDP (color paperback) ──────────────────────────────",
-      `  1. ${safeName}_cover_KDP.pdf`,
-      "     Upload to the COVER section of KDP. Sized to KDP's exact",
-      `     cover-wrap dimensions (back + spine + front + 0.125" bleed)`,
-      "     for color paper at this interior page count.",
-      "",
-      `  2. ${safeName}_interior_KDP.pdf`,
-      "     Upload to the INTERIOR / MANUSCRIPT section. Story scenes",
-      "     in narrative order, full-bleed, no blank pages between",
-      "     (story books print both sides full-color, unlike coloring",
-      "     books which need alternating blanks).",
-      "",
-      "  Help: https://kdp.amazon.com/en_US/help/topic/G201834260",
-      "",
-      "── ETSY / GUMROAD (digital download) ─────────────────────────",
-      "  Single PDF in this order:",
-      "    • Page 1     — Front cover (full color)",
-      "    • Pages 2..N — Story scenes back-to-back (no blanks)",
-      "    • Last page  — Back cover",
-      "",
-      `  3. ${safeName}_etsy_a4.pdf — A4 (210×297 mm)`,
-      "     A4 is the standard worldwide outside the US and prints",
-      "     fine on US Letter printers (slight margin trim).",
-    ].join("\n"),
-  );
 
   const zipBytes = await zip.generateAsync({
     type: "blob",
     compression: "DEFLATE",
     compressionOptions: { level: 6 },
   });
-  triggerDownload(zipBytes, `${safeName}_print_package.zip`);
+  triggerDownload(zipBytes, `${safeName}_${target}_package.zip`);
 }

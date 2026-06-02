@@ -56,14 +56,21 @@ export function useBookDownload({
     }
   }, [items, cover, backCover, belongsTo, theEndPage, mode, plan]);
 
-  const downloadActivity = useCallback(
+  // Builds either the KDP or the Etsy package for whichever book kind this is.
+  const runDownload = useCallback(
     async (target: "kdp" | "etsy") => {
       setPdfBuilding(true);
       try {
-        await downloadActivityBook(
-          { plan, items, cover, backCover, belongsTo, belongsToStyle, includeAnswerKey: true },
-          target,
-        );
+        if (bookKind === "activity") {
+          await downloadActivityBook(
+            { plan, items, cover, backCover, belongsTo, belongsToStyle, includeAnswerKey: true },
+            target,
+          );
+        } else if (mode === "story") {
+          await downloadStoryBook({ plan, items, cover, backCover, theEndPage }, target);
+        } else {
+          await downloadColoringBook({ plan, items, cover, backCover, belongsTo, belongsToStyle }, target);
+        }
       } catch (e) {
         void dialog.alert({
           title: "PDF assembly failed",
@@ -74,58 +81,11 @@ export function useBookDownload({
         setPdfBuilding(false);
       }
     },
-    [plan, items, cover, backCover, belongsTo, belongsToStyle, dialog],
+    [items, cover, backCover, belongsTo, belongsToStyle, theEndPage, plan, mode, bookKind, dialog],
   );
 
-  const downloadPdf = useCallback(async () => {
-    if (bookKind === "activity") return downloadActivity("kdp");
-    setPdfBuilding(true);
-    try {
-      if (mode === "story") {
-        await downloadStoryBook({
-          plan,
-          items,
-          cover,
-          backCover,
-          theEndPage,
-        });
-      } else {
-        await downloadColoringBook({
-          plan,
-          items,
-          cover,
-          backCover,
-          belongsTo,
-          belongsToStyle,
-        });
-      }
-    } catch (e) {
-      void dialog.alert({
-        title: "PDF assembly failed",
-        message: e instanceof Error ? e.message : "PDF assembly failed",
-        variant: "danger",
-      });
-    } finally {
-      setPdfBuilding(false);
-    }
-  }, [
-    items,
-    cover,
-    backCover,
-    belongsTo,
-    belongsToStyle,
-    theEndPage,
-    plan,
-    mode,
-    bookKind,
-    downloadActivity,
-    dialog,
-  ]);
-
-  const downloadPdfEtsy = useCallback(
-    () => downloadActivity("etsy"),
-    [downloadActivity],
-  );
+  const downloadPdf = useCallback(() => runDownload("kdp"), [runDownload]);
+  const downloadPdfEtsy = useCallback(() => runDownload("etsy"), [runDownload]);
 
   return {
     pdfBuilding,
