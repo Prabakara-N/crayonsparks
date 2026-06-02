@@ -1,8 +1,6 @@
 import type { ActivityResult, ActivitySpec } from "./types";
 import { escapeXml, PAGE, SANS, svgDocument, titleBlock } from "./page";
 
-const SWATCHES = ["#ef4444", "#3b82f6", "#22c55e", "#eab308", "#a855f7", "#f97316", "#ec4899", "#14b8a6"];
-
 export function generateColorByNumber(spec: ActivitySpec, assetDataUrl?: string): ActivityResult {
   const legend = spec.params.paletteLegend?.length
     ? spec.params.paletteLegend
@@ -23,6 +21,9 @@ export function generateColorByNumber(spec: ActivitySpec, assetDataUrl?: string)
     : `<rect x="${sceneX}" y="${sceneY}" width="${sceneW}" height="${sceneH}" fill="#fafafa"/>`;
   const frame = `<rect x="${sceneX}" y="${sceneY}" width="${sceneW}" height="${sceneH}" fill="none" stroke="#111" stroke-width="2"/>`;
 
+  // B&W legend — KDP interiors print in black & white, so a colored chip
+  // would render as muddy grey. Show the number in an outlined box plus the
+  // color NAME in black text so the child knows which crayon to use.
   const legendY = sceneY + sceneH + 44;
   const cols = Math.min(legend.length, 4);
   const colW = sceneW / cols;
@@ -30,11 +31,10 @@ export function generateColorByNumber(spec: ActivitySpec, assetDataUrl?: string)
     .map((l, i) => {
       const x = PAGE.margin + (i % cols) * colW;
       const y = legendY + Math.floor(i / cols) * 50;
-      const color = SWATCHES[(l.n - 1) % SWATCHES.length];
       return (
-        `<rect x="${x}" y="${y - 22}" width="30" height="30" rx="6" fill="${color}" stroke="#111" stroke-width="1.5"/>` +
-        `<text x="${x + 15}" y="${y - 1}" text-anchor="middle" font-family="${SANS}" font-size="18" font-weight="700" fill="#fff">${l.n}</text>` +
-        `<text x="${x + 40}" y="${y}" font-family="${SANS}" font-size="18" fill="#111">= ${escapeXml(l.label)}</text>`
+        `<rect x="${x}" y="${y - 22}" width="30" height="30" rx="6" fill="none" stroke="#111" stroke-width="2"/>` +
+        `<text x="${x + 15}" y="${y - 1}" text-anchor="middle" font-family="${SANS}" font-size="18" font-weight="700" fill="#111">${l.n}</text>` +
+        `<text x="${x + 40}" y="${y}" font-family="${SANS}" font-size="18" fill="#111">= ${escapeXml(l.label.toUpperCase())}</text>`
       );
     })
     .join("");

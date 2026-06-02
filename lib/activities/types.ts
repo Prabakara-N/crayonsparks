@@ -6,7 +6,6 @@ export type ActivityType =
   | "number-tracing"
   | "sight-word-tracing"
   | "dot-to-dot"
-  | "cut-lines"
   | "matching"
   | "counting"
   | "spot-difference"
@@ -23,7 +22,6 @@ export const PLANNABLE_TYPES: ActivityType[] = [
   "number-tracing",
   "sight-word-tracing",
   "dot-to-dot",
-  "cut-lines",
   "matching",
   "counting",
   "seek-and-find",
@@ -39,7 +37,6 @@ export const ACTIVITY_TYPES: ActivityType[] = [
   "number-tracing",
   "sight-word-tracing",
   "dot-to-dot",
-  "cut-lines",
   "matching",
   "counting",
   "spot-difference",

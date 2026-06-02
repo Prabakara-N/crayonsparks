@@ -32,6 +32,7 @@ import {
   ActivityMixPicker,
   type MixWeights,
 } from "@/components/playground/activity-book/activity-mix-picker";
+import { ActivitySplitPreview } from "@/components/playground/activity-book/activity-split-preview";
 import { SegmentedControl } from "@/components/playground/activity-book/segmented-control";
 import { PlanButton } from "./plan-button";
 import {
@@ -493,6 +494,7 @@ export function IdeaForm({
             />
           </div>
           <ActivityMixPicker weights={activityWeights} onChange={setActivityWeights} />
+          <ActivitySplitPreview pageCount={pageCount} age={age} weights={activityWeights} />
         </div>
       )}
 

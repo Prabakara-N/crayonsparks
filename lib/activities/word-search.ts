@@ -104,14 +104,21 @@ export function generateWordSearch(spec: ActivitySpec): ActivityResult {
   const visibleWords = words.filter((w) => placedWords.has(w));
   const listTop = oy + gridW + 50;
   const cols = visibleWords.length > 8 ? 3 : 2;
-  const colW = contentW / cols;
+  // Center the checkbox/word columns as a block under the grid (matches the
+  // reference layout) rather than spreading them across the full page width.
+  const itemW = cols === 3 ? 200 : 230;
+  const blockW = cols * itemW;
+  const startX = (PAGE.w - blockW) / 2;
   const listItems = visibleWords
     .map((w, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
-      const x = PAGE.margin + col * colW + 16;
-      const y = listTop + row * 34;
-      return `<text x="${x}" y="${y}" font-family="${SANS}" font-size="22" fill="#222">• ${escapeXml(w)}</text>`;
+      const x = startX + col * itemW;
+      const y = listTop + row * 36;
+      return (
+        `<rect x="${x}" y="${y - 16}" width="18" height="18" rx="3" fill="none" stroke="#111" stroke-width="2"/>` +
+        `<text x="${x + 28}" y="${y}" font-family="${SANS}" font-size="22" fill="#222">${escapeXml(w)}</text>`
+      );
     })
     .join("");
 

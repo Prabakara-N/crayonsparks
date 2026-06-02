@@ -228,7 +228,6 @@ export async function assembleColoringBookPdf(opts: AssembleOptions): Promise<Ui
     }
   }
 
-  let contentNumber = 0;
   const drawFooter = (page: ReturnType<typeof doc.addPage>, text: string) => {
     const size = 9;
     const w = helvNormal.widthOfTextAtSize(text, size);
@@ -307,9 +306,6 @@ export async function assembleColoringBookPdf(opts: AssembleOptions): Promise<Ui
       });
     }
 
-    contentNumber += 1;
-    if (opts.pageNumbers) drawFooter(page, String(contentNumber));
-
     if (includeBlanks) doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   }
 
@@ -357,7 +353,7 @@ export async function assembleColoringBookPdf(opts: AssembleOptions): Promise<Ui
       const drawX = drawable.x + (drawable.w - drawW) / 2;
       const drawY = drawable.y + (drawable.h - drawH) / 2;
       page.drawImage(embedded, { x: drawX, y: drawY, width: drawW, height: drawH });
-      if (opts.pageNumbers) drawFooter(page, `Answers - ${input.name}`);
+      drawFooter(page, `Answers - ${input.name}`);
       if (includeBlanks) doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     }
   }

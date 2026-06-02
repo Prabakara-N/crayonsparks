@@ -8,7 +8,12 @@ import { getActivityGenerator } from "@/lib/activities";
 import { rasterizeActivitySvg } from "@/lib/activity-rasterize";
 import { SEEK_AND_FIND_PROMPT } from "@/lib/prompts/activities/seek-and-find";
 import { COLOR_BY_NUMBER_PROMPT } from "@/lib/prompts/activities/color-by-number";
-import { SPOT_DIFFERENCE_PROMPT } from "@/lib/prompts/activities/spot-difference";
+import {
+  SPOT_DIFFERENCE_PROMPT,
+  SPOT_DIFFERENCE_CHANGES_PROMPT,
+  SPOT_DIFFERENCE_CIRCLE_PROMPT,
+} from "@/lib/prompts/activities/spot-difference";
+import { generateSpotDifference, spotDifferenceCount } from "@/lib/activities/spot-difference";
 import { ACTIVITY_TYPES, type ActivityResult, type ActivitySpec, type ActivityType } from "@/lib/activities/types";
 
 export const runtime = "nodejs";
@@ -97,6 +102,44 @@ export async function POST(req: Request) {
       const auth = await requireAuth(req);
       if (!auth.ok) return auth.response;
       return NextResponse.json(await rasterizeResult(generator.generate(spec)));
+    }
+
+    // Spot-the-difference: a REAL game — Picture 1, then Picture 2 with genuine
+    // changes (img2img), then an answer key that circles the actual differences.
+    if (spec.type === "spot-difference") {
+      const charge = await preauthorizeCharge(req, { kind: "activity", op: "page" });
+      if (!charge.ok) return charge.response;
+      const count = spotDifferenceCount(spec);
+      const specWithCount = { ...spec, params: { ...spec.params, differenceCount: count } };
+      const model = DEFAULT_INTERIOR_MODEL;
+      const img1 = await generateImageByModel(SPOT_DIFFERENCE_PROMPT({ theme: spec.theme }), {
+        aspectRatio: "4:3",
+        model,
+      });
+      const ref1 = { mimeType: img1.mimeType, data: img1.data };
+      const p1 = `data:${img1.mimeType};base64,${img1.data}`;
+      const img2 = await generateImageByModel(SPOT_DIFFERENCE_CHANGES_PROMPT({ count }), {
+        aspectRatio: "4:3",
+        model,
+        sourceImage: ref1,
+      });
+      const ref2 = { mimeType: img2.mimeType, data: img2.data };
+      const p2 = `data:${img2.mimeType};base64,${img2.data}`;
+      let p2c: string | undefined;
+      try {
+        const img3 = await generateImageByModel(SPOT_DIFFERENCE_CIRCLE_PROMPT({ count }), {
+          aspectRatio: "4:3",
+          model,
+          sourceImage: ref2,
+          extraImages: [ref1],
+        });
+        p2c = `data:${img3.mimeType};base64,${img3.data}`;
+      } catch {
+        p2c = undefined;
+      }
+      const payload = await rasterizeResult(generateSpotDifference(specWithCount, p1, p2, p2c));
+      await charge.commit("Generated spot-difference page");
+      return NextResponse.json(payload);
     }
 
     // Illustrated pages: charged — generate an AI base scene, then overlay.

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Images, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractCoverPalette } from "@/lib/extract-cover-palette";
+import { shadeHex, tintHex } from "@/lib/colors/derive";
 import { InteriorImagePicker } from "../interior-image-picker";
 import { composeBackCover } from "../compose-grid";
 import { DesignOverlay } from "./design-overlay";
@@ -55,6 +57,28 @@ export function BackCoverEditorModal({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const matchedRef = useRef(false);
+
+  // Match the back cover to the FRONT cover: tint the dominant cover hue for
+  // the body color and a dark shade of it for the top stripe. Runs once on a
+  // fresh design (skips when editing an existing/saved back cover).
+  useEffect(() => {
+    if (initialDesign || matchedRef.current || !frontCoverDataUrl) return;
+    matchedRef.current = true;
+    let cancelled = false;
+    void extractCoverPalette(frontCoverDataUrl).then((swatches) => {
+      if (cancelled || !swatches.length) return;
+      const dom = swatches[0].hex;
+      setDesign((d) => ({
+        ...d,
+        bgColor: tintHex(dom),
+        topStripe: { ...d.topStripe, color: shadeHex(dom) },
+      }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [frontCoverDataUrl, initialDesign]);
 
   const needed = gridImageCount(design.gridSize);
   const selectedImages = design.imageIds
@@ -67,10 +91,11 @@ export function BackCoverEditorModal({
     setDesign((d) => ({ ...d, ...next }));
 
   const apply = async () => {
-    if (!ready) return;
     setApplying(true);
     setError(null);
     try {
+      // Grid images are optional — a color + tagline back cover is valid on
+      // its own, so we compose with whatever pages (if any) are selected.
       const dataUrl = await composeBackCover({
         design,
         imageDataUrls: selectedImages.slice(0, needed).map((s) => s.dataUrl),
@@ -149,7 +174,9 @@ export function BackCoverEditorModal({
             <PalettePicker
               frontCoverDataUrl={frontCoverDataUrl}
               value={design.bgColor}
-              onChange={(hex) => patch({ bgColor: hex })}
+              onChange={(hex) =>
+                patch({ bgColor: hex, topStripe: { ...design.topStripe, color: shadeHex(hex) } })
+              }
             />
 
             <div>
@@ -182,7 +209,12 @@ export function BackCoverEditorModal({
                       )}
                     >
                       <div>{opt.label}</div>
-                      <div className="text-[10px] font-normal text-neutral-400">
+                      <div
+                        className={cn(
+                          "text-[10px] font-normal",
+                          active ? "text-white/85" : "text-neutral-400",
+                        )}
+                      >
                         {opt.sub}
                       </div>
                     </button>
@@ -397,7 +429,7 @@ export function BackCoverEditorModal({
               <button
                 type="button"
                 onClick={() => void apply()}
-                disabled={!ready || applying}
+                disabled={applying}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-linear-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {applying ? (

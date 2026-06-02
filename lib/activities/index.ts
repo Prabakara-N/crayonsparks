@@ -11,7 +11,6 @@ import { generateLetterTracing } from "./letter-tracing";
 import { generateNumberTracing } from "./number-tracing";
 import { generateSightWordTracing } from "./sight-word-tracing";
 import { generateDotToDot } from "./dot-to-dot";
-import { generateCutLines } from "./cut-lines";
 import { generateMatching } from "./matching";
 import { generateCounting } from "./counting";
 import { generateSeekAndFind } from "./seek-and-find";
@@ -34,7 +33,6 @@ export const ACTIVITY_GENERATORS: Partial<Record<ActivityType, ActivityGenerator
   "number-tracing": proc("number-tracing", generateNumberTracing),
   "sight-word-tracing": proc("sight-word-tracing", generateSightWordTracing),
   "dot-to-dot": proc("dot-to-dot", generateDotToDot),
-  "cut-lines": proc("cut-lines", generateCutLines),
   matching: proc("matching", generateMatching),
   counting: proc("counting", generateCounting),
   "seek-and-find": illus("seek-and-find", generateSeekAndFind),

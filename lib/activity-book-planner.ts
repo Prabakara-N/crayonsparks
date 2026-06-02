@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { GEMINI_TEXT_MODEL } from "@/lib/constants";
 import { ICON_NAMES, isIconName } from "@/lib/activities/icons";
+import { buildActivitySequence } from "@/lib/activities/sequence";
 import {
   PLANNABLE_TYPES,
   type ActivityAgeBand,
@@ -10,10 +11,6 @@ import {
 } from "@/lib/activities/types";
 
 export { PLANNABLE_TYPES };
-
-// Reading/spelling puzzles a pre-reader (ages 3-5) cannot do — hard-excluded
-// for the toddler band per KDP/Etsy kids-activity norms.
-const READING_TYPES: ActivityType[] = ["crossword", "word-search"];
 
 export interface ActivityBookPlanInput {
   idea: string;
@@ -53,65 +50,20 @@ interface ContentPool {
 }
 
 const SHAPES = ["heart", "star", "flower", "circle"];
-const LINE_STYLES: ("straight" | "zigzag" | "curved")[] = ["straight", "zigzag", "curved"];
 
 function rampDifficulty(i: number, n: number): ActivityDifficulty {
   const f = n <= 1 ? 0 : i / (n - 1);
   return f < 0.34 ? "easy" : f < 0.67 ? "medium" : "hard";
 }
 
-// Builds an interleaved page sequence honoring per-type weights (or an equal
-// mix / all types). Each type gets a quota proportional to its weight, then we
-// round-robin so types alternate rather than clustering.
-function buildSequence(input: ActivityBookPlanInput, pageCount: number): ActivityType[] {
-  const allowed = (t: ActivityType): boolean =>
-    PLANNABLE_TYPES.includes(t) && !(input.age === "toddlers" && READING_TYPES.includes(t));
-  let entries: [ActivityType, number][];
-  const weights = input.weights;
-  if (weights && Object.values(weights).some((w) => (w ?? 0) > 0)) {
-    entries = (Object.entries(weights) as [ActivityType, number][]).filter(
-      ([t, w]) => allowed(t) && (w ?? 0) > 0,
-    );
-  } else if (input.mix?.length) {
-    entries = input.mix.filter(allowed).map((t) => [t, 1]);
-  } else {
-    entries = PLANNABLE_TYPES.filter(allowed).map((t) => [t, 1]);
-  }
-  if (!entries.length) entries = PLANNABLE_TYPES.filter(allowed).map((t) => [t, 1]);
-
-  const totalW = entries.reduce((s, [, w]) => s + w, 0);
-  const quotas = entries.map(([t, w]) => ({ t, q: Math.max(1, Math.round((w / totalW) * pageCount)) }));
-  let sum = quotas.reduce((s, x) => s + x.q, 0);
-  while (sum > pageCount) {
-    quotas.sort((a, b) => b.q - a.q);
-    if (quotas[0].q <= 1) break;
-    quotas[0].q -= 1;
-    sum -= 1;
-  }
-  while (sum < pageCount) {
-    quotas.sort((a, b) => b.q - a.q);
-    quotas[0].q += 1;
-    sum += 1;
-  }
-
-  const seq: ActivityType[] = [];
-  while (seq.length < pageCount) {
-    let placed = false;
-    for (const r of quotas) {
-      if (r.q > 0 && seq.length < pageCount) {
-        seq.push(r.t);
-        r.q -= 1;
-        placed = true;
-      }
-    }
-    if (!placed) break;
-  }
-  return seq;
-}
-
 function assemblePlan(input: ActivityBookPlanInput, pool: ContentPool): ActivityBookPlan {
   const age = input.age ?? "kids";
-  const seq = buildSequence(input, input.pageCount);
+  const seq = buildActivitySequence({
+    pageCount: input.pageCount,
+    age: input.age,
+    weights: input.weights,
+    mix: input.mix,
+  });
   const counters: Record<string, number> = {};
   const take = <T>(arr: T[], key: string, fallback: T): T => {
     if (!arr.length) return fallback;
@@ -146,8 +98,6 @@ function assemblePlan(input: ActivityBookPlanInput, pool: ContentPool): Activity
         return { ...base, title: "Trace the Words", params: { phrase: take(pool.phrases, "sw", "I can read") } };
       case "dot-to-dot":
         return { ...base, title: "Connect the Dots", params: { shape: take(pool.shapes, "dd", "heart"), seed: i + 1 } };
-      case "cut-lines":
-        return { ...base, title: "Cut the Lines", params: { lineStyle: LINE_STYLES[i % LINE_STYLES.length] } };
       case "matching":
         return { ...base, title: "Match Them Up", params: { pairs: take(pool.matchingSets, "mt", []), seed: i + 1 } };
       case "counting":

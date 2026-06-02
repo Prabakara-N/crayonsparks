@@ -22,7 +22,6 @@ function demoSpec(type: ActivityType, seed: number): ActivitySpec {
     "number-tracing": { seed, numbers: [7] },
     "sight-word-tracing": { seed, phrase: "I can swim" },
     "dot-to-dot": { seed, shape: "heart" },
-    "cut-lines": { seed, lineStyle: "zigzag" },
     matching: { seed },
     counting: { seed },
   };

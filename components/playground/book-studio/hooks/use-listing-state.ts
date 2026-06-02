@@ -37,7 +37,9 @@ export function useListingState({
       const isStory = mode === "story";
       const body = {
         bookTitle: plan.coverTitle ?? plan.title,
-        scene: isStory ? plan.coverScene || plan.scene : plan.scene,
+        scene: isStory
+          ? plan.coverScene || plan.scene
+          : plan.scene || plan.coverScene || plan.coverTitle || plan.title,
         age,
         pageCount: items.length,
         samplePages: items.slice(0, 8).map((it) => it.subject),
