@@ -409,8 +409,8 @@ export function BookStudio({
           error={bookPlan.planError}
           bookKind={bookPlan.bookKind}
           setBookKind={bookPlan.setBookKind}
-          activityWeights={bookPlan.activityWeights}
-          setActivityWeights={bookPlan.setActivityWeights}
+          activityCounts={bookPlan.activityCounts}
+          setActivityCounts={bookPlan.setActivityCounts}
           activityDifficulty={bookPlan.activityDifficulty}
           setActivityDifficulty={bookPlan.setActivityDifficulty}
           storyType={bookPlan.storyType}

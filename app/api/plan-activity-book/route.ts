@@ -5,12 +5,29 @@ import {
   planActivityBook,
   type ActivityBookPlanInput,
 } from "@/lib/activity-book-planner";
+import {
+  PLANNABLE_TYPES,
+  type ActivityCounts,
+  type ActivityType,
+} from "@/lib/activities/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+// Keep only known activity types with a sane positive page count.
+function sanitizeCounts(raw: unknown, pageCount: number): ActivityCounts | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: ActivityCounts = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!PLANNABLE_TYPES.includes(key as ActivityType)) continue;
+    const n = typeof value === "number" ? Math.round(value) : 0;
+    if (n > 0) out[key as ActivityType] = clamp(n, 1, pageCount);
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 export async function POST(req: Request) {
@@ -27,6 +44,7 @@ export async function POST(req: Request) {
   }
   const pageCount = clamp(Math.round(body.pageCount ?? 20), 4, 60);
   const regenerationHint = body.regenerationHint?.trim().slice(0, 200);
+  const counts = sanitizeCounts(body.counts, pageCount);
 
   try {
     const plan = await planActivityBook({
@@ -35,6 +53,7 @@ export async function POST(req: Request) {
       age: body.age,
       difficulty: body.difficulty,
       mix: body.mix,
+      counts,
       weights: body.weights,
       regenerationHint,
     });

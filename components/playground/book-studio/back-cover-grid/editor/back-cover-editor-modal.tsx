@@ -113,7 +113,7 @@ export function BackCoverEditorModal({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-center justify-center bg-black/75 p-4 outline-none"
+      className="fixed inset-0 z-100 flex items-stretch sm:items-center justify-center bg-black/75 p-0 sm:p-4 outline-none"
       role="dialog"
       aria-modal="true"
       aria-labelledby="back-cover-editor-title"
@@ -126,7 +126,7 @@ export function BackCoverEditorModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-5xl rounded-2xl bg-zinc-950 border border-white/15 shadow-2xl p-6 max-h-[94vh] overflow-y-auto">
+      <div className="w-full sm:max-w-5xl h-full sm:h-auto rounded-none sm:rounded-2xl bg-zinc-950 border-0 sm:border border-white/15 shadow-2xl px-4 sm:px-6 pt-4 sm:pt-6 pb-0 max-h-none sm:max-h-[94vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <p className="text-[11px] uppercase tracking-wider text-violet-300 font-semibold">
@@ -425,7 +425,7 @@ export function BackCoverEditorModal({
 
             {error && <p className="text-[11px] text-red-300">{error}</p>}
 
-            <div className="sticky bottom-0 z-10 mt-auto flex flex-col gap-2 pt-3 pb-1 bg-zinc-950 border-t border-white/10">
+            <div className="sticky bottom-0 z-10 mt-2 flex flex-col gap-2 pt-3 pb-4 sm:pb-6 bg-zinc-950 border-t border-white/10">
               <button
                 type="button"
                 onClick={() => void apply()}

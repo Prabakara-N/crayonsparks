@@ -4,8 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { type StoryType } from "@/lib/story-book-planner";
 import type { DialogueStyle } from "@/lib/prompts";
 import type { ActivityBookPlan } from "@/lib/activity-book-planner";
-import type { ActivityDifficulty } from "@/lib/activities/types";
-import type { MixWeights } from "@/components/playground/activity-book/activity-mix-picker";
+import type { ActivityCounts, ActivityDifficulty } from "@/lib/activities/types";
 import {
   getAuthIdToken,
   redirectToLogin,
@@ -58,7 +57,7 @@ export function useBookPlan({
   );
   const [mode, setMode] = useState<"qa" | "story">(initialMode ?? "qa");
   const [bookKind, setBookKind] = useState<"coloring" | "story" | "activity">("coloring");
-  const [activityWeights, setActivityWeights] = useState<MixWeights>({});
+  const [activityCounts, setActivityCounts] = useState<ActivityCounts>({});
   const [activityDifficulty, setActivityDifficulty] = useState<ActivityDifficulty | "auto">("auto");
   const [activityPlan, setActivityPlan] = useState<ActivityBookPlan | null>(null);
   const [storyType, setStoryType] = useState<StoryType | null>(
@@ -128,7 +127,7 @@ export function useBookPlan({
             pageCount,
             age,
             difficulty: activityDifficulty === "auto" ? undefined : activityDifficulty,
-            weights: Object.keys(activityWeights).length ? activityWeights : undefined,
+            counts: Object.keys(activityCounts).length ? activityCounts : undefined,
             regenerationHint: hint,
           }),
         });
@@ -215,7 +214,7 @@ export function useBookPlan({
     pageCount,
     age,
     bookKind,
-    activityWeights,
+    activityCounts,
     activityDifficulty,
     storyType,
     storyCharacterNames,
@@ -289,8 +288,8 @@ export function useBookPlan({
     setMode,
     bookKind,
     setBookKind,
-    activityWeights,
-    setActivityWeights,
+    activityCounts,
+    setActivityCounts,
     activityDifficulty,
     setActivityDifficulty,
     activityPlan,

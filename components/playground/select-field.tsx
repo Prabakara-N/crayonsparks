@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SelectOption<V extends string> {
   value: V;
   label: string;
   hint?: string;
+  icon?: LucideIcon;
 }
 
 interface SelectFieldProps<V extends string> {
@@ -79,7 +80,7 @@ export function SelectField<V extends string>({
   function commit(next: V) {
     onChange(next);
     setOpen(false);
-    triggerRef.current?.focus();
+    triggerRef.current?.focus({ preventScroll: true });
   }
 
   function onTriggerKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
@@ -99,7 +100,7 @@ export function SelectField<V extends string>({
     if (e.key === "Escape") {
       e.preventDefault();
       setOpen(false);
-      triggerRef.current?.focus();
+      triggerRef.current?.focus({ preventScroll: true });
       return;
     }
     if (e.key === "ArrowDown") {
@@ -130,6 +131,7 @@ export function SelectField<V extends string>({
   }
 
   const current = options.find((o) => o.value === value) ?? options[0];
+  const CurrentIcon = current?.icon;
 
   return (
     <div ref={containerRef} className={cn("relative", className ?? "w-full")}>
@@ -153,7 +155,10 @@ export function SelectField<V extends string>({
             : "cursor-pointer hover:border-violet-500/40",
         )}
       >
-        <span className="font-semibold truncate">{current?.label}</span>
+        <span className="inline-flex min-w-0 items-center gap-2">
+          {CurrentIcon && <CurrentIcon aria-hidden className="w-4 h-4 shrink-0" />}
+          <span className="font-semibold truncate">{current?.label}</span>
+        </span>
         <ChevronDown
           aria-hidden
           className={cn(
@@ -169,7 +174,7 @@ export function SelectField<V extends string>({
           role="listbox"
           tabIndex={-1}
           onKeyDown={onPanelKeyDown}
-          ref={(el) => el?.focus()}
+          ref={(el) => el?.focus({ preventScroll: true })}
           className={cn(
             "absolute z-50 mt-1.5 left-0 right-0 py-1",
             "rounded-xl border border-white/15 bg-zinc-950/95 backdrop-blur-xl",
@@ -180,6 +185,7 @@ export function SelectField<V extends string>({
           {options.map((opt, i) => {
             const selected = opt.value === value;
             const highlighted = i === highlight;
+            const OptIcon = opt.icon;
             return (
               <button
                 key={opt.value}
@@ -201,6 +207,9 @@ export function SelectField<V extends string>({
                     selected ? "text-violet-300" : "text-transparent",
                   )}
                 />
+                {OptIcon && (
+                  <OptIcon aria-hidden className="w-4 h-4 shrink-0 mt-0.5 text-neutral-300" />
+                )}
                 <span className="min-w-0">
                   <span
                     className={cn(

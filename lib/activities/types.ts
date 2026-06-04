@@ -44,6 +44,9 @@ export const ACTIVITY_TYPES: ActivityType[] = [
   "color-by-number",
 ];
 
+// Exact number of pages the user wants per activity type. Client-safe.
+export type ActivityCounts = Partial<Record<ActivityType, number>>;
+
 export type ActivityDifficulty = "easy" | "medium" | "hard";
 
 export type ActivityAgeBand = "toddlers" | "kids" | "tweens";

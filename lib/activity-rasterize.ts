@@ -2,6 +2,7 @@ import "server-only";
 
 import sharp from "sharp";
 import { PAGE } from "@/lib/activities/page";
+import { ensureActivityFontsRegistered } from "@/lib/activities/server-fonts";
 
 // Rasterizes an activity SVG to a print-quality PNG. The SVG uses a
 // 850x1100 logical canvas (8.5x11 at 100 units/inch); at 300 DPI that is
@@ -17,6 +18,7 @@ export async function rasterizeActivitySvg(
   svg: string,
   dpi = 300,
 ): Promise<RasterizeResult> {
+  ensureActivityFontsRegistered();
   const width = Math.round((PAGE.w / 100) * dpi);
   const height = Math.round((PAGE.h / 100) * dpi);
   const png = await sharp(Buffer.from(svg), { density: dpi })

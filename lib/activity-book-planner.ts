@@ -5,6 +5,7 @@ import { buildActivitySequence } from "@/lib/activities/sequence";
 import {
   PLANNABLE_TYPES,
   type ActivityAgeBand,
+  type ActivityCounts,
   type ActivityDifficulty,
   type ActivitySpec,
   type ActivityType,
@@ -18,6 +19,7 @@ export interface ActivityBookPlanInput {
   age?: ActivityAgeBand;
   difficulty?: ActivityDifficulty;
   mix?: ActivityType[];
+  counts?: ActivityCounts;
   weights?: Partial<Record<ActivityType, number>>;
   regenerationHint?: string;
 }
@@ -61,6 +63,7 @@ function assemblePlan(input: ActivityBookPlanInput, pool: ContentPool): Activity
   const seq = buildActivitySequence({
     pageCount: input.pageCount,
     age: input.age,
+    counts: input.counts,
     weights: input.weights,
     mix: input.mix,
   });

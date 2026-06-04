@@ -9,10 +9,10 @@ export const PAGE = {
   bodyTop: 200,
 };
 
-// No quoted family names — this string is interpolated into
-// font-family="${SANS}" inside SVG, and inner double quotes would break the
-// XML attribute and make sharp/librsvg fail to parse the page.
-export const SANS = "ui-sans-serif, system-ui, Arial, sans-serif";
+import { ACTIVITY_FONT_FAMILY } from "./server-fonts";
+
+// No quoted family names — interpolated into font-family="${SANS}"; the bundled family is listed first (registered with fontconfig in server-fonts) so rasterization never falls back to tofu.
+export const SANS = `${ACTIVITY_FONT_FAMILY}, ui-sans-serif, system-ui, Arial, sans-serif`;
 
 export function escapeXml(value: string): string {
   return value

@@ -2,6 +2,7 @@ import { hashSeed, makeRng } from "./rng";
 import {
   PLANNABLE_TYPES,
   type ActivityAgeBand,
+  type ActivityCounts,
   type ActivityType,
 } from "./types";
 
@@ -25,8 +26,29 @@ export const SOLVABLE_TYPES: ActivityType[] = [
 export interface ActivitySequenceInput {
   pageCount: number;
   age?: ActivityAgeBand;
+  counts?: ActivityCounts;
   weights?: Partial<Record<ActivityType, number>>;
   mix?: ActivityType[];
+}
+
+// Forces the quota map to sum to exactly pageCount — trims the largest buckets when over, hands leftover pages round-robin when under.
+function reconcileToPageCount(
+  quotas: { t: ActivityType; q: number }[],
+  pageCount: number,
+): void {
+  let total = quotas.reduce((s, x) => s + x.q, 0);
+  while (total > pageCount) {
+    const largest = quotas.reduce((a, b) => (b.q > a.q ? b : a));
+    if (largest.q <= 0) break;
+    largest.q -= 1;
+    total -= 1;
+  }
+  let k = 0;
+  while (total < pageCount && quotas.length) {
+    quotas[k % quotas.length].q += 1;
+    total += 1;
+    k += 1;
+  }
 }
 
 // Builds an interleaved page sequence honoring per-type weights (or an equal
@@ -39,6 +61,16 @@ export function buildActivitySequence(input: ActivitySequenceInput): ActivityTyp
   // honor every one of them — never silently drop a selected type.
   const defaultAllowed = (t: ActivityType): boolean =>
     PLANNABLE_TYPES.includes(t) && !(input.age === "toddlers" && READING_TYPES.includes(t));
+
+  // Exact per-type page counts take priority — honored verbatim, then reconciled to pageCount (trim overflow / auto-fill shortfall).
+  const counts = input.counts;
+  if (counts && Object.values(counts).some((c) => (c ?? 0) > 0)) {
+    const quotas = (Object.entries(counts) as [ActivityType, number][])
+      .filter(([t, c]) => PLANNABLE_TYPES.includes(t) && (c ?? 0) > 0)
+      .map(([t, c]) => ({ t, q: Math.max(0, Math.round(c)) }));
+    reconcileToPageCount(quotas, pageCount);
+    return interleaveQuotas(quotas, pageCount);
+  }
 
   let entries: [ActivityType, number][];
   const weights = input.weights;
@@ -71,6 +103,14 @@ export function buildActivitySequence(input: ActivitySequenceInput): ActivityTyp
     k += 1;
   }
 
+  return interleaveQuotas(quotas, pageCount);
+}
+
+// Round-robins through the per-type quotas so activities interleave rather than clustering (all mazes, then all tracing). Mutates the quotas.
+function interleaveQuotas(
+  quotas: { t: ActivityType; q: number }[],
+  pageCount: number,
+): ActivityType[] {
   const seq: ActivityType[] = [];
   while (seq.length < pageCount) {
     let placed = false;

@@ -54,6 +54,12 @@ export function ImageCarouselModal({
   const touchStartYRef = useRef<number | null>(null);
   const SWIPE_THRESHOLD = 50;
 
+  const activeThumbRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    activeThumbRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [index, open]);
+
   if (!mounted) return null;
 
   const hasMany = images.length > 1;
@@ -164,29 +170,33 @@ export function ImageCarouselModal({
 
           {hasMany && (
             <div
-              className="flex items-center justify-center gap-1.5 pb-4 px-4 overflow-x-auto"
+              className="overflow-x-auto pb-4"
               onClick={(e) => e.stopPropagation()}
             >
-              {images.map((img, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setIndex(i)}
-                  aria-label={`Go to ${img.label}`}
-                  className={`shrink-0 w-12 h-16 rounded overflow-hidden border-2 transition-colors ${
-                    i === index
-                      ? "border-violet-400"
-                      : "border-white/15 opacity-60 hover:opacity-100"
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={img.url}
-                    alt={img.label}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
+              {/* w-max + min-w-full + mx-auto centers when the strip fits and stays fully scrollable (incl. the first/front-cover thumb) when it overflows — justify-center alone clips the left overflow. */}
+              <div className="flex w-max min-w-full items-center justify-center gap-1.5 px-4 mx-auto">
+                {images.map((img, i) => (
+                  <button
+                    key={i}
+                    ref={i === index ? activeThumbRef : undefined}
+                    type="button"
+                    onClick={() => setIndex(i)}
+                    aria-label={`Go to ${img.label}`}
+                    className={`shrink-0 w-12 h-16 rounded overflow-hidden border-2 transition-colors ${
+                      i === index
+                        ? "border-violet-400"
+                        : "border-white/15 opacity-60 hover:opacity-100"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={img.url}
+                      alt={img.label}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </motion.div>

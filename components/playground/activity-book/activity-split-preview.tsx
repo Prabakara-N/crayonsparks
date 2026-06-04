@@ -6,16 +6,16 @@ import {
   countAnswerKeyPages,
 } from "@/lib/activities/sequence";
 import { ACTIVITY_TYPE_META } from "./activity-types-config";
-import type { MixWeights } from "./activity-mix-picker";
+import type { ActivityCounts } from "@/lib/activities/types";
 
 interface ActivitySplitPreviewProps {
   pageCount: number;
   age: "toddlers" | "kids" | "tweens";
-  weights: MixWeights;
+  counts: ActivityCounts;
 }
 
-export function ActivitySplitPreview({ pageCount, age, weights }: ActivitySplitPreviewProps) {
-  const seq = buildActivitySequence({ pageCount, age, weights });
+export function ActivitySplitPreview({ pageCount, age, counts }: ActivitySplitPreviewProps) {
+  const seq = buildActivitySequence({ pageCount, age, counts });
   const summary = summarizeSequence(seq);
   const answers = countAnswerKeyPages(seq);
   if (!summary.length) return null;

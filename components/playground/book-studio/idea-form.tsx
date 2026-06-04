@@ -28,11 +28,9 @@ import { StoryTypePicker } from "@/components/playground/story-type-picker";
 import { DialogueStylePicker } from "@/components/playground/dialogue-style-picker";
 import type { DialogueStyle } from "@/lib/prompts";
 import type { ActivityDifficulty } from "@/lib/activities/types";
-import {
-  ActivityMixPicker,
-  type MixWeights,
-} from "@/components/playground/activity-book/activity-mix-picker";
+import { ActivityCountPicker } from "@/components/playground/activity-book/activity-count-picker";
 import { ActivitySplitPreview } from "@/components/playground/activity-book/activity-split-preview";
+import type { ActivityCounts } from "@/lib/activities/types";
 import { SegmentedControl } from "@/components/playground/activity-book/segmented-control";
 import { PlanButton } from "./plan-button";
 import {
@@ -61,8 +59,8 @@ export function IdeaForm({
   error,
   bookKind,
   setBookKind,
-  activityWeights,
-  setActivityWeights,
+  activityCounts,
+  setActivityCounts,
   activityDifficulty,
   setActivityDifficulty,
   storyType,
@@ -94,8 +92,8 @@ export function IdeaForm({
   error: string | null;
   bookKind: "coloring" | "story" | "activity";
   setBookKind: (v: "coloring" | "story" | "activity") => void;
-  activityWeights: MixWeights;
-  setActivityWeights: (v: MixWeights) => void;
+  activityCounts: ActivityCounts;
+  setActivityCounts: (v: ActivityCounts) => void;
   activityDifficulty: ActivityDifficulty | "auto";
   setActivityDifficulty: (v: ActivityDifficulty | "auto") => void;
   storyType: StoryType | null;
@@ -207,10 +205,23 @@ export function IdeaForm({
         <label className="block text-base font-semibold text-neutral-100 mb-2.5">
           What are you making?
         </label>
+        <div className="sm:hidden">
+          <SelectField<"coloring" | "story" | "activity">
+            value={bookKind}
+            onChange={setBookKind}
+            disabled={planning}
+            ariaLabel="Book type"
+            options={[
+              { value: "coloring", label: "Coloring book" },
+              { value: "story", label: "Story book" },
+              { value: "activity", label: "Activity book" },
+            ]}
+          />
+        </div>
         <div
           role="radiogroup"
           aria-label="Book type"
-          className="flex w-full sm:inline-flex sm:w-auto p-1.5 rounded-xl border border-white/10 bg-black/40"
+          className="hidden sm:inline-flex sm:w-auto p-1.5 rounded-xl border border-white/10 bg-black/40"
         >
           <button
             type="button"
@@ -493,8 +504,13 @@ export function IdeaForm({
               ]}
             />
           </div>
-          <ActivityMixPicker weights={activityWeights} onChange={setActivityWeights} age={age} />
-          <ActivitySplitPreview pageCount={pageCount} age={age} weights={activityWeights} />
+          <ActivityCountPicker
+            counts={activityCounts}
+            onChange={setActivityCounts}
+            pageCount={pageCount}
+            age={age}
+          />
+          <ActivitySplitPreview pageCount={pageCount} age={age} counts={activityCounts} />
         </div>
       )}
 
