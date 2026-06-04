@@ -1,7 +1,21 @@
 import type { ActivityResult, ActivitySpec } from "./types";
 import { PAGE, SANS, svgDocument, titleBlock } from "./page";
+import { DOT_OUTLINES, type OutlinePoint } from "./dot-outlines";
 
 type ShapeFn = (t: number) => { x: number; y: number };
+
+// AI-supplied outline points let dot-to-dot draw ANY theme subject. Validated
+// to a clean ordered loop of in-range coordinates before use.
+function validOutline(pts?: { x: number; y: number }[]): OutlinePoint[] | null {
+  if (!Array.isArray(pts) || pts.length < 4 || pts.length > 40) return null;
+  const out: OutlinePoint[] = [];
+  for (const p of pts) {
+    if (typeof p?.x !== "number" || typeof p?.y !== "number") return null;
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+    out.push({ x: Math.max(-1, Math.min(1, p.x)), y: Math.max(-1, Math.min(1, p.y)) });
+  }
+  return out;
+}
 
 const SHAPES: Record<string, ShapeFn> = {
   heart: (t) => {
@@ -53,14 +67,17 @@ function evenPoints(shape: ShapeFn, count: number): { x: number; y: number }[] {
 
 export function generateDotToDot(spec: ActivitySpec): ActivityResult {
   const shapeKey = (spec.params.shape ?? "heart").toLowerCase();
-  const shape = SHAPES[shapeKey] ?? SHAPES.heart;
+  // Curated outlines win for known subjects; AI points cover anything else.
+  const outline = DOT_OUTLINES[shapeKey] ?? validOutline(spec.params.dotPoints);
   const count = spec.params.pointCount ?? DEFAULT_POINTS[spec.difficulty] ?? 16;
 
   const cx = PAGE.w / 2;
   const cy = PAGE.bodyTop + (PAGE.h - PAGE.bodyTop - PAGE.margin) / 2;
   const radius = Math.min(PAGE.w - 2 * PAGE.margin, PAGE.h - PAGE.bodyTop - PAGE.margin) * 0.4;
 
-  const unit = evenPoints(shape, count);
+  // Named subject outlines (house, cat, car…) use their own vertices in order;
+  // abstract shapes (heart/star/flower/circle) resample a parametric curve.
+  const unit = outline ?? evenPoints(SHAPES[shapeKey] ?? SHAPES.heart, count);
   const pts = unit.map((p) => ({ x: cx + p.x * radius, y: cy + p.y * radius }));
   const mx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
   const my = pts.reduce((s, p) => s + p.y, 0) / pts.length;
@@ -89,6 +106,6 @@ export function generateDotToDot(spec: ActivitySpec): ActivityResult {
   return {
     svg: svgDocument(body),
     solutionSvg: svgDocument(body + solution),
-    meta: { shape: shapeKey, points: count },
+    meta: { shape: shapeKey, points: pts.length },
   };
 }

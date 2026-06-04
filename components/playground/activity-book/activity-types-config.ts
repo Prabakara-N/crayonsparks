@@ -1,11 +1,15 @@
 import {
+  ArrowLeftRight,
   Calculator,
+  Filter,
   Grid3x3,
   Hash,
   Link2,
   PenLine,
+  Repeat,
   Route,
   Search,
+  Shapes,
   Spline,
   Type,
   type LucideIcon,
@@ -32,6 +36,10 @@ export const ACTIVITY_TYPE_META: Record<ActivityType, ActivityTypeMeta> = {
   "spot-difference": { type: "spot-difference", label: "Spot the Difference", icon: Search, blurb: "Find added details between two scenes (AI)" },
   "seek-and-find": { type: "seek-and-find", label: "Seek & Find", icon: Search, blurb: "Find & count items in a scene (AI)" },
   "color-by-number": { type: "color-by-number", label: "Color by Number", icon: Grid3x3, blurb: "Color regions by a number key (AI)" },
+  shapes: { type: "shapes", label: "Shapes", icon: Shapes, blurb: "Trace and name basic shapes" },
+  patterns: { type: "patterns", label: "Patterns", icon: Repeat, blurb: "Finish the repeating pattern" },
+  sorting: { type: "sorting", label: "Sorting", icon: Filter, blurb: "Circle the one that's different" },
+  opposites: { type: "opposites", label: "Opposites", icon: ArrowLeftRight, blurb: "Match each pair of opposites" },
 };
 
 export const PLANNABLE_TYPE_META: ActivityTypeMeta[] = PLANNABLE_TYPES.map(

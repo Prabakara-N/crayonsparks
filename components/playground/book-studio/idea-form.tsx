@@ -63,6 +63,8 @@ export function IdeaForm({
   setActivityCounts,
   activityDifficulty,
   setActivityDifficulty,
+  activityAiPictures,
+  setActivityAiPictures,
   storyType,
   setStoryType,
   storyCharacterNames,
@@ -96,6 +98,8 @@ export function IdeaForm({
   setActivityCounts: (v: ActivityCounts) => void;
   activityDifficulty: ActivityDifficulty | "auto";
   setActivityDifficulty: (v: ActivityDifficulty | "auto") => void;
+  activityAiPictures: boolean;
+  setActivityAiPictures: (v: boolean) => void;
   storyType: StoryType | null;
   setStoryType: (v: StoryType | null) => void;
   storyCharacterNames: string;
@@ -511,6 +515,25 @@ export function IdeaForm({
             age={age}
           />
           <ActivitySplitPreview pageCount={pageCount} age={age} counts={activityCounts} />
+          <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-zinc-900/60 p-4 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={activityAiPictures}
+              onChange={(e) => setActivityAiPictures(e.target.checked)}
+              disabled={planning}
+              className="mt-0.5 w-4 h-4 accent-violet-500 shrink-0"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-neutral-100">
+                AI-drawn pictures
+              </span>
+              <span className="block text-xs text-neutral-400 mt-0.5 leading-relaxed">
+                Themed illustrations instead of simple icons &mdash; &ldquo;A is
+                for Apple&rdquo; cues plus richer art on matching, counting,
+                patterns &amp; sorting. Uses credits per affected page.
+              </span>
+            </span>
+          </label>
         </div>
       )}
 

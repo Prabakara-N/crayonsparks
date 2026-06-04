@@ -8,12 +8,19 @@ import { getActivityGenerator } from "@/lib/activities";
 import { rasterizeActivitySvg } from "@/lib/activity-rasterize";
 import { SEEK_AND_FIND_PROMPT } from "@/lib/prompts/activities/seek-and-find";
 import { COLOR_BY_NUMBER_PROMPT } from "@/lib/prompts/activities/color-by-number";
+import { LETTER_REFERENCE_PROMPT } from "@/lib/prompts/activities/letter-reference";
+import { OBJECT_CUE_PROMPT, NUMBER_CUE_PROMPT } from "@/lib/prompts/activities/object-cue";
 import {
   SPOT_DIFFERENCE_PROMPT,
   SPOT_DIFFERENCE_CHANGES_PROMPT,
   SPOT_DIFFERENCE_CIRCLE_PROMPT,
 } from "@/lib/prompts/activities/spot-difference";
 import { generateSpotDifference, spotDifferenceCount } from "@/lib/activities/spot-difference";
+import { generateMatching } from "@/lib/activities/matching";
+import { generateCounting } from "@/lib/activities/counting";
+import { generatePatterns } from "@/lib/activities/patterns";
+import { generateSorting } from "@/lib/activities/sorting";
+import type { ObjectAssets } from "@/lib/activities/object-draw";
 import { ACTIVITY_TYPES, type ActivityResult, type ActivitySpec, type ActivityType } from "@/lib/activities/types";
 
 export const runtime = "nodejs";
@@ -80,6 +87,13 @@ async function rasterizeResult(result: ActivityResult) {
   };
 }
 
+const HYBRID_FNS: Record<string, (spec: ActivitySpec, objects?: ObjectAssets) => ActivityResult> = {
+  matching: generateMatching,
+  counting: generateCounting,
+  patterns: generatePatterns,
+  sorting: generateSorting,
+};
+
 export async function POST(req: Request) {
   const parsed = await readBoundedJson<{ spec?: unknown }>(req);
   if (!parsed.ok) return parsed.response;
@@ -96,12 +110,73 @@ export async function POST(req: Request) {
     );
   }
 
+  const refWord =
+    (spec.type === "letter-tracing" || spec.type === "number-tracing") &&
+    typeof spec.params.referenceWord === "string"
+      ? spec.params.referenceWord.trim()
+      : "";
+  const aiObjects =
+    spec.type in HYBRID_FNS && Array.isArray(spec.params.aiObjects)
+      ? spec.params.aiObjects
+          .filter((w): w is string => typeof w === "string" && !!w.trim())
+          .map((w) => w.trim())
+          .slice(0, 8)
+      : [];
+
   try {
-    // Procedural pages: free, no model call.
-    if (generator.isProcedural) {
+    // Procedural pages: free, no model call. (Tracing cues / AI pictures fall
+    // through to the charged branches below.)
+    if (generator.isProcedural && !refWord && !aiObjects.length) {
       const auth = await requireAuth(req);
       if (!auth.ok) return auth.response;
       return NextResponse.json(await rasterizeResult(generator.generate(spec)));
+    }
+
+    // Tracing picture cue ("A is for Apple" / "2 is for two apples").
+    if (refWord) {
+      const charge = await preauthorizeCharge(req, { kind: "coloring", op: "page" });
+      if (!charge.ok) return charge.response;
+      const prompt =
+        spec.type === "number-tracing"
+          ? NUMBER_CUE_PROMPT({
+              n: Number(spec.params.numbers?.[0] ?? 1) || 1,
+              word: refWord,
+              theme: spec.theme,
+            })
+          : LETTER_REFERENCE_PROMPT({
+              letter: (spec.params.letters?.[0] ?? "A").toUpperCase().slice(0, 1),
+              word: refWord,
+              theme: spec.theme,
+            });
+      const image = await generateImageByModel(prompt, {
+        aspectRatio: "1:1",
+        model: DEFAULT_INTERIOR_MODEL,
+      });
+      const asset = `data:${image.mimeType};base64,${image.data}`;
+      const payload = await rasterizeResult(generator.generate(spec, asset));
+      await charge.commit("Generated tracing picture cue");
+      return NextResponse.json(payload);
+    }
+
+    // Hybrid pages (matching/counting/patterns/sorting) with AI-drawn objects:
+    // generate one picture per distinct object, then the procedural layout keeps
+    // the count / pattern / odd-one-out logic correct.
+    if (aiObjects.length) {
+      const charge = await preauthorizeCharge(req, { kind: "coloring", op: "page" });
+      if (!charge.ok) return charge.response;
+      const pairs = await Promise.all(
+        aiObjects.map(async (word) => {
+          const image = await generateImageByModel(
+            OBJECT_CUE_PROMPT({ word, theme: spec.theme }),
+            { aspectRatio: "1:1", model: DEFAULT_INTERIOR_MODEL },
+          );
+          return [word.toLowerCase(), `data:${image.mimeType};base64,${image.data}`] as const;
+        }),
+      );
+      const objects: ObjectAssets = Object.fromEntries(pairs);
+      const payload = await rasterizeResult(HYBRID_FNS[spec.type](spec, objects));
+      await charge.commit(`Generated ${spec.type} page (AI pictures)`);
+      return NextResponse.json(payload);
     }
 
     // Spot-the-difference: a REAL game — Picture 1, then Picture 2 with genuine

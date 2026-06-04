@@ -1,7 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 import { GEMINI_TEXT_MODEL } from "@/lib/constants";
 import { ICON_NAMES, isIconName } from "@/lib/activities/icons";
+import { DOT_OUTLINE_NAMES } from "@/lib/activities/dot-outlines";
 import { buildActivitySequence } from "@/lib/activities/sequence";
+
+const PARAMETRIC_DOT_SHAPES = ["heart", "star", "flower", "circle"];
+const DOT_SUBJECTS = [...PARAMETRIC_DOT_SHAPES, ...DOT_OUTLINE_NAMES];
+const isDotSubject = (s: string): boolean => DOT_SUBJECTS.includes(s.toLowerCase());
 import {
   PLANNABLE_TYPES,
   type ActivityAgeBand,
@@ -21,8 +26,16 @@ export interface ActivityBookPlanInput {
   mix?: ActivityType[];
   counts?: ActivityCounts;
   weights?: Partial<Record<ActivityType, number>>;
+  aiPictures?: boolean;
   regenerationHint?: string;
 }
+
+const DEFAULT_LETTER_WORDS: Record<string, string> = {
+  A: "Apple", B: "Ball", C: "Cat", D: "Dog", E: "Egg", F: "Fish", G: "Goat",
+  H: "Hat", I: "Igloo", J: "Jug", K: "Kite", L: "Lion", M: "Mango", N: "Nest",
+  O: "Orange", P: "Pig", Q: "Queen", R: "Rabbit", S: "Sun", T: "Tree",
+  U: "Umbrella", V: "Van", W: "Watch", X: "Xylophone", Y: "Yak", Z: "Zebra",
+};
 
 export interface ActivityBookPlan {
   title: string;
@@ -49,6 +62,11 @@ interface ContentPool {
   findLists: { label: string; count: number }[][];
   colorLegends: { n: number; label: string }[][];
   iconPool: string[];
+  oppositePairs: { left: string; right: string }[];
+  dotSubjects: string[];
+  dotPuzzles: { subject: string; points: { x: number; y: number }[] }[];
+  letterWords: Record<string, string>;
+  objectWords: string[];
 }
 
 const SHAPES = ["heart", "star", "flower", "circle"];
@@ -93,18 +111,67 @@ function assemblePlan(input: ActivityBookPlanInput, pool: ContentPool): Activity
         const slice = pool.crosswordWords.slice(start, start + 10);
         return { ...base, title: "Crossword", params: { clues: slice.length >= 4 ? slice : pool.crosswordWords.slice(0, 10), seed: i + 1 } };
       }
-      case "letter-tracing":
-        return { ...base, title: "Trace the Letter", params: { letters: [take(pool.letters, "lt", "A")] } };
-      case "number-tracing":
-        return { ...base, title: "Trace the Number", params: { numbers: [take(pool.numbers, "nt", 1)] } };
+      case "letter-tracing": {
+        const ltr = take(pool.letters, "lt", "A").toUpperCase().slice(0, 1);
+        const params: ActivitySpec["params"] = { letters: [ltr] };
+        if (input.aiPictures) {
+          params.referenceWord = pool.letterWords[ltr] ?? DEFAULT_LETTER_WORDS[ltr] ?? "";
+        }
+        return { ...base, title: "Trace the Letter", params };
+      }
+      case "number-tracing": {
+        const params: ActivitySpec["params"] = { numbers: [take(pool.numbers, "nt", 1)] };
+        if (input.aiPictures) params.referenceWord = take(pool.objectWords, "no", "stars");
+        return { ...base, title: "Trace the Number", params };
+      }
       case "sight-word-tracing":
         return { ...base, title: "Trace the Words", params: { phrase: take(pool.phrases, "sw", "I can read") } };
-      case "dot-to-dot":
-        return { ...base, title: "Connect the Dots", params: { shape: take(pool.shapes, "dd", "heart"), seed: i + 1 } };
-      case "matching":
-        return { ...base, title: "Match Them Up", params: { pairs: take(pool.matchingSets, "mt", []), seed: i + 1 } };
-      case "counting":
-        return { ...base, title: "Count & Write", params: { seed: i + 1, icon: take(pool.iconPool, "cnt", "star") } };
+      case "dot-to-dot": {
+        const puzzle = pool.dotPuzzles.length ? take(pool.dotPuzzles, "dd", pool.dotPuzzles[0]) : null;
+        if (puzzle) {
+          return { ...base, title: "Connect the Dots", params: { shape: puzzle.subject, dotPoints: puzzle.points, seed: i + 1 } };
+        }
+        return { ...base, title: "Connect the Dots", params: { shape: take(pool.dotSubjects, "dds", "star"), seed: i + 1 } };
+      }
+      case "shapes":
+        return { ...base, title: "Trace the Shapes", params: { seed: i + 1 } };
+      case "patterns": {
+        const params: ActivitySpec["params"] = { iconNames: pool.iconPool, seed: i + 1 };
+        if (input.aiPictures) {
+          const objs = pool.objectWords.slice(0, 5);
+          params.iconNames = objs;
+          params.aiObjects = objs;
+        }
+        return { ...base, title: "Finish the Pattern", params };
+      }
+      case "sorting": {
+        const params: ActivitySpec["params"] = { iconNames: pool.iconPool, seed: i + 1 };
+        if (input.aiPictures) {
+          const objs = pool.objectWords.slice(0, 5);
+          params.iconNames = objs;
+          params.aiObjects = objs;
+        }
+        return { ...base, title: "Which Is Different?", params };
+      }
+      case "opposites":
+        return { ...base, title: "Match the Opposites", params: { oppositePairs: pool.oppositePairs, seed: i + 1 } };
+      case "matching": {
+        const set = take(pool.matchingSets, "mt", []);
+        if (input.aiPictures && set.length) {
+          const aiPairs = set.map((p) => ({ left: p.left, right: p.left.toLowerCase() }));
+          return { ...base, title: "Match Them Up", params: { pairs: aiPairs, aiObjects: Array.from(new Set(aiPairs.map((p) => p.right))), seed: i + 1 } };
+        }
+        return { ...base, title: "Match Them Up", params: { pairs: set, seed: i + 1 } };
+      }
+      case "counting": {
+        const params: ActivitySpec["params"] = { seed: i + 1, icon: take(pool.iconPool, "cnt", "star") };
+        if (input.aiPictures) {
+          const obj = take(pool.objectWords, "co", "star");
+          params.icon = obj;
+          params.aiObjects = [obj];
+        }
+        return { ...base, title: "Count & Write", params };
+      }
       case "seek-and-find":
         return { ...base, title: "Seek & Find", params: { findList: take(pool.findLists, "sf", [{ label: "stars", count: 5 }]), seed: i + 1 } };
       case "color-by-number":
@@ -161,6 +228,18 @@ function fallbackPool(idea: string): ContentPool {
       ],
     ],
     iconPool: ["star", "heart", "apple", "fish", "balloon", "flower"],
+    oppositePairs: [
+      { left: "BIG", right: "SMALL" },
+      { left: "UP", right: "DOWN" },
+      { left: "HOT", right: "COLD" },
+      { left: "DAY", right: "NIGHT" },
+      { left: "FAST", right: "SLOW" },
+      { left: "HAPPY", right: "SAD" },
+    ],
+    dotSubjects: ["star", "heart", "house", "fish", "tree", "flower", "cat", "car"],
+    dotPuzzles: [],
+    letterWords: DEFAULT_LETTER_WORDS,
+    objectWords: ["apple", "star", "fish", "balloon", "flower", "house", "car", "sun", "tree", "heart"],
     findLists: [
       [
         { label: "stars", count: 5 },
@@ -188,6 +267,8 @@ Produce a themed content pool the puzzle engine will use. Words must be UPPERCAS
 
 For matching and counting, the engine can only DRAW these picture icons (use exactly these names, lowercase): ${ICON_NAMES.join(", ")}. Pick the icons from this list that best fit the theme.
 
+For connect-the-dots, the engine can only draw these subject outlines (use exactly these names, lowercase): ${DOT_SUBJECTS.join(", ")}. Pick the ones that best fit the theme.
+
 Respond with ONLY a JSON object (no prose, no code fences):
 {
   "title": "full KDP title under 150 chars, includes 'Activity Book' and age range",
@@ -203,6 +284,11 @@ Respond with ONLY a JSON object (no prose, no code fences):
   "shapes": ["heart","star","flower","circle"],
   "matchingSets": [[{"word":"STAR","icon":"star"}, ... 4 pairs where icon is from the allowed list], ... 2 sets],
   "iconPool": ["icon names from the allowed list that fit the theme, 6-8 of them"],
+  "dotSubjects": ["connect-the-dots subject names from the allowed outline list that fit the theme, 4-8 of them"],
+  "dotPuzzles": [{"subject":"a simple on-theme object","points":[{"x":0,"y":-0.8}, ... 10-16 ordered points, x and y each between -1 and 1, tracing the subject's outline as ONE continuous loop (last point joins back to the first); keep it a clean recognizable silhouette a child can connect]}, ... 2-3 puzzles for subjects NOT in the outline list above],
+  "letterWords": {"A":"on-theme object starting with A","B":"...", ... a single simple kid-friendly object word for EACH letter A-Z that fits the book theme (one or two syllables, drawable)},
+  "objectWords": ["8-10 simple on-theme objects a child knows and that are easy to draw as a single clear picture (used for matching, counting, patterns, sorting)"],
+  "oppositePairs": [{"left":"BIG","right":"SMALL"}, ... 6 simple opposite word pairs, UPPERCASE, 1-2 syllables, age-appropriate],
   "findLists": [[{"label":"on-theme thing","count":5}, ... 3 items], ... 2 sets],
   "colorLegends": [[{"n":1,"label":"red"}, ... 4 entries], ... 2 sets]
 }`;
@@ -251,6 +337,43 @@ function parsePool(text: string, fb: ContentPool): ContentPool {
     const iconPool = Array.isArray(o.iconPool)
       ? (o.iconPool as unknown[]).filter((x): x is string => typeof x === "string").map((x) => x.toLowerCase().trim()).filter(isIconName)
       : [];
+    const oppositePairs = Array.isArray(o.oppositePairs)
+      ? (o.oppositePairs as unknown[])
+          .map((p) => p as Record<string, unknown>)
+          .filter((p) => typeof p.left === "string" && typeof p.right === "string")
+          .map((p) => ({ left: (p.left as string).trim().toUpperCase().slice(0, 14), right: (p.right as string).trim().toUpperCase().slice(0, 14) }))
+          .filter((p) => p.left && p.right)
+      : [];
+    const dotSubjects = Array.isArray(o.dotSubjects)
+      ? (o.dotSubjects as unknown[]).filter((x): x is string => typeof x === "string").map((x) => x.toLowerCase().trim()).filter(isDotSubject)
+      : [];
+    const clampUnit = (n: number): number => Math.max(-1, Math.min(1, n));
+    const dotPuzzles = Array.isArray(o.dotPuzzles)
+      ? (o.dotPuzzles as unknown[])
+          .map((p) => p as Record<string, unknown>)
+          .map((p) => ({
+            subject: typeof p.subject === "string" ? p.subject.trim().toLowerCase().slice(0, 24) : "",
+            points: Array.isArray(p.points)
+              ? (p.points as unknown[])
+                  .map((q) => q as Record<string, unknown>)
+                  .filter((q) => typeof q.x === "number" && typeof q.y === "number")
+                  .map((q) => ({ x: clampUnit(q.x as number), y: clampUnit(q.y as number) }))
+              : [],
+          }))
+          .filter((p) => p.subject && p.points.length >= 5 && p.points.length <= 40)
+      : [];
+    const objectWords = Array.isArray(o.objectWords)
+      ? (o.objectWords as unknown[]).filter((x): x is string => typeof x === "string").map((x) => x.trim().toLowerCase().slice(0, 24)).filter(Boolean)
+      : [];
+    const letterWords: Record<string, string> = { ...DEFAULT_LETTER_WORDS };
+    if (o.letterWords && typeof o.letterWords === "object") {
+      for (const [k, v] of Object.entries(o.letterWords as Record<string, unknown>)) {
+        const key = k.trim().toUpperCase().slice(0, 1);
+        if (/[A-Z]/.test(key) && typeof v === "string" && v.trim()) {
+          letterWords[key] = v.trim().slice(0, 24);
+        }
+      }
+    }
     return {
       title: coerceStr(o, "title", fb.title),
       coverTitle: coerceStr(o, "coverTitle", fb.coverTitle),
@@ -265,6 +388,11 @@ function parsePool(text: string, fb: ContentPool): ContentPool {
       shapes: SHAPES,
       matchingSets: matchingSets.length ? matchingSets : fb.matchingSets,
       iconPool: iconPool.length ? iconPool : fb.iconPool,
+      oppositePairs: oppositePairs.length >= 3 ? oppositePairs : fb.oppositePairs,
+      dotSubjects: dotSubjects.length ? dotSubjects : fb.dotSubjects,
+      dotPuzzles: dotPuzzles.length ? dotPuzzles : fb.dotPuzzles,
+      letterWords,
+      objectWords: objectWords.length >= 4 ? objectWords : fb.objectWords,
       findLists: parseFindLists(o.findLists, fb.findLists),
       colorLegends: parseColorLegends(o.colorLegends, fb.colorLegends),
     };

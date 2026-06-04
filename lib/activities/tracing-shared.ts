@@ -7,6 +7,7 @@ export interface TracingOptions {
   instruction: string;
   repeatTrace: boolean;
   rows: number;
+  referenceWord?: string;
 }
 
 // Dotted outline for trace glyphs — the child traces/joins the dots to form
@@ -39,11 +40,31 @@ function traceGlyphs(y: number, rowH: number, text: string, repeat: boolean): st
   return `<text x="${PAGE.margin + 16}" y="${base}" ${traceGlyphAttrs(fontSize)}>${escapeXml(content)}</text>`;
 }
 
-export function buildTracingPage(spec: ActivitySpec, opts: TracingOptions): ActivityResult {
-  const headerSize = 90;
-  const header = `<text x="${PAGE.w / 2}" y="${PAGE.bodyTop + 40}" text-anchor="middle" font-family="${SANS}" font-size="${headerSize}" font-weight="700" fill="#111">${escapeXml(opts.headerLine)}</text>`;
+function referenceBlock(opts: TracingOptions, assetDataUrl: string): string {
+  const letter = opts.headerLine.trim()[0] ?? "";
+  const word = (opts.referenceWord ?? "").trim();
+  const cap = word.replace(/\b\w/g, (m) => m.toUpperCase());
+  const boxSize = 190;
+  const x = PAGE.w - PAGE.margin - boxSize;
+  const y = PAGE.bodyTop;
+  const img = `<image href="${assetDataUrl}" x="${x}" y="${y}" width="${boxSize}" height="${boxSize}" preserveAspectRatio="xMidYMid meet"/>`;
+  const caption = `<text x="${PAGE.w / 2}" y="${PAGE.bodyTop + 250}" text-anchor="middle" font-family="${SANS}" font-size="32" font-weight="700" fill="#111">${escapeXml(`${letter} is for ${cap}`)}</text>`;
+  return img + caption;
+}
 
-  const rowsTop = PAGE.bodyTop + 110;
+export function buildTracingPage(
+  spec: ActivitySpec,
+  opts: TracingOptions,
+  assetDataUrl?: string,
+): ActivityResult {
+  const hasRef = !!assetDataUrl && !!opts.referenceWord;
+  const headerSize = 90;
+  const header = hasRef
+    ? `<text x="${PAGE.margin + 110}" y="${PAGE.bodyTop + 70}" text-anchor="middle" font-family="${SANS}" font-size="${headerSize}" font-weight="700" fill="#111">${escapeXml(opts.headerLine)}</text>`
+    : `<text x="${PAGE.w / 2}" y="${PAGE.bodyTop + 40}" text-anchor="middle" font-family="${SANS}" font-size="${headerSize}" font-weight="700" fill="#111">${escapeXml(opts.headerLine)}</text>`;
+
+  const refBlock = hasRef ? referenceBlock(opts, assetDataUrl as string) : "";
+  const rowsTop = PAGE.bodyTop + (hasRef ? 280 : 110);
   const available = PAGE.h - PAGE.margin - rowsTop;
   const rowH = available / opts.rows;
   const rowSvgs: string[] = [];
@@ -54,6 +75,6 @@ export function buildTracingPage(spec: ActivitySpec, opts: TracingOptions): Acti
     rowSvgs.push(guides + glyphs);
   }
 
-  const body = titleBlock(spec.title, opts.instruction) + header + rowSvgs.join("");
+  const body = titleBlock(spec.title, opts.instruction) + header + refBlock + rowSvgs.join("");
   return { svg: svgDocument(body), meta: { trace: opts.traceLine } };
 }

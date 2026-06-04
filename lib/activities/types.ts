@@ -10,7 +10,11 @@ export type ActivityType =
   | "counting"
   | "spot-difference"
   | "seek-and-find"
-  | "color-by-number";
+  | "color-by-number"
+  | "shapes"
+  | "patterns"
+  | "sorting"
+  | "opposites";
 
 // Types the planner can include in a book (client-safe — no server deps,
 // so the studio UI can import this without pulling in the Gemini SDK).
@@ -27,6 +31,10 @@ export const PLANNABLE_TYPES: ActivityType[] = [
   "seek-and-find",
   "color-by-number",
   "spot-difference",
+  "shapes",
+  "patterns",
+  "sorting",
+  "opposites",
 ];
 
 export const ACTIVITY_TYPES: ActivityType[] = [
@@ -42,6 +50,10 @@ export const ACTIVITY_TYPES: ActivityType[] = [
   "spot-difference",
   "seek-and-find",
   "color-by-number",
+  "shapes",
+  "patterns",
+  "sorting",
+  "opposites",
 ];
 
 // Exact number of pages the user wants per activity type. Client-safe.
@@ -69,6 +81,12 @@ export interface ActivityParams {
   pairs?: { left: string; right: string }[];
   counts?: number[];
   icon?: string;
+  iconNames?: string[];
+  shapeNames?: string[];
+  oppositePairs?: { left: string; right: string }[];
+  dotPoints?: { x: number; y: number }[];
+  referenceWord?: string;
+  aiObjects?: string[];
 }
 
 // What the planner produces per page; what the generator consumes.

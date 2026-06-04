@@ -8,7 +8,7 @@ import {
 
 // Reading/spelling puzzles a pre-reader (ages 3-5) cannot do — hard-excluded
 // for the toddler band per KDP/Etsy kids-activity norms.
-export const READING_TYPES: ActivityType[] = ["crossword", "word-search"];
+export const READING_TYPES: ActivityType[] = ["crossword", "word-search", "opposites"];
 
 // Activity types that produce a solvable answer key (a solution page).
 // Tracing and color-by-number have no "answer".
@@ -21,6 +21,9 @@ export const SOLVABLE_TYPES: ActivityType[] = [
   "counting",
   "spot-difference",
   "seek-and-find",
+  "patterns",
+  "sorting",
+  "opposites",
 ];
 
 export interface ActivitySequenceInput {

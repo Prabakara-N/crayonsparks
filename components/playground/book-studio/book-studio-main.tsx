@@ -413,6 +413,8 @@ export function BookStudio({
           setActivityCounts={bookPlan.setActivityCounts}
           activityDifficulty={bookPlan.activityDifficulty}
           setActivityDifficulty={bookPlan.setActivityDifficulty}
+          activityAiPictures={bookPlan.activityAiPictures}
+          setActivityAiPictures={bookPlan.setActivityAiPictures}
           storyType={bookPlan.storyType}
           setStoryType={bookPlan.setStoryType}
           storyCharacterNames={bookPlan.storyCharacterNames}

@@ -59,6 +59,7 @@ export function useBookPlan({
   const [bookKind, setBookKind] = useState<"coloring" | "story" | "activity">("coloring");
   const [activityCounts, setActivityCounts] = useState<ActivityCounts>({});
   const [activityDifficulty, setActivityDifficulty] = useState<ActivityDifficulty | "auto">("auto");
+  const [activityAiPictures, setActivityAiPictures] = useState(false);
   const [activityPlan, setActivityPlan] = useState<ActivityBookPlan | null>(null);
   const [storyType, setStoryType] = useState<StoryType | null>(
     initialPlan?.storyType ?? null,
@@ -128,6 +129,7 @@ export function useBookPlan({
             age,
             difficulty: activityDifficulty === "auto" ? undefined : activityDifficulty,
             counts: Object.keys(activityCounts).length ? activityCounts : undefined,
+            aiPictures: activityAiPictures,
             regenerationHint: hint,
           }),
         });
@@ -216,6 +218,7 @@ export function useBookPlan({
     bookKind,
     activityCounts,
     activityDifficulty,
+    activityAiPictures,
     storyType,
     storyCharacterNames,
     dialogueStyle,
@@ -292,6 +295,8 @@ export function useBookPlan({
     setActivityCounts,
     activityDifficulty,
     setActivityDifficulty,
+    activityAiPictures,
+    setActivityAiPictures,
     activityPlan,
     setActivityPlan,
     storyType,

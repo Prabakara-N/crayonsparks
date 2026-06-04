@@ -55,6 +55,7 @@ export async function POST(req: Request) {
       mix: body.mix,
       counts,
       weights: body.weights,
+      aiPictures: body.aiPictures === true,
       regenerationHint,
     });
     return NextResponse.json({ plan });

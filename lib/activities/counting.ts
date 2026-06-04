@@ -1,13 +1,13 @@
 import type { ActivityResult, ActivitySpec } from "./types";
 import { makeRng, specSeed } from "./rng";
-import { iconSvg } from "./icons";
+import { drawObject, type ObjectAssets } from "./object-draw";
 import { PAGE, SANS, svgDocument, titleBlock } from "./page";
 
 const RANGE: Record<string, number> = { easy: 5, medium: 8, hard: 12 };
 
 // Lays icons inside the box's UPPER region only — `areaH` excludes the
 // bottom "How many?" + answer-box strip so icons never overlap the text.
-function shapes(count: number, icon: string, bx: number, by: number, bw: number, areaH: number): string {
+function shapes(count: number, icon: string, bx: number, by: number, bw: number, areaH: number, objects?: ObjectAssets): string {
   const perRow = Math.min(count, Math.max(2, Math.ceil(Math.sqrt(count * 1.5))));
   const rows = Math.ceil(count / perRow);
   const cellW = (bw - 36) / perRow;
@@ -19,12 +19,12 @@ function shapes(count: number, icon: string, bx: number, by: number, bw: number,
     const row = Math.floor(i / perRow);
     const cx = bx + 18 + col * cellW + cellW / 2;
     const cy = by + 24 + row * cellH + cellH / 2;
-    out.push(iconSvg(icon, cx, cy, iconSize, 3));
+    out.push(drawObject(objects, icon, cx, cy, iconSize, 3));
   }
   return out.join("");
 }
 
-export function generateCounting(spec: ActivitySpec): ActivityResult {
+export function generateCounting(spec: ActivitySpec, objects?: ObjectAssets): ActivityResult {
   const rng = makeRng(specSeed(spec.params.seed, spec.id));
   const max = RANGE[spec.difficulty] ?? 8;
   const icon = spec.params.icon ?? "star";
@@ -52,7 +52,7 @@ export function generateCounting(spec: ActivitySpec): ActivityResult {
     const by = top + row * (boxH + 30);
     boxes.push(
       `<rect x="${bx}" y="${by}" width="${boxW}" height="${boxH}" rx="14" fill="none" stroke="#9ca3af" stroke-width="2"/>`,
-      shapes(count, icon, bx, by, boxW, boxH - 72),
+      shapes(count, icon, bx, by, boxW, boxH - 72, objects),
       `<rect x="${bx + boxW - 70}" y="${by + boxH - 60}" width="50" height="44" rx="8" fill="none" stroke="#111" stroke-width="2"/>`,
       `<text x="${bx + 20}" y="${by + boxH - 26}" font-family="${SANS}" font-size="22" fill="#444">How many?</text>`,
     );

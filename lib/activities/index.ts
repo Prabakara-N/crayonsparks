@@ -16,6 +16,10 @@ import { generateCounting } from "./counting";
 import { generateSeekAndFind } from "./seek-and-find";
 import { generateColorByNumber } from "./color-by-number";
 import { generateSpotDifference } from "./spot-difference";
+import { generateShapes } from "./shapes";
+import { generatePatterns } from "./patterns";
+import { generateSorting } from "./sorting";
+import { generateOpposites } from "./opposites";
 
 function proc(type: ActivityType, fn: (s: ActivitySpec) => ActivityResult): ActivityGenerator {
   return { type, isProcedural: true, generate: (spec) => fn(spec) };
@@ -29,8 +33,8 @@ export const ACTIVITY_GENERATORS: Partial<Record<ActivityType, ActivityGenerator
   maze: proc("maze", generateMaze),
   "word-search": proc("word-search", generateWordSearch),
   crossword: proc("crossword", generateCrossword),
-  "letter-tracing": proc("letter-tracing", generateLetterTracing),
-  "number-tracing": proc("number-tracing", generateNumberTracing),
+  "letter-tracing": { type: "letter-tracing", isProcedural: true, generate: (spec, asset) => generateLetterTracing(spec, asset) },
+  "number-tracing": { type: "number-tracing", isProcedural: true, generate: (spec, asset) => generateNumberTracing(spec, asset) },
   "sight-word-tracing": proc("sight-word-tracing", generateSightWordTracing),
   "dot-to-dot": proc("dot-to-dot", generateDotToDot),
   matching: proc("matching", generateMatching),
@@ -38,6 +42,10 @@ export const ACTIVITY_GENERATORS: Partial<Record<ActivityType, ActivityGenerator
   "seek-and-find": illus("seek-and-find", generateSeekAndFind),
   "color-by-number": illus("color-by-number", generateColorByNumber),
   "spot-difference": illus("spot-difference", generateSpotDifference),
+  shapes: proc("shapes", generateShapes),
+  patterns: proc("patterns", generatePatterns),
+  sorting: proc("sorting", generateSorting),
+  opposites: proc("opposites", generateOpposites),
 };
 
 export function getActivityGenerator(type: ActivityType): ActivityGenerator | undefined {
