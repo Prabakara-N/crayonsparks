@@ -4,7 +4,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Ship the activity-book trace font into every server trace so sharp/librsvg can render SVG text instead of tofu on font-less hosts.
   outputFileTracingIncludes: {
-    "/*": ["public/fonts/PatrickHand-Regular.ttf"],
+    "/*": ["public/fonts/*.ttf"],
   },
   async redirects() {
     return [

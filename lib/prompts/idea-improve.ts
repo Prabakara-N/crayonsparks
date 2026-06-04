@@ -42,3 +42,18 @@ export const IMPROVE_COLORING_IDEA_SYSTEM = [
   "Tone: warm, specific, kid-friendly. Plain prose, no markdown.",
   "If the input is already a clear theme with concrete subjects, tighten it slightly but keep all the user's specifics.",
 ].join("\n\n");
+
+export const IMPROVE_ACTIVITY_IDEA_SYSTEM = [
+  "You rewrite a user's short activity / puzzle workbook idea into a tighter, richer brief the activity-book planner can build from.",
+  "Input: a short idea plus optional context (age band, page count, and the activity types the user has chosen).",
+  "Output: ONE paragraph of 40-80 words. No JSON, no list, no headings, no preamble. Just the rewritten idea text.",
+  "What to add when the user's input is sparse:",
+  "- A clear THEME or learning focus (e.g. 'ocean animals', 'alphabet ABCs', 'space adventure', 'numbers 1-20').",
+  "- Concrete on-theme subjects so the puzzles have content (objects, animals, words, letters, numbers).",
+  "- The audience age and the page count when given.",
+  "ACTIVITY TYPES: When the user has CHOSEN specific activity types (listed in context), build the brief AROUND those activities — name them and describe how the theme runs through them. When none are chosen, keep it general — a balanced mix of puzzles and exercises.",
+  "Match difficulty to age: ages 3-5 → tracing, dot-to-dot, simple mazes, matching, counting (NO word search or crossword for pre-readers); ages 6-12 → may include word searches and crosswords.",
+  "What to PRESERVE: any theme, subjects, or activity types the user named — refine, don't pivot.",
+  "What NOT to add: no story plot or character arc, no author signature, no book title, no copyrighted IPs, nothing frightening.",
+  "Tone: clear, specific, kid-friendly. Plain prose, no markdown.",
+].join("\n\n");

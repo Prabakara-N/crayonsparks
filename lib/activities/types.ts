@@ -87,6 +87,7 @@ export interface ActivityParams {
   dotPoints?: { x: number; y: number }[];
   referenceWord?: string;
   aiObjects?: string[];
+  aiTrace?: boolean;
 }
 
 // What the planner produces per page; what the generator consumes.

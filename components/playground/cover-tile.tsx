@@ -24,6 +24,7 @@ interface CoverTileProps {
   aspect?: string;
   refineState?: "running" | "done";
   extraAction?: ReactNode;
+  hideRegenerate?: boolean;
 }
 
 /**
@@ -45,6 +46,7 @@ export function CoverTile({
   aspect = "3 / 4",
   refineState,
   extraAction,
+  hideRegenerate = false,
 }: CoverTileProps) {
   // Click behaviour priority: refine when not disabled and onRefine is wired,
   // otherwise view-only (opens lightbox) so the user can still see the
@@ -136,28 +138,30 @@ export function CoverTile({
       </button>
 
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onRegenerate}
-          disabled={
-            state.status === "generating" || disabled || regenerateOnlyLocked
-          }
-          title={
-            disabled
-              ? disabledReason
-              : regenerateOnlyLocked
-                ? regenerateOnlyLockedReason
-                : undefined
-          }
-          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-linear-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          {state.status === "generating" ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <RefreshCw className="w-3.5 h-3.5" />
-          )}
-          {state.dataUrl ? "Regenerate" : "Generate"}
-        </button>
+        {!(hideRegenerate && state.dataUrl) && (
+          <button
+            type="button"
+            onClick={onRegenerate}
+            disabled={
+              state.status === "generating" || disabled || regenerateOnlyLocked
+            }
+            title={
+              disabled
+                ? disabledReason
+                : regenerateOnlyLocked
+                  ? regenerateOnlyLockedReason
+                  : undefined
+            }
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-linear-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {state.status === "generating" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="w-3.5 h-3.5" />
+            )}
+            {state.dataUrl ? "Regenerate" : "Generate"}
+          </button>
+        )}
         {state.dataUrl && downloadName && (
           <a
             href={state.dataUrl}

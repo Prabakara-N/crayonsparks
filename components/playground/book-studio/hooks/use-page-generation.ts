@@ -136,6 +136,9 @@ export function usePageGeneration({
     ): Promise<string | undefined> => {
       if (!plan) return undefined;
       if (cover.status !== "done" || !cover.dataUrl) {
+        // A caller (regeneratePage) may have optimistically flipped this page
+        // to "generating" — revert it so it doesn't stay stuck after the alert.
+        updateItem(item.id, { status: "pending", error: undefined });
         void dialog.alert({
           title: "Generate the front cover first",
           message:

@@ -122,6 +122,7 @@ export function CoverPair({
       aspect={coverAspect}
       refineState={refineStatus?.["back-cover"]}
       extraAction={backCoverAction}
+      hideRegenerate
     />
   );
 

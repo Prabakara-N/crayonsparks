@@ -92,11 +92,15 @@ export function TaglineGenerator({
     bookKind,
   ]);
 
+  // Fetch ONLY when the user bumps `seed` (Generate / Suggest more). Depending
+  // on fetchTaglines re-fired the request in a loop whenever any parent prop
+  // changed identity while the editor was open.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (seed === 0) return;
     return fetchTaglines();
-  }, [seed, fetchTaglines]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const safeIndex = taglines.length ? Math.min(index, taglines.length - 1) : 0;

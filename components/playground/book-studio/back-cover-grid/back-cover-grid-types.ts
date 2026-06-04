@@ -113,6 +113,19 @@ export const DEFAULT_GRID_LAYOUT: GridLayout = {
 export const DEFAULT_BG_COLOR = "#fbe9ef";
 export const DEFAULT_STRIPE_COLOR = "#1f2937";
 
+// Keep the default tagline to ~2 short lines — a book description can run long,
+// which overflows the back-cover tagline box. Prefer the first sentence, then
+// hard-cap on a word boundary.
+function shortTagline(text: string): string {
+  const t = text.trim().replace(/\s+/g, " ");
+  if (t.length <= 80) return t;
+  const firstSentence = t.split(/(?<=[.!?])\s/)[0] ?? t;
+  if (firstSentence.length <= 90) return firstSentence.trim();
+  const clipped = t.slice(0, 80);
+  const lastSpace = clipped.lastIndexOf(" ");
+  return (lastSpace > 40 ? clipped.slice(0, lastSpace) : clipped).trim();
+}
+
 export function makeDefaultDesign(tagline: string): BackCoverDesign {
   return {
     bgColor: DEFAULT_BG_COLOR,
@@ -120,7 +133,7 @@ export function makeDefaultDesign(tagline: string): BackCoverDesign {
     grid: { ...DEFAULT_GRID_LAYOUT },
     tagline: {
       show: true,
-      text: tagline,
+      text: shortTagline(tagline),
       x: 0.5,
       y: 0.16,
       fontScale: 1,
@@ -128,7 +141,7 @@ export function makeDefaultDesign(tagline: string): BackCoverDesign {
       width: 0.72,
       color: "#1f2937",
     },
-    topStripe: { show: true, height: 0.1, color: DEFAULT_STRIPE_COLOR },
+    topStripe: { show: false, height: 0.1, color: DEFAULT_STRIPE_COLOR },
     imageIds: [],
   };
 }

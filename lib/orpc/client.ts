@@ -7,7 +7,9 @@ import { firebaseAuth } from "@/lib/firebase/client";
 import type { AppRouter } from "./router";
 
 async function getAuthHeader(): Promise<Record<string, string>> {
-  if (!firebaseAuth?.currentUser) return {};
+  if (!firebaseAuth) return {};
+  await firebaseAuth.authStateReady();
+  if (!firebaseAuth.currentUser) return {};
   try {
     const token = await firebaseAuth.currentUser.getIdToken();
     return { authorization: `Bearer ${token}` };

@@ -65,17 +65,23 @@ export function Carousel({
     }
   };
 
+  // Set the initial scroll position ONCE on mount. Doing this on every
+  // items.length change snapped the carousel back to the first card whenever a
+  // page finished and appended an answer card during generation.
   useEffect(() => {
-    if (carouselRef.current) {
-      carouselRef.current.scrollLeft = initialScroll;
-      checkScrollability();
-    }
-    // Re-check whenever the items prop changes — new cards added/removed
-    // can shift the scroll boundaries.
+    if (carouselRef.current) carouselRef.current.scrollLeft = initialScroll;
+    checkScrollability();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-check scroll boundaries when cards are added/removed — WITHOUT resetting
+  // the user's current scroll position.
+  useEffect(() => {
+    checkScrollability();
     const id = window.setTimeout(checkScrollability, 200);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialScroll, items.length]);
+  }, [items.length]);
 
   const scrollLeft = () => {
     const el = carouselRef.current;

@@ -2,8 +2,13 @@ import { GoogleGenAI } from "@google/genai";
 import { GEMINI_TEXT_MODEL } from "@/lib/constants";
 import { ICON_NAMES, isIconName } from "@/lib/activities/icons";
 import { DOT_OUTLINE_NAMES } from "@/lib/activities/dot-outlines";
-import { buildActivitySequence } from "@/lib/activities/sequence";
+import { buildActivitySequence, summarizeSequence } from "@/lib/activities/sequence";
+import {
+  buildActivityCoverScene,
+  buildActivityCoverTitle,
+} from "@/lib/activities/cover-focus";
 
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const PARAMETRIC_DOT_SHAPES = ["heart", "star", "flower", "circle"];
 const DOT_SUBJECTS = [...PARAMETRIC_DOT_SHAPES, ...DOT_OUTLINE_NAMES];
 const isDotSubject = (s: string): boolean => DOT_SUBJECTS.includes(s.toLowerCase());
@@ -112,21 +117,34 @@ function assemblePlan(input: ActivityBookPlanInput, pool: ContentPool): Activity
         return { ...base, title: "Crossword", params: { clues: slice.length >= 4 ? slice : pool.crosswordWords.slice(0, 10), seed: i + 1 } };
       }
       case "letter-tracing": {
-        const ltr = take(pool.letters, "lt", "A").toUpperCase().slice(0, 1);
+        // Letters are universal — walk A→Z in order so an alphabet book covers
+        // every letter exactly once (then repeats only past 26 pages).
+        const idx = counters.ltSeq ?? 0;
+        counters.ltSeq = idx + 1;
+        const ltr = ALPHABET[idx % ALPHABET.length];
         const params: ActivitySpec["params"] = { letters: [ltr] };
         if (input.aiPictures) {
           params.referenceWord = pool.letterWords[ltr] ?? DEFAULT_LETTER_WORDS[ltr] ?? "";
         }
-        return { ...base, title: "Trace the Letter", params };
+        return { ...base, title: `Trace the Letter ${ltr}`, params };
       }
       case "number-tracing": {
-        const params: ActivitySpec["params"] = { numbers: [take(pool.numbers, "nt", 1)] };
+        const idx = counters.ntSeq ?? 0;
+        counters.ntSeq = idx + 1;
+        const n = (idx % 20) + 1;
+        const params: ActivitySpec["params"] = { numbers: [n] };
         if (input.aiPictures) params.referenceWord = take(pool.objectWords, "no", "stars");
-        return { ...base, title: "Trace the Number", params };
+        return { ...base, title: `Trace the Number ${n}`, params };
       }
-      case "sight-word-tracing":
-        return { ...base, title: "Trace the Words", params: { phrase: take(pool.phrases, "sw", "I can read") } };
+      case "sight-word-tracing": {
+        const phrase = take(pool.phrases, "sw", "I can read");
+        return { ...base, title: `Trace: ${phrase}`, params: { phrase } };
+      }
       case "dot-to-dot": {
+        // AI pictures on → draw ANY on-theme subject (silhouette traced to dots).
+        if (input.aiPictures) {
+          return { ...base, title: "Connect the Dots", params: { shape: take(pool.objectWords, "ddai", "star"), aiTrace: true, seed: i + 1 } };
+        }
         const puzzle = pool.dotPuzzles.length ? take(pool.dotPuzzles, "dd", pool.dotPuzzles[0]) : null;
         if (puzzle) {
           return { ...base, title: "Connect the Dots", params: { shape: puzzle.subject, dotPoints: puzzle.points, seed: i + 1 } };
@@ -183,11 +201,17 @@ function assemblePlan(input: ActivityBookPlanInput, pool: ContentPool): Activity
     }
   });
 
+  // Make the front cover (title + scene) reflect the 1-2 activity types with
+  // the most pages, so the cover shows what the book actually contains.
+  const tally = summarizeSequence(seq);
+  const coverTitle = buildActivityCoverTitle(tally, pool.theme) ?? pool.coverTitle;
+  const coverScene = buildActivityCoverScene(tally, pool.coverScene);
+
   return {
     title: pool.title,
-    coverTitle: pool.coverTitle,
+    coverTitle,
     description: pool.description,
-    coverScene: pool.coverScene,
+    coverScene,
     theme: pool.theme,
     pages,
   };
@@ -236,7 +260,7 @@ function fallbackPool(idea: string): ContentPool {
       { left: "FAST", right: "SLOW" },
       { left: "HAPPY", right: "SAD" },
     ],
-    dotSubjects: ["star", "heart", "house", "fish", "tree", "flower", "cat", "car"],
+    dotSubjects: ["star", "heart", "house", "fish", "tree", "flower", "cat", "dog", "car", "truck", "bus", "rocket", "icecream", "rabbit", "bear"],
     dotPuzzles: [],
     letterWords: DEFAULT_LETTER_WORDS,
     objectWords: ["apple", "star", "fish", "balloon", "flower", "house", "car", "sun", "tree", "heart"],

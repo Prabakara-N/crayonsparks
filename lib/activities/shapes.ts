@@ -1,5 +1,5 @@
 import type { ActivityResult, ActivitySpec } from "./types";
-import { makeRng, specSeed } from "./rng";
+import { hashSeed, makeRng, specSeed } from "./rng";
 import { escapeXml, PAGE, SANS, svgDocument, titleBlock } from "./page";
 
 const TRACE = `fill="none" stroke="#9ca3af" stroke-width="3" stroke-dasharray="3 7" stroke-linecap="round" stroke-linejoin="round"`;
@@ -56,7 +56,9 @@ const SHAPE_ORDER = [
 const COUNT_BY_DIFF: Record<string, number> = { easy: 4, medium: 6, hard: 6 };
 
 export function generateShapes(spec: ActivitySpec): ActivityResult {
-  const rng = makeRng(specSeed(spec.params.seed, spec.id));
+  // Fold the theme into the seed so different books vary (specSeed alone uses
+  // only the page index, which made every book's shapes page identical).
+  const rng = makeRng(specSeed(spec.params.seed, spec.id) + hashSeed(spec.theme));
   const requested = (spec.params.shapeNames ?? []).filter((n) => n.toLowerCase() in GEO_SHAPES);
   const list = requested.length ? requested : SHAPE_ORDER;
   const cells = rng.shuffle(list).slice(0, COUNT_BY_DIFF[spec.difficulty] ?? 6);

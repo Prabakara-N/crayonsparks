@@ -12,8 +12,11 @@ interface ActivityCountPickerProps {
   counts: ActivityCounts;
   onChange: (next: ActivityCounts) => void;
   pageCount: number;
+  setPageCount: (n: number) => void;
   age?: "toddlers" | "kids" | "tweens";
 }
+
+const MAX_PAGES = 50;
 
 function setCount(counts: ActivityCounts, type: ActivityType, value: number): ActivityCounts {
   const next = { ...counts };
@@ -22,35 +25,46 @@ function setCount(counts: ActivityCounts, type: ActivityType, value: number): Ac
   return next;
 }
 
-export function ActivityCountPicker({ counts, onChange, pageCount, age }: ActivityCountPickerProps) {
+export function ActivityCountPicker({ counts, onChange, pageCount, setPageCount, age }: ActivityCountPickerProps) {
   const visible = PLANNABLE_TYPE_META.filter(
     (m) => !(age === "toddlers" && READING_TYPES.includes(m.type)),
   );
   const total = visible.reduce((sum, m) => sum + (counts[m.type] ?? 0), 0);
-  const remaining = pageCount - total;
+  const selectedCount = visible.filter((m) => (counts[m.type] ?? 0) > 0).length;
+  const showStepper = selectedCount >= 2;
 
-  // When the page-count slider drops below what's already assigned, trim the largest buckets so the total never exceeds the book length.
+  // In stepper mode the per-activity counts ARE the exact page counts and must
+  // sum to the total. Whenever they don't (just entered stepper mode, or the
+  // page slider moved), redistribute the total evenly across the selected
+  // activities so the steppers always match the book.
   useEffect(() => {
-    if (total <= pageCount) return;
-    let over = total - pageCount;
-    let next = { ...counts };
-    while (over > 0) {
-      let bestType: ActivityType | null = null;
-      let best = 0;
-      for (const m of visible) {
-        const v = next[m.type] ?? 0;
-        if (v > best) {
-          best = v;
-          bestType = m.type;
-        }
+    if (!showStepper || total === pageCount) return;
+    const selected = visible.filter((m) => (counts[m.type] ?? 0) > 0).map((m) => m.type);
+    if (!selected.length) return;
+    const base = Math.floor(pageCount / selected.length);
+    let rem = pageCount - base * selected.length;
+    const next: ActivityCounts = {};
+    for (const t of selected) {
+      let v = base;
+      if (rem > 0) {
+        v += 1;
+        rem -= 1;
       }
-      if (!bestType || best <= 0) break;
-      next = setCount(next, bestType, best - 1);
-      over -= 1;
+      if (v > 0) next[t] = v;
     }
     onChange(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageCount]);
+  }, [pageCount, showStepper, total]);
+
+  // Stepper +/- changes the activity count AND the total page count by the same
+  // amount, so the counts always sum to the page count and a "+" grows the book.
+  const changeCount = (type: ActivityType, value: number) => {
+    const old = counts[type] ?? 0;
+    onChange(setCount(counts, type, value));
+    if (showStepper) {
+      setPageCount(Math.max(2, Math.min(MAX_PAGES, pageCount + (value - old))));
+    }
+  };
 
   const evenSplit = () => {
     const n = visible.length;
@@ -87,14 +101,11 @@ export function ActivityCountPicker({ counts, onChange, pageCount, age }: Activi
     onChange(next);
   };
 
-  const statusText =
-    total === 0
-      ? `Auto mix — we'll spread activity types evenly across your ${pageCount} pages.`
-      : remaining > 0
-        ? `${total} of ${pageCount} pages assigned · ${remaining} filled automatically.`
-        : remaining === 0
-          ? `All ${pageCount} pages assigned — exactly your mix.`
-          : `Over by ${-remaining} — extra pages will be trimmed to fit ${pageCount}.`;
+  const statusText = !showStepper
+    ? total === 0
+      ? `Auto mix — we'll spread activity types evenly across your ${pageCount} pages. Tap to choose specific ones.`
+      : `This activity fills all ${pageCount} pages. Add another to set exact page counts.`
+    : `${pageCount}-page book — set exactly how many pages each activity gets. Adding pages grows the book.`;
 
   return (
     <div className="space-y-3 rounded-2xl border border-white/10 bg-zinc-900/60 p-5">
@@ -133,18 +144,11 @@ export function ActivityCountPicker({ counts, onChange, pageCount, age }: Activi
       </div>
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-neutral-400">{statusText}</p>
-        <span
-          className={cn(
-            "shrink-0 rounded-lg px-2 py-1 font-mono text-xs font-semibold",
-            remaining < 0
-              ? "bg-red-500/20 text-red-200"
-              : remaining === 0 && total > 0
-                ? "bg-emerald-500/20 text-emerald-200"
-                : "bg-black/40 text-neutral-300 border border-white/10",
-          )}
-        >
-          {total}/{pageCount}
-        </span>
+        {showStepper && (
+          <span className="shrink-0 rounded-lg px-2 py-1 font-mono text-xs font-semibold bg-emerald-500/20 text-emerald-200">
+            {pageCount} pages
+          </span>
+        )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
         {visible.map((meta) => (
@@ -154,8 +158,9 @@ export function ActivityCountPicker({ counts, onChange, pageCount, age }: Activi
             blurb={meta.blurb}
             icon={meta.icon}
             value={counts[meta.type] ?? 0}
-            canIncrement={total < pageCount}
-            onChange={(v) => onChange(setCount(counts, meta.type, v))}
+            canIncrement={pageCount < MAX_PAGES}
+            showStepper={showStepper}
+            onChange={(v) => changeCount(meta.type, v)}
           />
         ))}
       </div>

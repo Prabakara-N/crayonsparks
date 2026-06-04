@@ -27,10 +27,10 @@ import { type StoryType } from "@/lib/story-book-planner";
 import { StoryTypePicker } from "@/components/playground/story-type-picker";
 import { DialogueStylePicker } from "@/components/playground/dialogue-style-picker";
 import type { DialogueStyle } from "@/lib/prompts";
-import type { ActivityDifficulty } from "@/lib/activities/types";
+import type { ActivityCounts, ActivityDifficulty, ActivityType } from "@/lib/activities/types";
 import { ActivityCountPicker } from "@/components/playground/activity-book/activity-count-picker";
 import { ActivitySplitPreview } from "@/components/playground/activity-book/activity-split-preview";
-import type { ActivityCounts } from "@/lib/activities/types";
+import { ACTIVITY_TYPE_META } from "@/components/playground/activity-book/activity-types-config";
 import { SegmentedControl } from "@/components/playground/activity-book/segmented-control";
 import { PlanButton } from "./plan-button";
 import {
@@ -114,10 +114,20 @@ export function IdeaForm({
 }) {
   const [showIdeas, setShowIdeas] = useState(false);
   const [showHelper, setShowHelper] = useState(false);
+  const [showCounts, setShowCounts] = useState(false);
   const [improving, setImproving] = useState(false);
   const isStory = bookKind === "story";
   const isActivity = bookKind === "activity";
   const ideasPanelRef = useRef<HTMLDivElement>(null);
+
+  // Activity labels the user has actually selected — feeds idea suggestions +
+  // "Polish my idea" so both reflect the chosen activities (empty = general).
+  const selectedActivityLabels = isActivity
+    ? Object.entries(activityCounts)
+        .filter(([, c]) => (c ?? 0) > 0)
+        .map(([t]) => ACTIVITY_TYPE_META[t as ActivityType]?.label)
+        .filter((l): l is string => Boolean(l))
+    : [];
 
   const handleImprove = async () => {
     if (improving || idea.trim().length < 5) return;
@@ -132,6 +142,10 @@ export function IdeaForm({
         if (dialogueStyle) payload.dialogueStyle = dialogueStyle;
         if (storyCharacterNames)
           payload.characterNames = storyCharacterNames;
+      } else if (isActivity) {
+        payload.bookKind = "activity";
+        if (selectedActivityLabels.length)
+          payload.activities = selectedActivityLabels;
       } else {
         if (detailLevel) payload.detailLevel = detailLevel;
       }
@@ -508,12 +522,57 @@ export function IdeaForm({
               ]}
             />
           </div>
-          <ActivityCountPicker
-            counts={activityCounts}
-            onChange={setActivityCounts}
-            pageCount={pageCount}
-            age={age}
-          />
+          <div className="rounded-2xl border border-white/10 bg-zinc-900/60 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !showCounts;
+                setShowCounts(next);
+                if (!next) setActivityCounts({});
+              }}
+              aria-expanded={showCounts}
+              className="w-full flex items-center justify-between gap-3 px-5 py-3.5 text-left"
+            >
+              <span className="min-w-0">
+                <span className="block text-[11px] font-semibold uppercase tracking-wider text-cyan-300">
+                  Pages per activity
+                </span>
+                <span className="block text-xs text-neutral-400 mt-0.5">
+                  {showCounts
+                    ? "Set exactly how many pages each activity gets."
+                    : "Off — we balance the activities for you. Tap to choose exact pages."}
+                </span>
+              </span>
+              <ChevronDown
+                className={cn(
+                  "w-4 h-4 shrink-0 text-cyan-300 transition-transform duration-300",
+                  showCounts && "rotate-180",
+                )}
+              />
+            </button>
+            <AnimatePresence initial={false}>
+              {showCounts && (
+                <motion.div
+                  key="counts"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-3 pb-3">
+                    <ActivityCountPicker
+                      counts={activityCounts}
+                      onChange={setActivityCounts}
+                      pageCount={pageCount}
+                      setPageCount={setPageCount}
+                      age={age}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           <ActivitySplitPreview pageCount={pageCount} age={age} counts={activityCounts} />
           <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-zinc-900/60 p-4 cursor-pointer">
             <input
@@ -602,6 +661,7 @@ export function IdeaForm({
                 }
               }}
               kind={isStory ? "story" : isActivity ? "activity" : "coloring"}
+              activities={isActivity ? selectedActivityLabels : undefined}
               storyType={isStory ? storyType : null}
               currentAge={age}
               onAudienceChange={(slug) => {

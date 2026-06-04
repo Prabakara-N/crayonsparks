@@ -160,6 +160,7 @@ export async function generateIdeaSuggestions(
   audience: IdeaAudience = "any",
   kind: IdeaKind = "coloring",
   storyType?: IdeaStoryType | null,
+  activities?: string[],
 ): Promise<IdeaSuggestion[]> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY is not set.");
@@ -170,6 +171,12 @@ export async function generateIdeaSuggestions(
     kind === "story" && storyType
       ? `Selected story type: ${storyType}. ${STORY_TYPE_NOTES[storyType]} All 8 ideas must fit this type; do not mix unrelated story types.`
       : "Story type: no preference. Mix compatible story shapes naturally.";
+  // When the user has picked specific activity types, center the suggestions on
+  // them; otherwise stay general across all activity types.
+  const activityNote =
+    kind === "activity" && activities && activities.length
+      ? `\nActivity focus: the user has CHOSEN these activity types — ${activities.join(", ")}. Build the 8 ideas around these activities (they are the backbone of every suggested book); you may add 1-2 complementary types, but do not center ideas on unrelated activities.`
+      : "";
   const system =
     kind === "story"
       ? STORY_SYSTEM_PROMPT
@@ -183,7 +190,7 @@ export async function generateIdeaSuggestions(
     prompt:
       kind === "story"
         ? `Suggest 8 ideas. Audience focus: ${audienceNote}\n${storyTypeNote}`
-        : `Suggest 8 ideas. Audience focus: ${audienceNote}`,
+        : `Suggest 8 ideas. Audience focus: ${audienceNote}${activityNote}`,
     schema: ideaSchema,
   });
 

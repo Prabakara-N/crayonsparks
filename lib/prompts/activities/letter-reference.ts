@@ -7,8 +7,9 @@ export const LETTER_REFERENCE_PROMPT = (opts: {
   theme: string;
 }): string => {
   return [
-    `Draw ONE simple, cheerful black-and-white line-art picture of a single ${opts.word} for a kids' alphabet tracing worksheet (theme: ${opts.theme}).`,
-    "Exactly one object, centered, filling most of the frame, friendly and instantly recognizable to a young child.",
+    `Draw ONE simple black-and-white line-art picture of a single ${opts.word} for a kids' alphabet tracing worksheet (theme: ${opts.theme}).`,
+    "Exactly one object, centered, filling most of the frame, instantly recognizable to a young child.",
+    "If the subject is an inanimate object (toy, food, vehicle, household item, shape, plant), draw it plainly with NO face, NO eyes, NO mouth, NO smile and NO arms or legs. Only a real animal or person may have a face.",
     "Style: clean bold black outlines on pure white, no shading, no grey fills, no color.",
     "Absolutely NO text, NO letters, NO numbers, NO labels, NO border or frame. 1:1 square, print quality.",
   ].join("\n");

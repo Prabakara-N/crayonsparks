@@ -255,6 +255,7 @@ interface IdeaSuggestionsPanelProps {
   storyType?: IdeaStoryType | null;
   currentAge?: "toddlers" | "kids" | "tweens";
   onAudienceChange?: (audience: IdeaAudience) => void;
+  activities?: string[];
 }
 
 export function IdeaSuggestionsPanel({
@@ -265,7 +266,9 @@ export function IdeaSuggestionsPanel({
   storyType = null,
   currentAge,
   onAudienceChange,
+  activities = [],
 }: IdeaSuggestionsPanelProps) {
+  const activitiesKey = [...activities].sort().join("|");
   const [audience, setAudience] = useState<IdeaAudience>(currentAge ?? "any");
   const [ideas, setIdeas] = useState<IdeaSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -273,7 +276,12 @@ export function IdeaSuggestionsPanel({
   const [usingFallback, setUsingFallback] = useState(false);
 
   const fetchIdeas = useCallback(
-    async (aud: IdeaAudience, k: IdeaKind, selectedStoryType: IdeaStoryType | null) => {
+    async (
+      aud: IdeaAudience,
+      k: IdeaKind,
+      selectedStoryType: IdeaStoryType | null,
+      acts: string[],
+    ) => {
       setLoading(true);
       setError(null);
       setUsingFallback(false);
@@ -285,6 +293,7 @@ export function IdeaSuggestionsPanel({
             audience: aud,
             kind: k,
             storyType: k === "story" ? selectedStoryType : null,
+            activities: k === "activity" && acts.length ? acts : undefined,
           }),
         });
         const json = (await res.json()) as {
@@ -318,14 +327,16 @@ export function IdeaSuggestionsPanel({
     [],
   );
 
-  // Initial fetch when first opened; re-fetch when audience OR kind changes.
+  // Initial fetch when first opened; re-fetch when audience, kind, or the
+  // selected activities change.
   useEffect(() => {
     if (!open) return;
     const id = window.setTimeout(() => {
-      void fetchIdeas(audience, kind, storyType);
+      void fetchIdeas(audience, kind, storyType, activities);
     }, 0);
     return () => window.clearTimeout(id);
-  }, [open, audience, kind, storyType, fetchIdeas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, audience, kind, storyType, activitiesKey, fetchIdeas]);
 
   // Mirror the form's age picker into the panel's audience pill.
   useEffect(() => {
@@ -386,7 +397,7 @@ export function IdeaSuggestionsPanel({
           })}
           <button
             type="button"
-            onClick={() => void fetchIdeas(audience, kind, storyType)}
+            onClick={() => void fetchIdeas(audience, kind, storyType, activities)}
             disabled={loading}
             className="ml-auto inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-neutral-300 hover:border-violet-500/40 hover:text-white disabled:opacity-50"
             aria-label="Try other ideas"

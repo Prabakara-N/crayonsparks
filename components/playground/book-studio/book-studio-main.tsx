@@ -973,13 +973,13 @@ export function BookStudio({
               </button>
             </div>
           </div>
-          <div className="flex justify-center lg:justify-end items-center gap-3 flex-wrap order-3 lg:order-none">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap justify-center lg:justify-end items-stretch sm:items-center gap-3 order-3 lg:order-none w-full sm:w-auto [&>*]:w-full sm:[&>*]:w-auto">
             {bookPlan.bookKind === "activity" ? (
               <button
                 type="button"
                 onClick={() => void saveActivity()}
                 disabled={!allDone || activitySaving || !!activitySavedId}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {activitySaving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

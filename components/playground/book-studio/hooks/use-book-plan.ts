@@ -59,7 +59,7 @@ export function useBookPlan({
   const [bookKind, setBookKind] = useState<"coloring" | "story" | "activity">("coloring");
   const [activityCounts, setActivityCounts] = useState<ActivityCounts>({});
   const [activityDifficulty, setActivityDifficulty] = useState<ActivityDifficulty | "auto">("auto");
-  const [activityAiPictures, setActivityAiPictures] = useState(false);
+  const [activityAiPictures, setActivityAiPictures] = useState(true);
   const [activityPlan, setActivityPlan] = useState<ActivityBookPlan | null>(null);
   const [storyType, setStoryType] = useState<StoryType | null>(
     initialPlan?.storyType ?? null,

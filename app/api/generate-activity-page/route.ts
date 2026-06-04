@@ -3,13 +3,15 @@ import { readBoundedJson } from "@/lib/api/bounded-json";
 import { requireAuth } from "@/lib/auth/server-require-auth";
 import { preauthorizeCharge } from "@/lib/credits/charge";
 import { generateImageByModel } from "@/lib/image-providers";
-import { DEFAULT_INTERIOR_MODEL } from "@/lib/constants";
+import { DEFAULT_INTERIOR_MODEL, GPT_IMAGE_1_MINI } from "@/lib/constants";
 import { getActivityGenerator } from "@/lib/activities";
 import { rasterizeActivitySvg } from "@/lib/activity-rasterize";
 import { SEEK_AND_FIND_PROMPT } from "@/lib/prompts/activities/seek-and-find";
 import { COLOR_BY_NUMBER_PROMPT } from "@/lib/prompts/activities/color-by-number";
 import { LETTER_REFERENCE_PROMPT } from "@/lib/prompts/activities/letter-reference";
 import { OBJECT_CUE_PROMPT, NUMBER_CUE_PROMPT } from "@/lib/prompts/activities/object-cue";
+import { DOT_SILHOUETTE_PROMPT } from "@/lib/prompts/activities/dot-silhouette";
+import { traceOutlineToPoints } from "@/lib/activities/trace-outline";
 import {
   SPOT_DIFFERENCE_PROMPT,
   SPOT_DIFFERENCE_CHANGES_PROMPT,
@@ -122,14 +124,49 @@ export async function POST(req: Request) {
           .map((w) => w.trim())
           .slice(0, 8)
       : [];
+  const dotSubject =
+    spec.type === "dot-to-dot" &&
+    spec.params.aiTrace === true &&
+    typeof spec.params.shape === "string"
+      ? spec.params.shape.trim()
+      : "";
 
   try {
-    // Procedural pages: free, no model call. (Tracing cues / AI pictures fall
-    // through to the charged branches below.)
-    if (generator.isProcedural && !refWord && !aiObjects.length) {
+    // Procedural pages: free, no model call. (Tracing cues / AI pictures /
+    // AI-traced dot-to-dot fall through to the charged branches below.)
+    if (generator.isProcedural && !refWord && !aiObjects.length && !dotSubject) {
       const auth = await requireAuth(req);
       if (!auth.ok) return auth.response;
       return NextResponse.json(await rasterizeResult(generator.generate(spec)));
+    }
+
+    // Dynamic dot-to-dot: AI draws a solid silhouette of the theme subject, we
+    // trace it into numbered dots. Cheap Flash model, reduced (refine) charge.
+    if (dotSubject) {
+      const charge = await preauthorizeCharge(req, { kind: "activity", op: "refine" });
+      if (!charge.ok) return charge.response;
+      const pointCount =
+        spec.difficulty === "easy" ? 12 : spec.difficulty === "hard" ? 20 : 16;
+      let points: { x: number; y: number }[] = [];
+      try {
+        const image = await generateImageByModel(
+          DOT_SILHOUETTE_PROMPT({ subject: dotSubject, theme: spec.theme }),
+          { aspectRatio: "1:1", model: GPT_IMAGE_1_MINI },
+        );
+        points = await traceOutlineToPoints(
+          `data:${image.mimeType};base64,${image.data}`,
+          pointCount,
+        );
+      } catch {
+        points = [];
+      }
+      const finalSpec =
+        points.length >= 5
+          ? { ...spec, params: { ...spec.params, dotPoints: points } }
+          : spec;
+      const payload = await rasterizeResult(generator.generate(finalSpec));
+      await charge.commit("Generated dot-to-dot (AI subject)");
+      return NextResponse.json(payload);
     }
 
     // Tracing picture cue ("A is for Apple" / "2 is for two apples").

@@ -32,9 +32,11 @@ export function DownloadMenu({
 }: DownloadMenuProps) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [anchor, setAnchor] = useState<{ top: number; right: number } | null>(
-    null,
-  );
+  const [anchor, setAnchor] = useState<{
+    top: number;
+    right: number;
+    centered: boolean;
+  } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +50,7 @@ export function DownloadMenu({
     setAnchor({
       top: rect.bottom + 8,
       right: window.innerWidth - rect.right,
+      centered: window.innerWidth < 640,
     });
   }, [open]);
 
@@ -108,10 +111,12 @@ export function DownloadMenu({
                 style={{
                   position: "fixed",
                   top: anchor.top,
-                  right: anchor.right,
+                  ...(anchor.centered
+                    ? { left: "50%", transform: "translateX(-50%)" }
+                    : { right: anchor.right }),
                   zIndex: 1000,
                 }}
-                className="w-64 rounded-xl bg-zinc-950 border border-white/15 shadow-2xl shadow-black/60 overflow-hidden"
+                className={`${anchor.centered ? "w-[calc(100vw-2rem)] max-w-xs" : "w-64"} rounded-xl bg-zinc-950 border border-white/15 shadow-2xl shadow-black/60 overflow-hidden`}
               >
                 <button
                   role="menuitem"
