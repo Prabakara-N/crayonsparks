@@ -135,7 +135,7 @@ export default async function OGImage() {
             <span style={{ color: "#3f3f46" }}>·</span>
             <span>Coloring books</span>
             <span style={{ color: "#3f3f46" }}>·</span>
-            <span style={{ color: "#67e8f9" }}>Activity books (soon)</span>
+            <span style={{ color: "#67e8f9" }}>Activity books</span>
           </div>
         </div>
 

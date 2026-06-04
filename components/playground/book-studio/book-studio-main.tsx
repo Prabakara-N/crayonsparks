@@ -758,17 +758,15 @@ export function BookStudio({
           frontCover={cover}
           backCover={backCover}
           backCoverAction={
-            progress.doneCount >= 4 ? (
-              <button
-                type="button"
-                onClick={() => setGridEditorOpen(true)}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white hover:shadow-lg transition-all"
-                title="Design the back cover from your interior pages"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                {backCoverDesign ? "Edit back cover" : "Design back cover"}
-              </button>
-            ) : undefined
+            <button
+              type="button"
+              onClick={() => setGridEditorOpen(true)}
+              className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-linear-to-r from-violet-500 to-cyan-400 text-white hover:shadow-lg transition-all"
+              title="Design the back cover from your interior pages"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              {backCoverDesign ? "Edit back cover" : "Design back cover"}
+            </button>
           }
           coverStyle={coverStyle}
           coverBorder={coverBorder}

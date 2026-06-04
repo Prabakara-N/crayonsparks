@@ -138,29 +138,35 @@ export function CoverTile({
       </button>
 
       <div className="flex items-center gap-2">
-        {!(hideRegenerate && state.dataUrl) && (
-          <button
-            type="button"
-            onClick={onRegenerate}
-            disabled={
-              state.status === "generating" || disabled || regenerateOnlyLocked
-            }
-            title={
-              disabled
-                ? disabledReason
-                : regenerateOnlyLocked
-                  ? regenerateOnlyLockedReason
-                  : undefined
-            }
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-linear-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          >
-            {state.status === "generating" ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="w-3.5 h-3.5" />
-            )}
-            {state.dataUrl ? "Regenerate" : "Generate"}
-          </button>
+        {hideRegenerate && extraAction ? (
+          // Back cover: the "Edit back cover" action takes the primary slot, on
+          // the same row as download — mirroring the front cover's layout.
+          <div className="flex-1 min-w-0">{extraAction}</div>
+        ) : (
+          !(hideRegenerate && state.dataUrl) && (
+            <button
+              type="button"
+              onClick={onRegenerate}
+              disabled={
+                state.status === "generating" || disabled || regenerateOnlyLocked
+              }
+              title={
+                disabled
+                  ? disabledReason
+                  : regenerateOnlyLocked
+                    ? regenerateOnlyLockedReason
+                    : undefined
+              }
+              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-linear-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {state.status === "generating" ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5" />
+              )}
+              {state.dataUrl ? "Regenerate" : "Generate"}
+            </button>
+          )
         )}
         {state.dataUrl && downloadName && (
           <a
@@ -173,7 +179,7 @@ export function CoverTile({
           </a>
         )}
       </div>
-      {extraAction}
+      {!(hideRegenerate && extraAction) && extraAction}
       {disabled && disabledReason && !state.dataUrl && (
         <p className="text-[10px] text-violet-300/80 italic leading-snug">
           🔒 {disabledReason}

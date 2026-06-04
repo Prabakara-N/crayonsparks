@@ -1,5 +1,6 @@
 import type { ActivityResult, ActivitySpec } from "./types";
 import { escapeXml, PAGE, SANS, svgDocument, titleBlock } from "./page";
+import { traceAdvanceWidth, traceTextPathData } from "./trace-font";
 
 export interface TracingOptions {
   headerLine: string;
@@ -10,17 +11,11 @@ export interface TracingOptions {
   referenceWord?: string;
 }
 
-// Relief SingleLine CAD (OFL) is a single-STROKE font — its glyphs are open
-// centerline paths, so a dashed stroke renders each letter as ONE dotted line
-// (not the double outline a normal filled font produces).
-const TRACE_FONT = "Relief SingleLine CAD";
 const TRACE_STROKE = "#9aa0a6";
-const traceGlyphAttrs = (fontSize: number): string =>
-  `font-family="${TRACE_FONT}" font-size="${fontSize}" fill="none" stroke="${TRACE_STROKE}" stroke-width="2.5" stroke-dasharray="2 7" stroke-linecap="round" letter-spacing="10"`;
 
 function ruledRow(y: number, rowH: number): string {
   const top = y + rowH * 0.16;
-  const mid = y + rowH * 0.46;
+  const mid = y + rowH * 0.28;
   const base = y + rowH * 0.76;
   const x1 = PAGE.margin;
   const x2 = PAGE.w - PAGE.margin;
@@ -33,13 +28,17 @@ function ruledRow(y: number, rowH: number): string {
 
 function traceGlyphs(y: number, rowH: number, text: string, repeat: boolean): string {
   const base = y + rowH * 0.76;
-  const fontSize = rowH * 0.74;
-  const content = repeat
-    ? `${text} `.repeat(
-        Math.max(4, Math.floor((PAGE.w - 2 * PAGE.margin) / (fontSize * 0.7 * `${text} `.length))),
-      )
-    : text;
-  return `<text x="${PAGE.margin + 16}" y="${base}" ${traceGlyphAttrs(fontSize)}>${escapeXml(content)}</text>`;
+  const fontSize = rowH * 0.86;
+  const x = PAGE.margin + 16;
+  const unit = `${text} `;
+  let content = text;
+  if (repeat) {
+    const available = PAGE.w - 2 * PAGE.margin - 16;
+    const unitWidth = traceAdvanceWidth(unit, fontSize);
+    content = unit.repeat(Math.max(2, Math.floor(available / unitWidth)));
+  }
+  const d = traceTextPathData(content, x, base, fontSize);
+  return `<path d="${d}" fill="none" stroke="${TRACE_STROKE}" stroke-width="2.5" stroke-dasharray="2 7" stroke-linecap="round"/>`;
 }
 
 function referenceBlock(opts: TracingOptions, assetDataUrl: string): string {

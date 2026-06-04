@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     template: "%s · CrayonSparks",
   },
   description:
-    "AI book studio for parents and KDP creators. Turn any idea into a custom kids' book in minutes — story books, coloring books and (soon) activity books. Perfect for birthdays, return gifts, memory keepsakes, screen-free fun, or selling on Amazon KDP.",
+    "AI book studio for parents and KDP creators. Turn any idea into a custom kids' book in minutes — story books, coloring books and activity books. Perfect for birthdays, return gifts, memory keepsakes, screen-free fun, or selling on Amazon KDP.",
   keywords: [
     "AI story book generator",
     "AI coloring book generator",
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     title:
       "CrayonSparks — AI Story Books, Coloring Books & Activity Books in Minutes",
     description:
-      "Make a custom kids' book in minutes. For parents (birthdays, return gifts, keepsakes) and KDP creators. Story books · coloring books · activity books coming soon.",
+      "Make a custom kids' book in minutes. For parents (birthdays, return gifts, keepsakes) and KDP creators. Story books · coloring books · activity books.",
     type: "website",
     locale: "en_US",
     url: siteUrl,

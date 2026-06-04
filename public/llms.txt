@@ -1,6 +1,6 @@
 # CrayonSparks
 
-> AI book studio that turns any idea into a finished kids' book in minutes — story books, coloring books, and (soon) activity books. Built for two audiences: Amazon KDP self-publishers who sell on Kindle/Etsy/Gumroad, and parents who want one-of-a-kind printed books for their child's birthday, return gift, memory keepsake or screen-free fun.
+> AI book studio that turns any idea into a finished kids' book in minutes — story books, coloring books, and activity books. Built for two audiences: Amazon KDP self-publishers who sell on Kindle/Etsy/Gumroad, and parents who want one-of-a-kind printed books for their child's birthday, return gift, memory keepsake or screen-free fun.
 
 CrayonSparks is a web application built on Next.js 16 + the Gemini API. Users describe a theme, a story idea, or a child's name; the app generates consistent illustrations, assembles a print-ready PDF that meets Amazon Kindle Direct Publishing (KDP) specifications, and helps schedule Pinterest pins to drive sales.
 
@@ -8,7 +8,7 @@ CrayonSparks is a web application built on Next.js 16 + the Gemini API. Users de
 
 - **Story books** — full-color picture books (6×9), each page a scene in narrative order, dialogue rendered in speech bubbles, characters stay consistent across all pages. Great for KDP fiction listings or a one-of-a-kind printed gift starring your own child.
 - **Coloring books** — 8.5×11 B&W line art with bold outlines kids can color in. Print-ready PDF that meets every KDP interior spec.
-- **Activity books (coming soon)** — mazes, dot-to-dot, word search, mix-and-match puzzle pages. Adds a third product line for KDP creators and a richer screen-free option for parents.
+- **Activity books** — print-ready 8.5×11 puzzle and worksheet pages: mazes, dot-to-dot, word search, crossword, letter & number tracing, sight-word tracing, counting, matching, sorting, opposites, patterns, shapes, color-by-number, seek-and-find and spot-the-difference. Auto-mix the page types or pick exact counts. Tracing and other line-based pages are rendered as crisp embedded vector worksheets (not AI text), so they print perfectly. A third product line for KDP creators and a richer screen-free option for parents.
 
 ## Who it's for
 
@@ -26,7 +26,7 @@ CrayonSparks is a web application built on Next.js 16 + the Gemini API. Users de
 - Stack: Next.js 16, TypeScript, Gemini Nano Banana (Gemini 2.5 Flash Image), OpenAI GPT-4o-mini for the Sparky AI book-brief chat
 - Pricing: Free tier (50 starter credits) · Hobbyist $19/mo or $180/yr (800 credits/mo) · Pro $49/mo or $468/yr (3500 credits/mo)
 - Output formats: KDP-ready interior PDF — 8.5×11 (coloring), 6×9 (story books), 300 DPI, correct margins + gutter
-- Book types: story books, coloring books, activity books (coming soon)
+- Book types: story books, coloring books, activity books (all live)
 - Audiences targeted in the product: toddlers (3-6), kids (6-10), tweens (10-14)
 
 ## Core URLs

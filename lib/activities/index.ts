@@ -34,7 +34,7 @@ export const ACTIVITY_GENERATORS: Partial<Record<ActivityType, ActivityGenerator
   "word-search": proc("word-search", generateWordSearch),
   crossword: proc("crossword", generateCrossword),
   "letter-tracing": { type: "letter-tracing", isProcedural: true, generate: (spec, asset) => generateLetterTracing(spec, asset) },
-  "number-tracing": { type: "number-tracing", isProcedural: true, generate: (spec, asset) => generateNumberTracing(spec, asset) },
+  "number-tracing": proc("number-tracing", generateNumberTracing),
   "sight-word-tracing": proc("sight-word-tracing", generateSightWordTracing),
   "dot-to-dot": proc("dot-to-dot", generateDotToDot),
   matching: proc("matching", generateMatching),

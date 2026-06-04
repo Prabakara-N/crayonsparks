@@ -12,8 +12,8 @@ export const SITE = {
   name: "CrayonSparks",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://crayonsparks.com",
   description:
-    "AI coloring book generator for Amazon KDP creators. Pick a theme, generate 20 kid-friendly pages with Gemini Nano Banana, publish and earn.",
-  tagline: "AI coloring book studio for KDP creators",
+    "AI book studio for parents and Amazon KDP creators. Turn any idea into a custom kids' book in minutes — story books, coloring books and activity books (mazes, dot-to-dot, tracing, counting, color-by-number and more), exported as print-ready KDP PDFs.",
+  tagline: "AI story books, coloring books and activity books for kids and KDP creators",
   founder: "Prabakaran",
   inceptionYear: 2026,
 } as const;
@@ -75,7 +75,7 @@ export function buildSoftwareApplication(offers: SoftwareOffer[]) {
     name: SITE.name,
     description: SITE.description,
     applicationCategory: "DesignApplication",
-    applicationSubCategory: "AI Coloring Book Generator",
+    applicationSubCategory: "AI Kids' Book Generator (story, coloring, activity)",
     operatingSystem: "Web",
     url: SITE.url,
     image: ogImage,
@@ -91,7 +91,7 @@ export function buildSoftwareApplication(offers: SoftwareOffer[]) {
     featureList: [
       "AI story book generation (full-color picture books with dialogue)",
       "AI coloring book generation (B&W line art)",
-      "Activity book generator (mazes, dot-to-dot, word search) — coming soon",
+      "Activity book generator (mazes, dot-to-dot, word search, letter & number tracing, counting, matching, color-by-number, spot-the-difference)",
       "KDP-ready PDF export (8.5x11 coloring, 6x9 story books, 300 DPI)",
       "Custom kids' books for birthdays, return gifts and memory keepsakes",
       "Pinterest auto-publishing for marketing",
