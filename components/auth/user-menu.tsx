@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { LayoutDashboard, Shield, Coins } from "lucide-react";
-import type { User } from "firebase/auth";
+import type { AuthUser } from "@/lib/auth/cached-me";
 import { orpc } from "@/lib/orpc/client";
 import { getPlanById } from "@/lib/billing/plans";
 import { onCreditsChanged } from "@/lib/credits-events";
@@ -11,7 +11,7 @@ import { UserAvatar } from "./user-avatar";
 import { SignOutButton } from "./sign-out-button";
 
 interface UserMenuProps {
-  user: User;
+  user: AuthUser;
 }
 
 export function UserMenu({ user }: UserMenuProps) {

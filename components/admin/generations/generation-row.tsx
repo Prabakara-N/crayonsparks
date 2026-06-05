@@ -2,20 +2,20 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Palette } from "lucide-react";
+import { generationKindMeta } from "./generation-kind-meta";
 
 export interface AdminGeneration {
   bookId: string;
   ownerUid: string | null;
   ownerEmail: string | null;
   title: string;
-  kind: "coloring" | "story";
+  kind: "coloring" | "story" | "activity";
   pageCount: number;
   coverThumbUrl: string | null;
   createdAt: number | null;
 }
 
-function relTime(ms: number | null): string {
+export function relTime(ms: number | null): string {
   if (!ms) return "";
   const diff = Date.now() - ms;
   const min = Math.floor(diff / 60000);
@@ -32,7 +32,8 @@ interface GenerationRowProps {
 }
 
 export function GenerationRow({ item }: GenerationRowProps) {
-  const isStory = item.kind === "story";
+  const meta = generationKindMeta(item.kind);
+  const Icon = meta.icon;
   return (
     <div className="rounded-xl bg-zinc-900/60 border border-white/10 px-3 py-3 flex items-center gap-3">
       <div className="w-12 h-16 rounded-md overflow-hidden bg-black/40 shrink-0 border border-white/5">
@@ -53,18 +54,10 @@ export function GenerationRow({ item }: GenerationRowProps) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span
-            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
-              isStory
-                ? "bg-violet-500/15 text-violet-200 border border-violet-500/30"
-                : "bg-cyan-500/15 text-cyan-200 border border-cyan-500/30"
-            }`}
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${meta.soft}`}
           >
-            {isStory ? (
-              <BookOpen className="w-3 h-3" />
-            ) : (
-              <Palette className="w-3 h-3" />
-            )}
-            {isStory ? "Story" : "Coloring"}
+            <Icon className="w-3 h-3" />
+            {meta.label}
           </span>
           <span className="text-[11px] text-neutral-500">
             {item.pageCount} pages · {relTime(item.createdAt)}

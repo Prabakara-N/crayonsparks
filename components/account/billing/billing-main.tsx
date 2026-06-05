@@ -14,6 +14,7 @@ import { PageHeader } from "../page-header";
 import { CreditPackCard } from "./credit-pack-card";
 import { CurrentPlanCard } from "./current-plan-card";
 import { PlanTiers } from "./plan-tiers";
+import { CreditUsagePanel } from "./credit-usage-panel";
 
 export function BillingMain() {
   const { balance, entries, loading, refresh } = useCredits({
@@ -186,6 +187,8 @@ export function BillingMain() {
           moment payment clears.
         </p>
       </div>
+
+      <CreditUsagePanel />
 
       <div className="rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-white/10 p-5">
         <div className="flex items-center justify-between mb-3">

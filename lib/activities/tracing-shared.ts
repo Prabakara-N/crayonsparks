@@ -26,17 +26,19 @@ interface RowGeometry {
 
 // Derive the glyph size + three ruled lines from the font's real ink metrics:
 // caps/ascenders reach the top line, everything rests on the baseline with
-// descender room, and the dashed guide sits at the exact CENTRE between the top
-// and base lines (what reads as "centred" on the page).
+// Equal 3-line spacing with the dashed midline at the EXACT centre. Lowercase
+// x-height is sized to the bottom half, so small letters sit between the middle
+// line and the baseline (never above the middle line); capitals and ascenders
+// reach up toward the top line, descenders drop below the baseline.
 function rowGeometry(y: number, rowH: number): RowGeometry {
-  const { ascent, descent } = traceMetrics();
-  const fontSize = (rowH * 0.78) / (ascent + descent);
-  const ascPx = ascent * fontSize;
+  const { xHeight, descent } = traceMetrics();
+  const fontSize = (rowH * 0.82) / (2 * xHeight + descent);
+  const half = xHeight * fontSize;
   const descPx = descent * fontSize;
-  const topPad = (rowH - (ascPx + descPx)) / 2;
-  const base = y + topPad + ascPx;
-  const top = base - ascPx;
-  return { top, mid: (top + base) / 2, base, fontSize };
+  const topPad = (rowH - (2 * half + descPx)) / 2;
+  const top = y + topPad;
+  const base = top + 2 * half;
+  return { top, mid: top + half, base, fontSize };
 }
 
 function ruledRow(y: number, rowH: number): string {

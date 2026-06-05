@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 import { readBoundedJson } from "@/lib/api/bounded-json";
 import { SUPPORTED_ASPECTS, type AspectRatio } from "@/lib/gemini";
 import { generateImageByModel } from "@/lib/image-providers";
@@ -337,7 +338,31 @@ export async function POST(req: Request) {
       systemInstruction,
       model: resolvedModel,
     });
-    const dataUrl = `data:${image.mimeType};base64,${image.data}`;
+
+    let outMime = image.mimeType;
+    let outData = image.data;
+    // Gemini sometimes ignores the 3:4 hint for the nameplate and returns a
+    // square — pad it to a tall 3:4 page so it matches the KDP interior size.
+    if (mode === "belongs-to") {
+      try {
+        const buf = Buffer.from(image.data, "base64");
+        const meta = await sharp(buf).metadata();
+        const w = meta.width ?? 0;
+        const h = meta.height ?? 0;
+        if (w > 0 && h > 0 && Math.abs(w / h - 0.75) > 0.03) {
+          const targetH = Math.round((w * 4) / 3);
+          const padded = await sharp(buf)
+            .resize(w, targetH, { fit: "contain", background: "#ffffff" })
+            .png()
+            .toBuffer();
+          outData = padded.toString("base64");
+          outMime = "image/png";
+        }
+      } catch {
+        // keep the original image on any normalisation failure
+      }
+    }
+    const dataUrl = `data:${outMime};base64,${outData}`;
 
     let quality: QualityScore | null = null;
     const wantsGate =
@@ -379,8 +404,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      mimeType: image.mimeType,
-      data: image.data,
+      mimeType: outMime,
+      data: outData,
       dataUrl,
       prompt: text,
       aspectRatio,

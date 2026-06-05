@@ -5,14 +5,16 @@ import { Wand2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdmin } from "@/lib/hooks/use-admin";
 import { PageHeader } from "@/components/account/page-header";
-import { GenerationRow, type AdminGeneration } from "./generation-row";
+import { type AdminGeneration } from "./generation-row";
+import { GenerationCard } from "./generation-card";
 
-type KindFilter = "all" | "coloring" | "story";
+type KindFilter = "all" | "coloring" | "story" | "activity";
 
 const KIND_OPTIONS: Array<{ value: KindFilter; label: string }> = [
   { value: "all", label: "All" },
   { value: "coloring", label: "Coloring" },
   { value: "story", label: "Story" },
+  { value: "activity", label: "Activity" },
 ];
 
 export function GenerationsMain() {
@@ -78,19 +80,9 @@ export function GenerationsMain() {
       {error && <p className="text-sm text-red-300 mb-4">{error}</p>}
 
       {loading && items === null ? (
-        <div className="space-y-2">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-xl bg-zinc-900/60 border border-white/10 px-3 py-3 flex items-center gap-3"
-            >
-              <Skeleton className="w-12 h-16 rounded-md shrink-0" />
-              <div className="flex-1 space-y-1.5">
-                <Skeleton className="h-3 w-1/4" />
-                <Skeleton className="h-3 w-1/2" />
-                <Skeleton className="h-2.5 w-1/3" />
-              </div>
-            </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
           ))}
         </div>
       ) : items && items.length === 0 ? (
@@ -101,9 +93,9 @@ export function GenerationsMain() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {items?.map((it) => (
-            <GenerationRow key={it.bookId} item={it} />
+            <GenerationCard key={it.bookId} item={it} />
           ))}
         </div>
       )}

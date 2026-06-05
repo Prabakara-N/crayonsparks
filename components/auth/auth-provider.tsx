@@ -15,6 +15,7 @@ import {
 import { firebaseAuth } from "@/lib/firebase/client";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { resetEnsureUser } from "@/lib/auth/ensure-user";
+import { clearCachedMe, writeCachedUserProfile } from "@/lib/auth/cached-me";
 
 interface AuthContextValue {
   user: FirebaseUser | null;
@@ -41,6 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextUser);
       setLoading(false);
       if (nextUser) {
+        writeCachedUserProfile({
+          uid: nextUser.uid,
+          email: nextUser.email,
+          displayName: nextUser.displayName,
+          photoURL: nextUser.photoURL,
+        });
         // Serialize: set the server session cookie FIRST, then call
         // ensureUser. Running them in parallel races — ensureUser fires
         // before the cookie exists, the oRPC protectedProcedure rejects
@@ -65,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         lastEnsuredUidRef.current = null;
         resetEnsureUser();
+        clearCachedMe();
         void fetch("/api/auth/session", { method: "DELETE" }).catch(() => {
           // Non-fatal.
         });

@@ -21,5 +21,10 @@ export function useBilling() {
       () => orpc.billing.cancelSubscription(),
       [],
     ),
+    usage: useCallback(
+      (range?: { fromMs?: number; toMs?: number; days?: number }) =>
+        orpc.billing.usage(range ?? { days: 30 }),
+      [],
+    ),
   };
 }

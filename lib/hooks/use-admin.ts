@@ -39,7 +39,7 @@ export function useAdmin() {
     listGenerations: useCallback(
       (params: {
         limit?: number;
-        kind?: "coloring" | "story" | "all";
+        kind?: "coloring" | "story" | "activity" | "all";
       }) =>
         orpc.admin.generations.list({
           limit: params.limit ?? 50,
@@ -65,7 +65,8 @@ export function useAdmin() {
       [],
     ),
     dailyCosts: useCallback(
-      (days?: number) => orpc.admin.costs.daily({ days: days ?? 30 }),
+      (range?: { fromMs?: number; toMs?: number; days?: number }) =>
+        orpc.admin.costs.daily(range ?? { days: 30 }),
       [],
     ),
     referralsSummary: useCallback(() => orpc.admin.referrals.summary(), []),

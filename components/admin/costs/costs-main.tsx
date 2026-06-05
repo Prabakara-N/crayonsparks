@@ -1,45 +1,58 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Activity, BookOpen, DollarSign, Palette } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Activity, BookOpen, DollarSign, Palette, PencilRuler } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdmin } from "@/lib/hooks/use-admin";
 import { PageHeader } from "@/components/account/page-header";
 import { CostSummaryCard } from "./cost-summary-card";
-import { CostBarChart, type CostDay } from "./cost-bar-chart";
+import { CostBarChart, type CostBucket, type CostUnit } from "./cost-bar-chart";
+import { CostRangePicker } from "./cost-range-picker";
+import type { CostRangeId } from "./cost-range-config";
 
 interface CostsData {
-  days: CostDay[];
+  buckets: CostBucket[];
+  unit: CostUnit;
   totalCredits: number;
   peakCredits: number;
   creditUsdRate: number;
 }
 
+const DAY = 24 * 60 * 60 * 1000;
+
 export function CostsMain() {
   const { dailyCosts } = useAdmin();
   const [data, setData] = useState<CostsData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rangeId, setRangeId] = useState<CostRangeId>("30d");
+  const [range, setRange] = useState<{ fromMs: number; toMs: number }>(() => {
+    const now = Date.now();
+    return { fromMs: now - 30 * DAY, toMs: now };
+  });
+
+  const load = useCallback(
+    async (fromMs: number, toMs: number) => {
+      setData(null);
+      setError(null);
+      try {
+        const res = await dailyCosts({ fromMs, toMs });
+        setData(res);
+      } catch {
+        setError(
+          "Couldn't load cost data. The credits collection-group index (refKind=spend, createdAt DESC) may not be built yet — check the server log for the auto-generated console link.",
+        );
+      }
+    },
+    [dailyCosts],
+  );
 
   useEffect(() => {
-    let cancelled = false;
-    dailyCosts(30)
-      .then((res) => {
-        if (!cancelled) setData(res);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setError(
-            "Couldn't load cost data. The credits collection-group index (refKind=spend, createdAt DESC) may not be built yet — check the server log for the auto-generated console link.",
-          );
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dailyCosts]);
+    void load(range.fromMs, range.toMs);
+  }, [range, load]);
 
-  const coloringTotal = data?.days.reduce((n, d) => n + d.coloring, 0) ?? 0;
-  const storyTotal = data?.days.reduce((n, d) => n + d.story, 0) ?? 0;
+  const coloringTotal = data?.buckets.reduce((n, d) => n + d.coloring, 0) ?? 0;
+  const storyTotal = data?.buckets.reduce((n, d) => n + d.story, 0) ?? 0;
+  const activityTotal = data?.buckets.reduce((n, d) => n + d.activity, 0) ?? 0;
   const totalUsd =
     data ? (data.totalCredits * data.creditUsdRate).toFixed(2) : "0.00";
 
@@ -47,15 +60,23 @@ export function CostsMain() {
     <div>
       <PageHeader
         title="Cost monitor"
-        description="Estimated daily credit spend across the platform. Multiply by the credit/USD rate for a rough provider-cost estimate."
+        description="Estimated credit spend across the platform. Multiply by the credit/USD rate for a rough provider-cost estimate."
+      />
+
+      <CostRangePicker
+        selected={rangeId}
+        onChange={(id, fromMs, toMs) => {
+          setRangeId(id);
+          setRange({ fromMs, toMs });
+        }}
       />
 
       {error && <p className="text-sm text-red-300 mb-4">{error}</p>}
 
       {!data && !error ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
-            {Array.from({ length: 3 }).map((_, i) => (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-24 rounded-2xl" />
             ))}
           </div>
@@ -64,10 +85,10 @@ export function CostsMain() {
       ) : (
         data && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
               <CostSummaryCard
                 icon={DollarSign}
-                label="Est. spend (30d)"
+                label="Est. spend"
                 value={`$${totalUsd}`}
                 subtext={`${data.totalCredits.toLocaleString()} credits @ $${data.creditUsdRate}/credit (estimated)`}
                 tone="amber"
@@ -86,10 +107,18 @@ export function CostsMain() {
                 subtext="Total credits spent on story books"
                 tone="violet"
               />
+              <CostSummaryCard
+                icon={PencilRuler}
+                label="Activity spend"
+                value={`${activityTotal.toLocaleString()} cr`}
+                subtext="Total credits spent on activity books"
+                tone="amber"
+              />
             </div>
 
             <CostBarChart
-              days={data.days}
+              buckets={data.buckets}
+              unit={data.unit}
               peak={data.peakCredits}
               creditUsdRate={data.creditUsdRate}
             />

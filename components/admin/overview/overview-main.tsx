@@ -4,19 +4,38 @@ import { useEffect, useState } from "react";
 import { Users, Wand2, Coins, Activity } from "lucide-react";
 import { useAdmin } from "@/lib/hooks/use-admin";
 import { PageHeader } from "@/components/account/page-header";
-import { ComingSoonTag } from "@/components/account/coming-soon-tag";
 import { StatTile } from "./stat-tile";
+import {
+  GenerationRow,
+  type AdminGeneration,
+} from "@/components/admin/generations/generation-row";
+
+interface OverviewStats {
+  totalUsers: number;
+  generations24h: number;
+  creditsGranted24h: number;
+  creditsSpent24h: number;
+  creditUsdRate: number;
+}
 
 export function OverviewMain() {
-  const { overviewStats } = useAdmin();
-  const [totalUsers, setTotalUsers] = useState<number | null>(null);
+  const { overviewStats, listGenerations } = useAdmin();
+  const [stats, setStats] = useState<OverviewStats | null>(null);
+  const [recent, setRecent] = useState<AdminGeneration[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     overviewStats()
-      .then((stats) => setTotalUsers(stats.totalUsers))
+      .then(setStats)
       .catch(() => setError("Couldn't load overview stats."));
-  }, [overviewStats]);
+    listGenerations({ limit: 6 })
+      .then((r) => setRecent(r.items))
+      .catch(() => setRecent([]));
+  }, [overviewStats, listGenerations]);
+
+  const estCost = stats
+    ? `$${(stats.creditsSpent24h * stats.creditUsdRate).toFixed(2)}`
+    : "—";
 
   return (
     <div>
@@ -29,49 +48,51 @@ export function OverviewMain() {
         <StatTile
           icon={Users}
           label="Total users"
-          value={totalUsers ?? "—"}
+          value={stats?.totalUsers ?? "—"}
           hint="All signed-up users"
         />
         <StatTile
           icon={Wand2}
           label="Generations · 24h"
-          value="—"
-          hint="Coming soon"
+          value={stats?.generations24h ?? "—"}
+          hint="Books created in last 24h"
         />
         <StatTile
           icon={Coins}
           label="Credits granted · 24h"
-          value="—"
-          hint="Coming soon"
+          value={stats?.creditsGranted24h ?? "—"}
+          hint="Signups + grants + purchases"
         />
         <StatTile
           icon={Activity}
           label="Est. cost · 24h"
-          value="—"
-          hint="Coming soon"
+          value={estCost}
+          hint={`${stats?.creditsSpent24h ?? 0} credits spent`}
         />
       </div>
 
-      {error && (
-        <p className="text-sm text-red-300 mb-4">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-300 mb-4">{error}</p>}
 
       <div className="rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-white/10 p-5">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div>
-            <h3 className="font-display text-lg font-semibold text-white">
-              Recent activity
-            </h3>
-            <p className="text-sm text-neutral-400 mt-1">
-              Live feed of generations, purchases, and admin actions.
-            </p>
-          </div>
-          <ComingSoonTag />
+        <div className="mb-3">
+          <h3 className="font-display text-lg font-semibold text-white">
+            Recent activity
+          </h3>
+          <p className="text-sm text-neutral-400 mt-1">
+            Latest books generated across the platform.
+          </p>
         </div>
-        <p className="text-sm text-neutral-500">
-          Activity stream lands once the generations + audit pipelines are
-          fully wired.
-        </p>
+        {recent === null ? (
+          <p className="text-sm text-neutral-500">Loading…</p>
+        ) : recent.length === 0 ? (
+          <p className="text-sm text-neutral-500">No activity yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {recent.map((g) => (
+              <GenerationRow key={g.bookId} item={g} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

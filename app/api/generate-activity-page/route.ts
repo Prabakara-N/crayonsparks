@@ -185,7 +185,7 @@ export async function POST(req: Request) {
           ? { ...spec, params: { ...spec.params, dotPoints: points } }
           : spec;
       const payload = await rasterizeResult(generator.generate(finalSpec));
-      await charge.commit("Generated dot-to-dot (AI subject)");
+      await charge.commit("Activity: dot-to-dot page (AI subject)");
       return NextResponse.json(payload);
     }
 
@@ -211,7 +211,7 @@ export async function POST(req: Request) {
       });
       const asset = `data:${image.mimeType};base64,${image.data}`;
       const payload = await rasterizeResult(generator.generate(spec, asset));
-      await charge.commit("Generated tracing picture cue");
+      await charge.commit("Activity: tracing picture cue");
       return NextResponse.json(payload);
     }
 
@@ -232,7 +232,7 @@ export async function POST(req: Request) {
       );
       const objects: ObjectAssets = Object.fromEntries(pairs);
       const payload = await rasterizeResult(HYBRID_FNS[spec.type](spec, objects));
-      await charge.commit(`Generated ${spec.type} page (AI pictures)`);
+      await charge.commit(`Activity: ${spec.type} page (AI pictures)`);
       return NextResponse.json(payload);
     }
 
@@ -270,7 +270,7 @@ export async function POST(req: Request) {
         p2c = undefined;
       }
       const payload = await rasterizeResult(generateSpotDifference(specWithCount, p1, p2, p2c));
-      await charge.commit("Generated spot-difference page");
+      await charge.commit("Activity: spot-difference page");
       return NextResponse.json(payload);
     }
 
@@ -298,7 +298,7 @@ export async function POST(req: Request) {
       const payload = await rasterizeResult(
         generateColorReference(spec, colorUrl, bwUrl),
       );
-      await charge.commit("Generated color-by-reference page");
+      await charge.commit("Activity: color-by-reference page");
       return NextResponse.json(payload);
     }
 
@@ -312,7 +312,7 @@ export async function POST(req: Request) {
     const asset = `data:${image.mimeType};base64,${image.data}`;
     const result = generator.generate(spec, asset);
     const payload = await rasterizeResult(result);
-    await charge.commit(`Generated ${spec.type} page`);
+    await charge.commit(`Activity: ${spec.type} page`);
     return NextResponse.json(payload);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Could not generate the activity page.";

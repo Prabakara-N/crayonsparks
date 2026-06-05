@@ -2,12 +2,13 @@ import "server-only";
 
 import { z } from "zod";
 import { ORPCError } from "@orpc/server";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminAuth, db } from "@/lib/firebase/admin";
 import { writeAuditLog } from "@/lib/firebase/audit";
 import { adjustCredits, InsufficientCreditsError } from "@/lib/firebase/credits";
 import { getReadUrl } from "@/lib/storage/sign-url";
 import { FEEDBACK_STATUSES, FEEDBACK_KINDS } from "@/lib/feedback/types";
+import { buildUsageSeries, type UsageSpend } from "@/lib/credits/usage-series";
 import { adminProcedure } from "../base";
 
 const UsersListInput = z.object({
@@ -212,8 +213,44 @@ export const adminRouter = {
     stats: adminProcedure.handler(async () => {
       const usersSnap = await db.collection("users").count().get();
       const usersCount = usersSnap.data().count;
+      const cutoff = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
+
+      let generations24h = 0;
+      try {
+        const gSnap = await db
+          .collectionGroup("books")
+          .where("createdAt", ">=", cutoff)
+          .count()
+          .get();
+        generations24h = gSnap.data().count;
+      } catch {
+        generations24h = 0;
+      }
+
+      let creditsGranted24h = 0;
+      let creditsSpent24h = 0;
+      try {
+        const cSnap = await db
+          .collectionGroup("credits")
+          .where("createdAt", ">=", cutoff)
+          .get();
+        for (const doc of cSnap.docs) {
+          const data = doc.data();
+          const delta = (data.delta as number) ?? 0;
+          const refKind = (data.refKind as string) ?? "";
+          if (refKind === "spend") creditsSpent24h += Math.abs(delta);
+          else if (delta > 0) creditsGranted24h += delta;
+        }
+      } catch {
+        // index may still be building — leave the 24h credit totals at 0
+      }
+
       return {
         totalUsers: usersCount,
+        generations24h,
+        creditsGranted24h,
+        creditsSpent24h,
+        creditUsdRate: 0.013,
       };
     }),
   },
@@ -223,7 +260,7 @@ export const adminRouter = {
       .input(
         z.object({
           limit: z.number().int().min(1).max(100).default(50),
-          kind: z.enum(["coloring", "story", "all"]).default("all"),
+          kind: z.enum(["coloring", "story", "activity", "all"]).default("all"),
         }),
       )
       .handler(async ({ input }) => {
@@ -238,9 +275,13 @@ export const adminRouter = {
             const data = d.data();
             const ownerUid =
               (data.ownerUid as string | undefined) ?? d.ref.parent.parent?.id ?? null;
-            const mode = (data.mode as "qa" | "story") ?? "qa";
-            const kind: "coloring" | "story" =
-              mode === "story" ? "story" : "coloring";
+            const mode = (data.mode as "qa" | "story" | "activity") ?? "qa";
+            const kind: "coloring" | "story" | "activity" =
+              mode === "story"
+                ? "story"
+                : mode === "activity"
+                  ? "activity"
+                  : "coloring";
             const thumbKey = data.cover?.thumb?.key as string | undefined;
             return {
               bookId: d.id,
@@ -479,64 +520,35 @@ export const adminRouter = {
     daily: adminProcedure
       .input(
         z.object({
-          days: z.number().int().min(1).max(90).default(30),
+          fromMs: z.number().int().nonnegative().optional(),
+          toMs: z.number().int().nonnegative().optional(),
+          days: z.number().int().min(1).max(120).optional(),
         }),
       )
       .handler(async ({ input }) => {
-        const cutoff = Date.now() - input.days * 24 * 60 * 60 * 1000;
+        const DAY = 24 * 60 * 60 * 1000;
+        const now = Date.now();
+        const end = input.toMs ?? now;
+        const start = input.fromMs ?? end - (input.days ?? 30) * DAY;
+
         const snap = await db
           .collectionGroup("credits")
           .where("refKind", "==", "spend")
           .orderBy("createdAt", "desc")
-          .limit(5000)
+          .limit(8000)
           .get();
 
-        const buckets = new Map<
-          string,
-          { date: string; coloring: number; story: number; total: number }
-        >();
-
-        for (const doc of snap.docs) {
+        const spends: UsageSpend[] = snap.docs.map((doc) => {
           const data = doc.data();
-          const at = data.createdAt?.toMillis?.() as number | undefined;
-          if (!at || at < cutoff) continue;
-          const delta = Math.abs((data.delta as number) ?? 0);
-          if (delta === 0) continue;
-          const reason = (data.reason as string | undefined) ?? "";
-          const isStory = /story/i.test(reason);
-          const date = new Date(at).toISOString().slice(0, 10);
-          const bucket = buckets.get(date) ?? {
-            date,
-            coloring: 0,
-            story: 0,
-            total: 0,
+          return {
+            at: (data.createdAt?.toMillis?.() as number | undefined) ?? 0,
+            delta: (data.delta as number) ?? 0,
+            reason: (data.reason as string | undefined) ?? "",
           };
-          if (isStory) bucket.story += delta;
-          else bucket.coloring += delta;
-          bucket.total += delta;
-          buckets.set(date, bucket);
-        }
+        });
 
-        const days: Array<{
-          date: string;
-          coloring: number;
-          story: number;
-          total: number;
-        }> = [];
-        for (let i = input.days - 1; i >= 0; i--) {
-          const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-          const key = d.toISOString().slice(0, 10);
-          days.push(
-            buckets.get(key) ?? { date: key, coloring: 0, story: 0, total: 0 },
-          );
-        }
-
-        const totalCredits = days.reduce((n, d) => n + d.total, 0);
-        const peakCredits = days.reduce((n, d) => Math.max(n, d.total), 0);
         return {
-          days,
-          totalCredits,
-          peakCredits,
+          ...buildUsageSeries(spends, start, end),
           creditUsdRate: 0.013,
         };
       }),

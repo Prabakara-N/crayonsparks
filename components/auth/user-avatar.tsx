@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import type { User } from "firebase/auth";
+import type { AuthUser } from "@/lib/auth/cached-me";
 
 interface UserAvatarProps {
-  user: User;
+  user: AuthUser;
   size?: number;
   className?: string;
 }
 
-function initialsFor(user: User): string {
+function initialsFor(user: AuthUser): string {
   const source = (user.displayName || user.email || "?").trim();
   if (!source) return "?";
   const parts = source.split(/\s+/).filter(Boolean);

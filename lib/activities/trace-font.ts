@@ -1,26 +1,26 @@
 import "server-only";
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import * as opentype from "opentype.js";
+// @ts-expect-error - hersheytext ships no type declarations
+import ht from "hersheytext";
 
-type Font = opentype.Font;
+// Trace glyphs use the Hershey "futural" single-stroke vector font: each glyph is
+// a true centreline polyline with CORRECT letterforms (unlike the Relief CAD font
+// whose "2"/"3" rendered as broken X/8 shapes). We transform the strokes to
+// absolute SVG path data and emit ONE dashed path = a clean single-dotted skeleton.
+interface HGlyph {
+  type: string;
+  name: string;
+  width: number;
+  d: string | null;
+}
 
-// Trace glyphs are emitted as embedded vector PATHS (not SVG <text>) so the page
-// rasterizes identically everywhere — no dependency on fontconfig finding the
-// font at render time. Relief SingleLine CAD is a SINGLE-STROKE font: each glyph
-// is a centreline path, so a dashed stroke draws ONE dotted line per pen stroke
-// (a true single-dotted skeleton to trace), not a double hollow outline.
-const FONT_PATH = join(process.cwd(), "public/fonts/ReliefSingleLineCAD-Regular.ttf");
-const LETTER_SPACING = 0.08;
+const FONT = "futural";
+const LETTER_SPACING = 5; // extra Hershey units between glyphs
+const SPACE_WIDTH = 16; // advance for a space (renderTextArray returns null)
 
-let cached: Font | null = null;
-
-function traceFont(): Font {
-  if (cached) return cached;
-  const buf = readFileSync(FONT_PATH);
-  cached = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
-  return cached;
+// renderTextArray yields one entry per char and `null` for spaces.
+function glyphs(text: string): (HGlyph | null)[] {
+  return ht.renderTextArray(text, { font: FONT }) as (HGlyph | null)[];
 }
 
 export interface TraceMetrics {
@@ -29,38 +29,90 @@ export interface TraceMetrics {
   descent: number;
 }
 
-let metricsCache: TraceMetrics | null = null;
+interface FontGeometry extends TraceMetrics {
+  baseline: number;
+  em: number;
+}
 
-// Ink-based metrics (fractions of em above/below the baseline) measured from the
-// actual glyph bounds so the ruled lines hug the real letters: top = where caps
-// and ascenders reach, mid = x-height, base = baseline, plus descender room.
-export function traceMetrics(): TraceMetrics {
-  if (metricsCache) return metricsCache;
-  const font = traceFont();
-  const em = font.unitsPerEm;
-  const probe = (chars: string): { top: number; bot: number } => {
-    let top = 0;
-    let bot = 0;
-    for (const ch of chars) {
-      const bb = font.getPath(ch, 0, 0, em).getBoundingBox();
-      top = Math.min(top, bb.y1);
-      bot = Math.max(bot, bb.y2);
+function glyphYRange(d: string): [number, number] {
+  const ys = [...d.matchAll(/-?[\d.]+,(-?[\d.]+)/g)].map((m) => parseFloat(m[1]));
+  return ys.length ? [Math.min(...ys), Math.max(...ys)] : [Infinity, -Infinity];
+}
+
+let geometryCache: FontGeometry | null = null;
+
+function geometry(): FontGeometry {
+  if (geometryCache) return geometryCache;
+  const range = (s: string): [number, number] => {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const g of glyphs(s)) {
+      if (!g?.d) continue;
+      const [a, b] = glyphYRange(g.d);
+      lo = Math.min(lo, a);
+      hi = Math.max(hi, b);
     }
-    return { top, bot };
+    return [lo, hi];
   };
-  const asc = probe("ABDHKLbdhklt1234567890");
-  const xh = probe("acemnorsuvwxz");
-  const desc = probe("gjpqy");
-  metricsCache = {
-    ascent: -asc.top / em,
-    xHeight: -xh.top / em,
-    descent: desc.bot / em,
+  const caps = range("ABDHKL1234567890");
+  const xs = range("aceomnrsuvwxz");
+  const desc = range("gjpqy");
+  const baseline = caps[1];
+  const ascentU = baseline - caps[0];
+  const xHeightU = baseline - xs[0];
+  const descentU = Math.max(0, desc[1] - baseline);
+  const em = ascentU + descentU;
+  geometryCache = {
+    baseline,
+    em,
+    ascent: ascentU / em,
+    xHeight: xHeightU / em,
+    descent: descentU / em,
   };
-  return metricsCache;
+  return geometryCache;
+}
+
+export function traceMetrics(): TraceMetrics {
+  const g = geometry();
+  return { ascent: g.ascent, xHeight: g.xHeight, descent: g.descent };
 }
 
 export function traceAdvanceWidth(text: string, fontSize: number): number {
-  return traceFont().getAdvanceWidth(text, fontSize, { letterSpacing: LETTER_SPACING });
+  const scale = fontSize / geometry().em;
+  let units = 0;
+  for (const g of glyphs(text)) units += (g?.width ?? SPACE_WIDTH) + LETTER_SPACING;
+  return units * scale;
+}
+
+// Transforms one Hershey glyph's "M x,y L x,y ..." polyline into absolute SVG
+// path data, placing its baseline at baselineY and its left edge at originX.
+function placeGlyph(
+  d: string,
+  originX: number,
+  baselineY: number,
+  scale: number,
+  hBaseline: number,
+): string {
+  const out: string[] = [];
+  for (const tok of d.trim().split(/\s+/)) {
+    let cmd = "L";
+    let body = tok;
+    if (body[0] === "M") {
+      cmd = "M";
+      body = body.slice(1);
+    } else if (body[0] === "L") {
+      body = body.slice(1);
+    }
+    if (!body) continue;
+    const [pxs, pys] = body.split(",");
+    const px = parseFloat(pxs);
+    const py = parseFloat(pys);
+    if (Number.isNaN(px) || Number.isNaN(py)) continue;
+    const sx = (originX + px * scale).toFixed(2);
+    const sy = (baselineY + (py - hBaseline) * scale).toFixed(2);
+    out.push(`${cmd}${sx},${sy}`);
+  }
+  return out.join(" ");
 }
 
 export function traceTextPathData(
@@ -69,7 +121,15 @@ export function traceTextPathData(
   baselineY: number,
   fontSize: number,
 ): string {
-  return traceFont()
-    .getPath(text, x, baselineY, fontSize, { letterSpacing: LETTER_SPACING })
-    .toPathData(2);
+  const geo = geometry();
+  const scale = fontSize / geo.em;
+  const parts: string[] = [];
+  let cursor = 0;
+  for (const g of glyphs(text)) {
+    if (g?.d) {
+      parts.push(placeGlyph(g.d, x + cursor * scale, baselineY, scale, geo.baseline));
+    }
+    cursor += (g?.width ?? SPACE_WIDTH) + LETTER_SPACING;
+  }
+  return parts.join(" ");
 }

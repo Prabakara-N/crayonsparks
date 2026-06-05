@@ -29,15 +29,30 @@ export function UserRow({ user }: { user: AdminUserSummary }) {
       href={`/admin/users/${user.uid}`}
       className="grid grid-cols-[2fr_1fr_1fr_auto] gap-3 items-center px-4 py-3 rounded-xl bg-zinc-900/60 border border-white/10 hover:border-amber-500/40 hover:bg-white/5 transition-colors"
     >
-      <div className="min-w-0">
-        {user.displayName && (
-          <p className="text-sm font-semibold text-white truncate">
-            {user.displayName}
-          </p>
+      <div className="flex items-center gap-3 min-w-0">
+        {user.photoURL ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={user.photoURL}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="w-9 h-9 rounded-full object-cover shrink-0 border border-white/10"
+          />
+        ) : (
+          <div className="w-9 h-9 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-200 text-sm font-bold shrink-0 uppercase">
+            {(user.displayName || user.email || "?").charAt(0)}
+          </div>
         )}
-        <p className="text-xs text-neutral-400 truncate">
-          {user.email ?? "(no email)"}
-        </p>
+        <div className="min-w-0">
+          {user.displayName && (
+            <p className="text-sm font-semibold text-white truncate">
+              {user.displayName}
+            </p>
+          )}
+          <p className="text-xs text-neutral-400 truncate">
+            {user.email ?? "(no email)"}
+          </p>
+        </div>
       </div>
       <div className="hidden md:block">
         <p className="text-[11px] uppercase tracking-wider text-neutral-500 font-mono">

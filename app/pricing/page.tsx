@@ -13,7 +13,7 @@ import { buildFaqPage } from "@/lib/seo-schema";
 export const metadata = {
   title: "Pricing — CrayonSparks",
   description:
-    "Credit-based pricing for AI coloring and story books. Free tier with 50 credits, Hobbyist $19/mo, Pro $49/mo. Cancel anytime, 30-day refund.",
+    "Credit-based pricing for AI coloring, story, and activity books. Free tier with 50 credits, Hobbyist $19/mo, Pro $49/mo. Cancel anytime, 30-day refund.",
 };
 
 const TIERS: ReadonlyArray<TierCardData> = [
@@ -40,7 +40,7 @@ const TIERS: ReadonlyArray<TierCardData> = [
     blurb: "For creators publishing a few books a month.",
     creditAllocation: "800 credits / month",
     features: [
-      { text: "~4-5 coloring books per month", bold: true },
+      { text: "~4-5 books/mo — coloring, story or activity", bold: true },
       { text: "No watermark" },
       { text: "KDP commercial license" },
       { text: "All Flash models" },
@@ -61,7 +61,7 @@ const TIERS: ReadonlyArray<TierCardData> = [
     blurb: "For active KDP sellers shipping every week.",
     creditAllocation: "3,500 credits / month",
     features: [
-      { text: "~12-15 story books per month", bold: true },
+      { text: "~12-15 books/mo — coloring, story or activity", bold: true },
       { text: "Pro models (Gemini 3 Pro, GPT Image 1.5)", bold: true },
       { text: "Priority generation queue" },
       { text: "All output formats" },
@@ -93,7 +93,7 @@ const FAQS = [
   },
   {
     q: "Do I own the books I create?",
-    a: "Yes. Every paid plan includes a commercial license — sell on Amazon KDP, Etsy, Gumroad, your own site, or print at home. The Free tier is personal use only and outputs a watermarked preview.",
+    a: "Yes. Every paid plan includes a commercial license for all three book types — coloring, story, and activity books — sell on Amazon KDP, Etsy, Gumroad, your own site, or print at home. The Free tier is personal use only and outputs a watermarked preview.",
   },
   {
     q: "Can I switch tiers later?",

@@ -14,7 +14,7 @@ import {
   Shield,
   type LucideIcon,
 } from "lucide-react";
-import type { User } from "firebase/auth";
+import type { AdminDisplayUser } from "@/lib/hooks/use-require-admin";
 import {
   Sidebar,
   SidebarContent,
@@ -49,7 +49,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 interface AdminSidebarProps {
-  user: User;
+  user: AdminDisplayUser;
 }
 
 export function AdminSidebar({ user }: AdminSidebarProps) {
