@@ -53,14 +53,16 @@ export function RefineHeader({
           </p>
         )}
       </div>
-      <ModelPicker
-        label="Model"
-        value={activeModel}
-        options={availableModels}
-        onChange={onModelChange}
-        disabled={busy}
-        title={modelPickerTitle(context)}
-      />
+      {context === "custom" && (
+        <ModelPicker
+          label="Model"
+          value={activeModel}
+          options={availableModels}
+          onChange={onModelChange}
+          disabled={busy}
+          title={modelPickerTitle(context)}
+        />
+      )}
     </div>
   );
 }

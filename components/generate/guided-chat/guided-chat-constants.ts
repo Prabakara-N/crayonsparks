@@ -38,7 +38,51 @@ export const MODE_INTROS: Record<Mode, ModeIntro> = {
       "Help me build an original kids' story book",
     ],
   },
+  activity: {
+    greeting:
+      "Hi, I'm Sparky AI ✨ I plan printable activity books — mazes, dot-to-dot, word search, tracing, counting, color-by-number and more. Tell me a theme and the age.",
+    placeholders: [
+      "Space adventure for ages 5-8…",
+      "Dinosaurs with mazes and counting…",
+      "Numbers & counting 1-20 for toddlers…",
+      "Ocean animals seek-and-find…",
+      "Big brain-games book for ages 8-12…",
+      "Farm animals tracing and matching…",
+    ],
+    quickStarts: [
+      "Plan a space activity book for ages 5-8",
+      "Suggest an activity-book theme that sells on KDP",
+      "Build a numbers & letters workbook for toddlers",
+    ],
+  },
 };
+
+export interface BookTypeOption {
+  mode: Mode;
+  label: string;
+  description: string;
+}
+
+export const BOOK_TYPE_INTRO =
+  "Hi, I'm Sparky AI ✨ I can plan three kinds of kids' books. Which one are we making today?";
+
+export const BOOK_TYPE_OPTIONS: BookTypeOption[] = [
+  {
+    mode: "qa",
+    label: "Coloring book",
+    description: "B&W line art — one subject per page, kids color it in",
+  },
+  {
+    mode: "story",
+    label: "Story book",
+    description: "Full-color picture story with characters & speech bubbles",
+  },
+  {
+    mode: "activity",
+    label: "Activity book",
+    description: "Mazes, dot-to-dot, tracing, puzzles & more",
+  },
+];
 
 export const TYPE_ANSWER_PLACEHOLDERS = [
   "Type your answer…",

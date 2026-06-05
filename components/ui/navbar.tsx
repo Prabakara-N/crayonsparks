@@ -9,6 +9,7 @@ import { MobileNavDrawer } from "./mobile-nav-drawer";
 
 const links = [
   { href: "/features", label: "Features" },
+  { href: "/sparky-ai", label: "Sparky AI" },
   { href: "/playground", label: "Playground" },
   { href: "/pricing", label: "Pricing" },
   { href: "/blog", label: "Blog" },

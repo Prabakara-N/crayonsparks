@@ -15,7 +15,8 @@ const MAX_AGE_MS = 30 * 60 * 1000;
 export type PendingActionType =
   | "single-image"
   | "bulk-book"
-  | "chat-plan";
+  | "chat-plan"
+  | "chat-activity-plan";
 
 export interface PendingAction {
   type: PendingActionType;

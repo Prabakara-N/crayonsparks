@@ -29,6 +29,7 @@ import { DownloadMenu } from "@/components/playground/download-menu";
 import { fireConfettiBurst } from "@/components/ui/confetti-burst";
 import { SaveBookButton } from "./save-book-button";
 import { saveActivityBookToCloud } from "@/lib/functions/client/save-activity-book";
+import type { ActivityBookPlan } from "@/lib/activity-book-planner";
 import type { ActivityPageItem } from "@/components/playground/activity-book/types";
 import { KdpMetadataPanel } from "@/components/playground/kdp-metadata/kdp-metadata-main";
 import { CoverPair } from "@/components/playground/cover-pair";
@@ -77,6 +78,7 @@ export type {
 
 export function BookStudio({
   initialPlan,
+  initialActivityPlan,
   initialAge,
   initialReference,
   initialMode,
@@ -85,6 +87,7 @@ export function BookStudio({
   onPlanningChange,
 }: {
   initialPlan?: Plan;
+  initialActivityPlan?: ActivityBookPlan;
   initialAge?: AgeRange;
   initialReference?: string;
   initialMode?: "qa" | "story";
@@ -93,10 +96,13 @@ export function BookStudio({
   onPlanningChange?: (planning: boolean) => void;
 } = {}) {
   const dialog = useDialog();
-  const [phase, setPhase] = useState<Phase>(initialPlan ? "review" : "idea");
-  const [planConfirmed, setPlanConfirmed] = useState<boolean>(!!initialPlan);
+  // A book is "seeded" (skips the idea form, lands in review) when it arrives
+  // pre-planned — either a coloring/story Plan or a chat-built activity plan.
+  const seeded = !!(initialPlan || initialActivityPlan);
+  const [phase, setPhase] = useState<Phase>(seeded ? "review" : "idea");
+  const [planConfirmed, setPlanConfirmed] = useState<boolean>(seeded);
   const [planReviewOpen, setPlanReviewOpen] = useState(false);
-  const planReviewAutoOpenedRef = useRef<boolean>(!!initialPlan);
+  const planReviewAutoOpenedRef = useRef<boolean>(seeded);
 
   useNavigationGuard(phase === "generating", () =>
     dialog.confirm({
@@ -167,6 +173,7 @@ export function BookStudio({
 
   const bookPlan = useBookPlan({
     initialPlan,
+    initialActivityPlan,
     initialAge,
     initialReference,
     initialMode,
@@ -225,7 +232,7 @@ export function BookStudio({
 
   const studioPersistence = useStudioPersistence({
     storageKey: "current-book-draft",
-    enabled: !initialPlan,
+    enabled: !seeded,
     values: {
       version: 1,
       bookKind: bookPlan.bookKind,

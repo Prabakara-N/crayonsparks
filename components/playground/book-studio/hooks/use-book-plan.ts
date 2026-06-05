@@ -26,6 +26,7 @@ import type {
 
 interface UseBookPlanArgs {
   initialPlan?: Plan;
+  initialActivityPlan?: ActivityBookPlan;
   initialAge?: AgeRange;
   initialReference?: string;
   initialMode?: "qa" | "story";
@@ -35,8 +36,32 @@ interface UseBookPlanArgs {
   setCurrentIndex: (n: number) => void;
 }
 
+// Activity books reuse the coloring ("qa") generation view, so their plan is
+// projected onto the shared Plan shape and each page carries its ActivitySpec.
+function activityPlanToPlan(ap: ActivityBookPlan): Plan {
+  return {
+    title: ap.title,
+    coverTitle: ap.coverTitle,
+    description: ap.description,
+    scene: "",
+    coverScene: ap.coverScene,
+    prompts: ap.pages.map((p) => ({ name: p.title, subject: p.title })),
+  };
+}
+
+function activityPlanToItems(ap: ActivityBookPlan): PromptItem[] {
+  return ap.pages.map((p) => ({
+    id: p.id,
+    name: p.title,
+    subject: p.title,
+    status: "pending" as const,
+    activity: p,
+  }));
+}
+
 export function useBookPlan({
   initialPlan,
+  initialActivityPlan,
   initialAge,
   initialReference,
   initialMode,
@@ -46,7 +71,9 @@ export function useBookPlan({
   setCurrentIndex,
 }: UseBookPlanArgs) {
   const [idea, setIdea] = useState("");
-  const [pageCount, setPageCount] = useState(initialPlan?.prompts.length ?? 20);
+  const [pageCount, setPageCount] = useState(
+    initialActivityPlan?.pages.length ?? initialPlan?.prompts.length ?? 20,
+  );
   const [age, setAge] = useState<AgeRange>(initialAge ?? "toddlers");
   const [detailLevel, setDetailLevel] = useState<DetailLevel>(
     initialPlan?.detailLevel ?? "simple",
@@ -55,12 +82,18 @@ export function useBookPlan({
   const [reference, setReference] = useState<string | null>(
     initialReference ?? null,
   );
-  const [mode, setMode] = useState<"qa" | "story">(initialMode ?? "qa");
-  const [bookKind, setBookKind] = useState<"coloring" | "story" | "activity">("coloring");
+  const [mode, setMode] = useState<"qa" | "story">(
+    initialActivityPlan ? "qa" : (initialMode ?? "qa"),
+  );
+  const [bookKind, setBookKind] = useState<"coloring" | "story" | "activity">(
+    initialActivityPlan ? "activity" : "coloring",
+  );
   const [activityCounts, setActivityCounts] = useState<ActivityCounts>({});
   const [activityDifficulty, setActivityDifficulty] = useState<ActivityDifficulty | "auto">("auto");
   const [activityAiPictures, setActivityAiPictures] = useState(true);
-  const [activityPlan, setActivityPlan] = useState<ActivityBookPlan | null>(null);
+  const [activityPlan, setActivityPlan] = useState<ActivityBookPlan | null>(
+    initialActivityPlan ?? null,
+  );
   const [storyType, setStoryType] = useState<StoryType | null>(
     initialPlan?.storyType ?? null,
   );
@@ -71,7 +104,11 @@ export function useBookPlan({
 
   const [planning, setPlanning] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
-  const [plan, setPlan] = useState<Plan | null>(initialPlan ?? null);
+  const [plan, setPlan] = useState<Plan | null>(
+    initialActivityPlan
+      ? activityPlanToPlan(initialActivityPlan)
+      : (initialPlan ?? null),
+  );
 
   const { user, loading: authLoading } = useAuthContext();
   const [pendingPlan, setPendingPlan] = useState(false);
@@ -140,23 +177,8 @@ export function useBookPlan({
         // Activity books reuse the coloring ("qa") generation view — cover
         // with style/border, Apple carousel, book preview, cover-first gating.
         setMode("qa");
-        setPlan({
-          title: ap.title,
-          coverTitle: ap.coverTitle,
-          description: ap.description,
-          scene: "",
-          coverScene: ap.coverScene,
-          prompts: ap.pages.map((p) => ({ name: p.title, subject: p.title })),
-        });
-        setItems(
-          ap.pages.map((p) => ({
-            id: p.id,
-            name: p.title,
-            subject: p.title,
-            status: "pending" as const,
-            activity: p,
-          })),
-        );
+        setPlan(activityPlanToPlan(ap));
+        setItems(activityPlanToItems(ap));
         setCoverPending();
         setCurrentIndex(0);
         setPhase("review");
@@ -273,6 +295,20 @@ export function useBookPlan({
       void runPlan();
     }
   }, [pendingPlan, idea, runPlan]);
+
+  // Seed the studio from a pre-made activity plan handed in by Sparky chat:
+  // the page items (with their ActivitySpec) live in usePageGeneration and are
+  // reached through the setItems handoff, so they're seeded here on mount.
+  const seededActivityRef = useRef(false);
+  useEffect(() => {
+    if (seededActivityRef.current || !initialActivityPlan) return;
+    seededActivityRef.current = true;
+    setItems(activityPlanToItems(initialActivityPlan));
+    setCoverPending();
+    setCurrentIndex(0);
+    setPhase("review");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     idea,

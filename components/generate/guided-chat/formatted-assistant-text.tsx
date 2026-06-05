@@ -1,9 +1,15 @@
-// Render a Sparky reply with paragraph spacing and real bulleted lists.
+import { renderInlineMarkdown } from "./inline-markdown";
+
+// Render a Sparky reply with paragraph spacing, headings, real bulleted lists,
+// and inline markdown (**bold**, *italic*, `code`).
 export function FormattedAssistantText({ text }: { text: string }) {
   const trimmed = text.trim();
   if (!trimmed) return null;
   const lines = trimmed.split(/\r?\n/);
-  type Block = { kind: "para"; text: string } | { kind: "list"; items: string[] };
+  type Block =
+    | { kind: "para"; text: string }
+    | { kind: "heading"; text: string }
+    | { kind: "list"; items: string[] };
   const blocks: Block[] = [];
   let buffer: string[] = [];
   const flushPara = () => {
@@ -15,6 +21,12 @@ export function FormattedAssistantText({ text }: { text: string }) {
     const line = raw.trim();
     if (!line) {
       flushPara();
+      continue;
+    }
+    const headingMatch = line.match(/^#{1,6}\s+(.+)$/);
+    if (headingMatch) {
+      flushPara();
+      blocks.push({ kind: "heading", text: headingMatch[1] });
       continue;
     }
     const bulletMatch = line.match(/^[-•*]\s+(.+)$/);
@@ -36,13 +48,17 @@ export function FormattedAssistantText({ text }: { text: string }) {
       {blocks.map((b, i) =>
         b.kind === "para" ? (
           <p key={i} className="whitespace-pre-wrap break-words">
-            {b.text}
+            {renderInlineMarkdown(b.text)}
+          </p>
+        ) : b.kind === "heading" ? (
+          <p key={i} className="font-semibold text-white break-words">
+            {renderInlineMarkdown(b.text)}
           </p>
         ) : (
           <ul key={i} className="list-disc pl-5 space-y-1 marker:text-violet-300">
             {b.items.map((it, j) => (
               <li key={j} className="break-words">
-                {it}
+                {renderInlineMarkdown(it)}
               </li>
             ))}
           </ul>

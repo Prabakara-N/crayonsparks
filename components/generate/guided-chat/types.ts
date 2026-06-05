@@ -1,6 +1,6 @@
-import type { BookBrief } from "@/lib/book-chat";
+import type { BookBrief, ActivityBookPlan } from "@/lib/book-chat";
 
-export type Mode = "qa" | "story";
+export type Mode = "qa" | "story" | "activity";
 
 export interface Bubble {
   role: "user" | "assistant";
@@ -18,6 +18,7 @@ export type View =
       allow_multi: boolean;
     }
   | { kind: "brief"; brief: BookBrief }
+  | { kind: "activity-plan"; plan: ActivityBookPlan }
   | { kind: "message"; text: string };
 
 export interface ApiResponse {

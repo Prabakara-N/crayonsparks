@@ -7,7 +7,7 @@ import { PlaygroundShell } from "@/components/playground/playground-shell";
 export const metadata = {
   title: "Playground — CrayonSparks",
   description:
-    "Free-form image generator and AI-guided book planner. Generate a single image with Gemini, or chat to plan a complete coloring book.",
+    "Free-form image generator and bulk book studio. Generate a single image with Gemini, or build a complete KDP-ready book end-to-end. Want AI to plan it? Try Sparky AI.",
 };
 
 export default function PlaygroundPage() {

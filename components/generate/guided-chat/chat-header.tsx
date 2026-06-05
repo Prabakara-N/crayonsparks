@@ -1,14 +1,42 @@
 "use client";
 
-import { ArrowLeft, MessageCircle, BookOpen, Eraser } from "lucide-react";
+import {
+  ArrowLeft,
+  MessageCircle,
+  BookOpen,
+  Puzzle,
+  Sparkles,
+  Eraser,
+} from "lucide-react";
 import type { Mode } from "./types";
 
 interface ChatHeaderProps {
-  mode: Mode;
+  mode: Mode | null;
   busy: boolean;
   showClear: boolean;
   onSwitchMode: () => void;
   onClearChat: () => void;
+}
+
+const MODE_BADGE: Record<Mode, { label: string; cls: string }> = {
+  qa: {
+    label: "Coloring book",
+    cls: "bg-violet-500/15 border-violet-500/30 text-violet-200",
+  },
+  story: {
+    label: "Story book",
+    cls: "bg-cyan-500/15 border-cyan-500/30 text-cyan-200",
+  },
+  activity: {
+    label: "Activity book",
+    cls: "bg-emerald-500/15 border-emerald-500/30 text-emerald-200",
+  },
+};
+
+function ModeIcon({ mode }: { mode: Mode }) {
+  if (mode === "story") return <BookOpen className="w-3 h-3" />;
+  if (mode === "activity") return <Puzzle className="w-3 h-3" />;
+  return <MessageCircle className="w-3 h-3" />;
 }
 
 export function ChatHeader({
@@ -20,27 +48,25 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   return (
     <div className="px-6 md:px-8 pt-3 pb-3 flex items-center gap-2">
-      <button
-        onClick={onSwitchMode}
-        className="p-1.5 rounded-lg text-neutral-400 hover:bg-white/5 hover:text-white"
-        title="Switch chat mode"
-        aria-label="Switch chat mode"
-      >
-        <ArrowLeft className="w-4 h-4" />
-      </button>
+      {mode && (
+        <button
+          onClick={onSwitchMode}
+          className="p-1.5 rounded-lg text-neutral-400 hover:bg-white/5 hover:text-white"
+          title="Switch book type"
+          aria-label="Switch book type"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+      )}
       <span
         className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
-          mode === "story"
-            ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-200"
-            : "bg-violet-500/15 border-violet-500/30 text-violet-200"
+          mode
+            ? MODE_BADGE[mode].cls
+            : "bg-white/5 border-white/15 text-neutral-300"
         }`}
       >
-        {mode === "story" ? (
-          <BookOpen className="w-3 h-3" />
-        ) : (
-          <MessageCircle className="w-3 h-3" />
-        )}
-        {mode === "story" ? "Story book" : "Coloring book"}
+        {mode ? <ModeIcon mode={mode} /> : <Sparkles className="w-3 h-3" />}
+        {mode ? MODE_BADGE[mode].label : "Sparky AI"}
       </span>
       {showClear && (
         <button

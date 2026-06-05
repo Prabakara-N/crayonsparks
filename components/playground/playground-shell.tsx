@@ -2,20 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Wand2, Sparkles, BookPlus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Wand2, BookPlus } from "lucide-react";
 import { PlaygroundStudio } from "@/components/playground/playground-studio/playground-studio-main";
 import { BookStudio, type Plan } from "@/components/playground/book-studio/book-studio-main";
-import { GuidedChat } from "@/components/generate/guided-chat/guided-chat-main";
-import type { BookBrief } from "@/lib/book-chat";
-import { createCustomCategory } from "@/lib/custom-categories";
 import { CATEGORIES, type ColoringCategory } from "@/lib/prompts";
-import { useAuthContext } from "@/components/auth/auth-provider";
 import { useDialog } from "@/components/ui/confirm-dialog";
-import {
-  savePendingAction,
-  consumePendingAction,
-} from "@/lib/auth/pending-action";
 
 /**
  * Maps a built-in ColoringCategory (the 14 ready-made themes from the
@@ -50,14 +41,6 @@ const TABS = [
     bestFor: "Testing prompts · Quick thumbnails",
   },
   {
-    slug: "chat-book",
-    label: "Sparky AI",
-    icon: Sparkles,
-    description:
-      "Chat with Sparky AI ✨. Answer a few quick questions and get a complete book plan. Story-aware — Sparky knows hundreds of classic fables (Aesop, Panchatantra, Grimm).",
-    bestFor: "Idea-shaping · Story books · Beginners",
-  },
-  {
     slug: "bulk-book",
     label: "Bulk book",
     icon: BookPlus,
@@ -75,41 +58,12 @@ function isTabSlug(value: string | null): value is TabSlug {
   return TABS.some((t) => t.slug === value);
 }
 
-function briefToPlan(brief: BookBrief): Plan {
-  const isStory = !!(brief.characters?.length || brief.palette);
-  return {
-    title: brief.name,
-    coverTitle: brief.name,
-    description: isStory
-      ? `${brief.prompts.length}-page story book.`
-      : `${brief.prompts.length}-page coloring book.`,
-    scene: brief.pageScene,
-    coverScene: brief.coverScene,
-    prompts: brief.prompts.map((p) => ({
-      name: p.name,
-      subject: p.subject,
-      dialogue: p.dialogue,
-      narration: p.narration,
-      composition: p.composition,
-    })),
-    bottomStripPhrases: brief.bottomStripPhrases,
-    sidePlaqueLines: brief.sidePlaqueLines,
-    coverBadgeStyle: brief.coverBadgeStyle,
-    characters: brief.characters,
-    palette: brief.palette,
-    detailLevel: brief.detailLevel,
-    storyType: brief.storyType,
-    dialogueStyle: brief.dialogueStyle,
-  };
-}
-
 export function PlaygroundShell() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [error, setError] = useState<string | null>(null);
-  // When the chat finalizes a brief and we hand off to bulk-book inline,
-  // we stash the plan here so BookStudio mounts with it pre-loaded.
+  // A gallery category seeds BookStudio with a pre-built plan; that's the only
+  // hand-in the playground keeps (Sparky AI lives on its own /sparky-ai page).
   const [seedPlan, setSeedPlan] = useState<Plan | null>(null);
   const [seededCategory, setSeededCategory] =
     useState<SeededCategoryBadge | null>(null);
@@ -117,9 +71,7 @@ export function PlaygroundShell() {
   // if React re-runs the effect, we never re-seed and clobber the user's
   // in-progress edits.
   const consumedCategoryRef = useRef(false);
-  const consumedChatPlanRef = useRef(false);
   const bulkPlanningRef = useRef(false);
-  const { user } = useAuthContext();
   const dialog = useDialog();
 
   const activeTab: TabSlug = useMemo(() => {
@@ -176,136 +128,44 @@ export function PlaygroundShell() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [searchParams, router, pathname]);
 
-  const [seedReference, setSeedReference] = useState<string | null>(null);
-  const [seedMode, setSeedMode] = useState<"qa" | "story" | null>(null);
-
-  // When the user picks "Story book" on the Bulk Book idea form, we send
-  // them to Sparky AI chat pre-set to story mode with their typed idea
-  // pre-filled. These two slots carry that handoff. Consumed once on chat
-  // mount via the seed props on GuidedChat, then cleared.
-  const [chatSeedMode, setChatSeedMode] = useState<"qa" | "story" | null>(null);
-  const [chatSeedIdea, setChatSeedIdea] = useState<string>("");
-  // Tracks whether GuidedChat is in an active conversation (mode picked)
-  // vs the mode-picker landing. While on the landing the page hero stays
-  // visible; once the user picks a mode the hero hides so the chat panel
-  // can claim more vertical space.
-  const [chatActive, setChatActive] = useState(false);
-
-  // When chatActive flips, the page hero appears or disappears and the
-  // total document height changes. The browser keeps the user's previous
-  // scroll position, which can leave them looking at the footer when the
-  // page just got shorter. Smooth-scroll back to the top in either
-  // direction so the relevant content is visible after the layout shift.
-  // Two rAFs — first lets React commit the new layout, second waits for
-  // browser layout pass — then the smooth scroll runs uninterrupted.
-  const prevChatActiveRef = useRef(chatActive);
-  useEffect(() => {
-    if (prevChatActiveRef.current === chatActive) return;
-    prevChatActiveRef.current = chatActive;
-    if (typeof window === "undefined") return;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      });
-    });
-  }, [chatActive]);
-
+  // The bulk-book studio's "switch to Sparky" hands the typed idea to the
+  // dedicated Sparky AI page, pre-seeding the chat with mode + idea.
   const switchToChat = useCallback(
     (idea: string, mode: "qa" | "story") => {
-      setChatSeedMode(mode);
-      setChatSeedIdea(idea.trim());
-      setTab("chat-book");
+      const params = new URLSearchParams();
+      params.set("seedMode", mode);
+      if (idea.trim()) params.set("seedIdea", idea.trim());
+      router.push(`/sparky-ai?${params.toString()}`);
     },
-    [setTab],
+    [router],
   );
 
-  const handleBrief = useCallback(
-    (
-      brief: BookBrief,
-      mode: "qa" | "story",
-      referenceDataUrl?: string | null,
-    ) => {
-      setError(null);
-      try {
-        // Save the brief as a custom category in localStorage so the user
-        // can also access it from /generate later.
-        createCustomCategory({
-          name: brief.name,
-          icon: brief.icon || "📚",
-          coverScene: brief.coverScene,
-          scene: brief.pageScene,
-          prompts: brief.prompts,
-        });
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save book.");
-        return;
-      }
-      const plan = briefToPlan(brief);
-      // Logged out — stash the plan so it survives the login round-trip,
-      // then send the user to sign in. They return straight to bulk-book.
-      if (!user) {
-        savePendingAction({
-          type: "chat-plan",
-          returnTo: "/playground?tab=bulk-book",
-          payload: { plan, mode },
-        });
-        router.push(
-          `/login?next=${encodeURIComponent("/playground?tab=bulk-book")}`,
-        );
-        return;
-      }
-      // Signed in — hand off to the inline bulk-book carousel, no redirect.
-      setSeedPlan(plan);
-      setSeedReference(referenceDataUrl ?? null);
-      setSeedMode(mode);
-      setTab("bulk-book");
-    },
-    [setTab, user, router],
-  );
-
-  // After a login round-trip from the chat, restore the approved plan and
-  // drop the user straight onto the bulk-book tab.
+  // Backward-compat: the chat used to live at ?tab=chat-book — send any old
+  // link to its new home.
   useEffect(() => {
-    if (consumedChatPlanRef.current) return;
-    consumedChatPlanRef.current = true;
-    const action = consumePendingAction("chat-plan");
-    const p = action?.payload as
-      | { plan?: Plan; mode?: "qa" | "story" }
-      | undefined;
-    if (!p?.plan) return;
-    setSeedPlan(p.plan);
-    if (p.mode) setSeedMode(p.mode);
-    setTab("bulk-book");
-  }, [setTab]);
-
-  // While the Sparky AI chat is in an active conversation (mode picked),
-  // hide the page hero and the per-tab description band so the chat panel
-  // can claim more vertical space. The tab toggle stays visible so the
-  // user can switch back. The mode-picker landing keeps the hero visible.
-  const isChatTab = activeTab === "chat-book";
-  const hideHero = isChatTab && chatActive;
+    if (searchParams.get("tab") === "chat-book") {
+      router.replace("/sparky-ai");
+    }
+  }, [searchParams, router]);
 
   return (
-    <div className={cn(hideHero ? "space-y-4" : "space-y-6")}>
-      {!hideHero && (
-        <div className="text-center mb-10 md:mb-14">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-linear-to-r from-violet-500/10 to-cyan-500/10 border border-violet-500/20 text-xs font-medium text-violet-300 mb-5 backdrop-blur">
-            <Wand2 className="w-3 h-3" />
-            Free-form · Iterative · Powered by AI
-          </div>
-          <h1 className="font-display text-4xl md:text-6xl font-bold tracking-tight text-white">
-            Your own <span className="gradient-text">AI playground</span>
-          </h1>
-          <p className="mt-4 text-neutral-400 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
-            Generate a single image and refine it with natural-language
-            feedback — or switch to chat mode and let AI plan a complete
-            coloring book from your idea.
-          </p>
+    <div className="space-y-6">
+      <div className="text-center mb-10 md:mb-14">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-linear-to-r from-violet-500/10 to-cyan-500/10 border border-violet-500/20 text-xs font-medium text-violet-300 mb-5 backdrop-blur">
+          <Wand2 className="w-3 h-3" />
+          Free-form · Iterative · Powered by AI
         </div>
-      )}
+        <h1 className="font-display text-4xl md:text-6xl font-bold tracking-tight text-white">
+          Your own <span className="gradient-text">AI playground</span>
+        </h1>
+        <p className="mt-4 text-neutral-400 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
+          Generate a single image and refine it with natural-language feedback,
+          or build a complete book end-to-end. Want AI to plan it for you? Head
+          to Sparky AI.
+        </p>
+      </div>
 
-      {!(activeTab === "chat-book" && chatActive) && (
-        <div className="flex justify-center">
+      <div className="flex justify-center">
           <div
             role="tablist"
             aria-label="Playground mode"
@@ -348,34 +208,10 @@ export function PlaygroundShell() {
             })}
           </div>
         </div>
-      )}
 
-      {!hideHero && !(activeTab === "chat-book" && chatActive) && (
-        <ActiveTabDescription tab={TABS.find((t) => t.slug === activeTab)!} />
-      )}
+      <ActiveTabDescription tab={TABS.find((t) => t.slug === activeTab)!} />
 
       {activeTab === "single-image" && <PlaygroundStudio />}
-
-      {activeTab === "chat-book" && (
-        <div className="rounded-3xl bg-zinc-950 border border-white/10 shadow-2xl shadow-violet-500/10 overflow-hidden">
-          {error && (
-            <div className="px-6 md:px-8 pt-4 -mb-2 text-sm text-red-300 bg-red-500/5 border-b border-red-500/20">
-              {error}
-            </div>
-          )}
-          <GuidedChat
-            onBrief={handleBrief}
-            onBack={() => setTab("single-image")}
-            seedMode={chatSeedMode ?? undefined}
-            seedIdea={chatSeedIdea || undefined}
-            onSeedConsumed={() => {
-              setChatSeedMode(null);
-              setChatSeedIdea("");
-            }}
-            onActiveChange={setChatActive}
-          />
-        </div>
-      )}
 
       {activeTab === "bulk-book" && (
         <>
@@ -401,8 +237,6 @@ export function PlaygroundShell() {
                 type="button"
                 onClick={() => {
                   setSeedPlan(null);
-                  setSeedReference(null);
-                  setSeedMode(null);
                   setSeededCategory(null);
                 }}
                 className="text-xs text-neutral-400 hover:text-white px-2 py-1 rounded-md hover:bg-white/5 shrink-0"
@@ -415,16 +249,12 @@ export function PlaygroundShell() {
           <BookStudio
             key={seedPlan?.title ?? "blank"}
             initialPlan={seedPlan ?? undefined}
-            initialReference={seedReference ?? undefined}
-            initialMode={seedMode ?? undefined}
             onSwitchToChat={switchToChat}
             onPlanningChange={(planning) => {
               bulkPlanningRef.current = planning;
             }}
             onReset={() => {
               setSeedPlan(null);
-              setSeedReference(null);
-              setSeedMode(null);
               setSeededCategory(null);
             }}
           />

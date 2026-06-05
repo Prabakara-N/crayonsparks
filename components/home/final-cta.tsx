@@ -52,7 +52,7 @@ export function FinalCta() {
         </p>
         <div className="mt-9 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
           <Link
-            href="/playground"
+            href="/sparky-ai"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-sm md:text-base font-semibold text-white bg-linear-to-r from-violet-500 via-indigo-400 to-cyan-400 shadow-lg shadow-violet-500/40 hover:shadow-xl hover:shadow-violet-500/50 hover:scale-105 transition-all"
           >
             <Sparkles className="w-4 h-4" />

@@ -15,10 +15,17 @@ import {
   STORY_PLANNER_QUALITY_RULES,
 } from "@/lib/prompts";
 import { auditBookBrief } from "@/lib/book-brief-quality";
+import {
+  planActivityBook,
+  type ActivityBookPlan,
+  type ActivityBookPlanInput,
+} from "@/lib/activity-book-planner";
+import { PLANNABLE_TYPES, type ActivityType } from "@/lib/activities/types";
 export type {
   BookBriefQualityIssue,
   BookBriefQualityReport,
 } from "@/lib/book-chat-types";
+export type { ActivityBookPlan } from "@/lib/activity-book-planner";
 
 // Text-only book brief chat — cheaper than the vision-critical refine
 // chat. Distinct constant from OPENAI_REFINE_MODEL so the vision paths
@@ -26,7 +33,7 @@ export type {
 // stay on the strong planner / vision models even when helper text models change.
 const MODEL_ID = OPENAI_PLANNER_MODEL;
 
-export type BookChatMode = "qa" | "story";
+export type BookChatMode = "qa" | "story" | "activity";
 
 /**
  * One locked story-book character. Story-mode briefs include 1-3 of these so
@@ -96,6 +103,7 @@ export type BookChatView =
       allow_multi: boolean;
     }
   | { kind: "brief"; brief: BookBrief }
+  | { kind: "activity-plan"; plan: ActivityBookPlan }
   | { kind: "message"; text: string };
 
 export interface BookChatTurnResult {
@@ -292,6 +300,79 @@ WHEN YOU CALL finalize_brief
 CRITICAL TOOL-CALLING RULE — READ TWICE:
 You MUST call exactly ONE tool per turn (\`ask_user\` OR \`finalize_brief\`). NEVER respond with plain text containing a question and options as bullets/list/dashes — the UI cannot render those as clickable. If you write text like "Choose: - Toddlers - Kids - Tweens" that is BROKEN behavior. Instead call \`ask_user\` with the question + options array. Even if a previous user message mentioned an image you can't directly see, call \`ask_user\` to ask the next clarifying question — DO NOT type the options inline. Plain-text responses are not allowed when there is a question with choices. The user's UI relies entirely on your tool calls to render clickable chips.`;
 
+const ACTIVITY_SYSTEM_PROMPT = `You are Sparky AI — the friendly activity-book planner for CrayonSparks. You help a creator design a printable kids' ACTIVITY book (mazes, dot-to-dot, word search, tracing, counting, color-by-number, spot-the-difference and more) sold on Amazon KDP. This is NOT a coloring book and NOT a story book — it is a puzzle / worksheet book. If the user asks who you are, say "I'm Sparky AI, the planner inside CrayonSparks". Stay warm, brief, and a little playful.
+
+CONVERSATION STYLE — VERY IMPORTANT
+You are a real assistant, not a form-filler. Match the user's energy:
+- Greetings ("hi", "hello", "hey") → reply warmly with a short conversational message (no tool call). Say you build printable activity/puzzle books and invite a theme. Example: "Hey! I'm Sparky — I plan kid activity books packed with mazes, dot-to-dot, tracing and puzzles. Tell me a theme (space, dinosaurs, ocean, numbers & letters) and the age, and I'll build a page plan."
+- Casual questions ("what do you do?", "what puzzles can you make?") → reply with a short message (no tool call). The activity types available are: mazes, word search, crossword, letter tracing, number tracing, sight-word tracing, dot-to-dot, matching, counting, seek-and-find, color-by-number, spot-the-difference, shape tracing, finish-the-pattern, sorting, and opposites.
+- Vague messages ("idk", "help me") → reply with a short message offering 2-3 starter themes, no question yet.
+- ONLY when the user expresses real intent (a theme, an age, "make me an activity book about X") do you start the planning flow with \`ask_user\`.
+
+When you reply with a plain message (no tool call), keep it under 3 sentences and end with an open invite. When listing 3+ items in plain text, put each on its own line with a leading "- ". NEVER use bullets/dashes as a workaround for clickable choices — if the items are choices, call \`ask_user\`.
+
+PLANNING JOB (after the user shows real intent)
+Ask a SHORT series of questions (ONE per turn via \`ask_user\`, with quick-pick options), then call \`finalize_activity\`. You are gathering inputs for a procedural planner — you do NOT design individual pages yourself. Cover these dimensions, in roughly this order:
+
+Q1 — THEME: confirm the theme/idea in one short question if it isn't already clear (e.g. "Great — space adventure it is. Want me to keep it broad, or focus on planets, rockets, or aliens?"). allow_freeform=true.
+Q2 — AGE: "Toddlers 3-6 / Kids 6-10 / Tweens 10-14" (KIDS ONLY — never offer adults). allow_multi=false.
+Q3 — PAGE COUNT: offer "12 / 20 / 24 / 30 / 40 pages" with allow_freeform=true so they can type any number from 4-60. Honour the exact number — never round.
+Q4 — DIFFICULTY: options EXACTLY: "Auto — gets harder through the book", "Easy", "Medium", "Hard". Map "Auto" → null difficulty (the planner ramps it). allow_multi=false.
+Q5 — ACTIVITY MIX: ask whether to auto-mix or pick types. Options: "Auto mix — a balanced set for the age" plus a few popular picks the user can multi-select. Set allow_multi=true. If they pick "Auto mix" (or say "you decide"), leave mix empty/null. Otherwise pass the chosen types in \`mix\`.
+Q6 — AI PICTURES (ask only when relevant): "Some activities use AI-drawn scenes (seek-and-find, color-by-number, spot-the-difference). Include those?" Options: "Yes, include AI picture pages", "No, keep it simple line-art only". Map to aiPictures true/false. Default to true if not asked.
+
+Stop and call \`finalize_activity\` as soon as you have theme + age + page count (difficulty/mix/aiPictures can use defaults). Never exceed 6 questions. Be warm but concise.
+
+WHEN YOU CALL finalize_activity
+- idea: the theme in a few words (e.g. "space adventure", "dinosaurs", "numbers and counting 1-20"). Include any focus the user gave.
+- age: the chosen age band, or null if truly unknown (planner defaults to kids).
+- pageCount: the EXACT number the user picked or typed.
+- difficulty: easy / medium / hard, or null for an automatic difficulty ramp ("Auto").
+- mix: ONLY the specific activity-type slugs the user explicitly chose; null/empty for an auto-balanced mix.
+- aiPictures: true unless the user asked for line-art-only.
+
+CRITICAL TOOL-CALLING RULE — READ TWICE:
+You MUST call exactly ONE tool per turn (\`ask_user\` OR \`finalize_activity\`). NEVER respond with plain text containing a question and options as bullets/list/dashes — the UI cannot render those as clickable. Instead call \`ask_user\` with the question + options array. The user's UI relies entirely on your tool calls to render clickable chips.`;
+
+const finalizeActivitySchema = z.object({
+  idea: z
+    .string()
+    .min(2)
+    .max(300)
+    .describe(
+      "The activity-book theme/idea in a few words, e.g. 'space adventure', 'dinosaurs', 'numbers and counting 1-20'. Include any focus the user gave.",
+    ),
+  age: z
+    .enum(["toddlers", "kids", "tweens"])
+    .nullable()
+    .describe(
+      "Audience age band: toddlers (3-6), kids (6-10), tweens (10-14). Pass null only if truly unknown — the planner defaults to kids.",
+    ),
+  pageCount: z
+    .number()
+    .int()
+    .min(4)
+    .max(60)
+    .describe("Exact total number of activity pages the user picked or typed."),
+  difficulty: z
+    .enum(["easy", "medium", "hard"])
+    .nullable()
+    .describe(
+      "Overall difficulty, or null for an automatic difficulty ramp across the book (the 'Auto' choice).",
+    ),
+  aiPictures: z
+    .boolean()
+    .describe(
+      "Whether to include AI-illustrated activity pages (seek-and-find, color-by-number, spot-the-difference). Default true unless the user asked for simple line-art only.",
+    ),
+  mix: z
+    .array(z.enum(PLANNABLE_TYPES as [ActivityType, ...ActivityType[]]))
+    .nullable()
+    .describe(
+      "Specific activity-type slugs to include, or null/empty to let the planner auto-mix a balanced, age-appropriate set. Only set this when the user explicitly chose particular activity types.",
+    ),
+});
+
 const askUserSchema = z.object({
   question: z.string().describe("One short question to ask the user."),
   options: z
@@ -485,14 +566,19 @@ const finalizeBriefSchema = z.object({
 
 type AskUserInput = z.infer<typeof askUserSchema>;
 type FinalizeInput = z.infer<typeof finalizeBriefSchema>;
+type FinalizeActivityInput = z.infer<typeof finalizeActivitySchema>;
 type LookupInput = z.infer<typeof lookupCanonicalPlotSchema>;
 
-const TOOLS = {
-  ask_user: tool({
-    description:
-      "Ask the user one short question to clarify the book brief. Provide 3-5 quick-pick options when possible.",
-    inputSchema: askUserSchema,
-  }),
+const askUserTool = tool({
+  description:
+    "Ask the user one short question to clarify the book brief. Provide 3-5 quick-pick options when possible.",
+  inputSchema: askUserSchema,
+});
+
+// qa + story share the brief-producing toolset; activity uses its own
+// finalize tool that feeds the procedural activity planner.
+const BRIEF_TOOLS = {
+  ask_user: askUserTool,
   finalize_brief: tool({
     description:
       "Call when you have enough info to produce the final book plan with all prompts.",
@@ -502,6 +588,15 @@ const TOOLS = {
     description:
       "STORY MODE ONLY. Use when the user names a classic fable / moral story / fairy tale AND you are not fully confident about the canonical plot — especially regional Indian/Asian tales (Panchatantra, Jataka, Hitopadesha) which have multiple versions. Returns a canonical plot summary grounded in live web research. Do NOT use for original user-invented stories or for very famous Western fables you know cold. After receiving the plot, treat it as ground truth and continue with ask_user / finalize_brief.",
     inputSchema: lookupCanonicalPlotSchema,
+  }),
+} as const;
+
+const ACTIVITY_TOOLS = {
+  ask_user: askUserTool,
+  finalize_activity: tool({
+    description:
+      "Call when you have enough info (theme + age + page count at minimum) to build the activity book. Feeds the procedural activity planner.",
+    inputSchema: finalizeActivitySchema,
   }),
 } as const;
 
@@ -534,7 +629,25 @@ function viewFromAsk(args: AskUserInput, intro?: string): BookChatView {
 }
 
 function withQuality(brief: BookBrief, mode: BookChatMode): BookBrief {
-  return { ...brief, quality: auditBookBrief(brief, mode) };
+  // Briefs only come from qa/story; activity never reaches the quality audit.
+  const auditMode = mode === "story" ? "story" : "qa";
+  return { ...brief, quality: auditBookBrief(brief, auditMode) };
+}
+
+function activityInputFromArgs(
+  args: FinalizeActivityInput,
+): ActivityBookPlanInput {
+  const mix = Array.isArray(args.mix)
+    ? args.mix.filter((t): t is ActivityType => PLANNABLE_TYPES.includes(t))
+    : [];
+  return {
+    idea: args.idea.trim(),
+    pageCount: args.pageCount,
+    age: args.age ?? undefined,
+    difficulty: args.difficulty ?? undefined,
+    mix: mix.length ? mix : undefined,
+    aiPictures: args.aiPictures,
+  };
 }
 
 function viewFromFinalize(
@@ -635,7 +748,13 @@ export async function runBookChatTurn(
     throw new Error("OPENAI_API_KEY is not set.");
   }
 
-  const system = mode === "story" ? STORY_SYSTEM_PROMPT : QA_SYSTEM_PROMPT;
+  const system =
+    mode === "story"
+      ? STORY_SYSTEM_PROMPT
+      : mode === "activity"
+        ? ACTIVITY_SYSTEM_PROMPT
+        : QA_SYSTEM_PROMPT;
+  const tools = mode === "activity" ? ACTIVITY_TOOLS : BRIEF_TOOLS;
 
   let messages: ModelMessage[] = incoming;
   let groundingsLeft = mode === "story" ? MAX_GROUNDING_PASSES : 0;
@@ -648,7 +767,7 @@ export async function runBookChatTurn(
       model: openai(MODEL_ID),
       system,
       messages,
-      tools: TOOLS,
+      tools,
       toolChoice: "auto",
     });
 
@@ -720,6 +839,12 @@ export async function runBookChatTurn(
         messages,
         view: viewFromFinalize(first.input as FinalizeInput, mode),
       };
+    }
+    if (first.toolName === "finalize_activity") {
+      const plan = await planActivityBook(
+        activityInputFromArgs(first.input as FinalizeActivityInput),
+      );
+      return { messages, view: { kind: "activity-plan", plan } };
     }
     if (first.toolName === "lookup_canonical_plot") {
       // Grounding budget exhausted — ask the user to summarize so we can move on.

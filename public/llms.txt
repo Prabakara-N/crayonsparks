@@ -32,8 +32,8 @@ CrayonSparks is a web application built on Next.js 16 + the Gemini API. Users de
 ## Core URLs
 
 - /                        — Marketing home (story books · coloring books · activity books)
-- /playground              — Single-image free-form playground (default tab)
-- /playground?tab=chat-book — Sparky AI book-brief chat (story mode or coloring mode)
+- /sparky-ai               — Sparky AI chat: plan a coloring, story, or activity book conversationally, then generate it
+- /playground              — Single-image free-form playground + bulk book generator
 - /playground?tab=bulk-book — Bulk book generator with carousel + cover
 - /features                — Full feature breakdown
 - /pricing                 — Plans and FAQ

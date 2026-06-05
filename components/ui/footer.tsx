@@ -33,7 +33,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/playground?tab=chat-book" className="hover:text-violet-400">
+                <Link href="/sparky-ai" className="hover:text-violet-400">
                   Sparky AI
                 </Link>
               </li>

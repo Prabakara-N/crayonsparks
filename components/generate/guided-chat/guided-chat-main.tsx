@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { BookBrief } from "@/lib/book-chat";
+import type { BookBrief, ActivityBookPlan } from "@/lib/book-chat";
 import {
   PlaceholdersAndVanishInput,
   type PlaceholdersAndVanishInputHandle,
@@ -17,11 +17,13 @@ import {
   ACCEPTED_REFERENCE_TYPES,
   MODE_INTROS,
   TYPE_ANSWER_PLACEHOLDERS,
+  BOOK_TYPE_INTRO,
+  BOOK_TYPE_OPTIONS,
 } from "./guided-chat-constants";
 import { fileToDataUrl } from "./file-to-data-url";
 import { FormattedAssistantText } from "./formatted-assistant-text";
 import { BriefPreview } from "./brief-preview";
-import { ModePicker } from "./mode-picker";
+import { ActivityPlanPreview } from "./activity-plan-preview";
 import { ChatHeader } from "./chat-header";
 import { QuickStartChips } from "./quick-start-chips";
 import { QuestionOptions } from "./question-options";
@@ -29,6 +31,7 @@ import { ReferenceAttachment } from "./reference-attachment";
 
 export function GuidedChat({
   onBrief,
+  onActivityPlan,
   seedMode,
   seedIdea,
   onSeedConsumed,
@@ -36,9 +39,10 @@ export function GuidedChat({
 }: {
   onBrief: (
     brief: BookBrief,
-    mode: Mode,
+    mode: "qa" | "story",
     referenceDataUrl?: string | null,
   ) => void;
+  onActivityPlan?: (plan: ActivityBookPlan) => void;
   onBack: () => void;
   seedMode?: Mode;
   seedIdea?: string;
@@ -67,14 +71,20 @@ export function GuidedChat({
       setReferenceError("Could not read the image.");
     }
   }
-  const [mode, setMode] = useState<Mode | null>(null);
+  const [mode, setMode] = useState<Mode | null>(seedMode ?? null);
+  // The chat is "active" from the first paint (no separate mode-picker screen),
+  // so the playground hero hides and the chat claims the space immediately.
   useEffect(() => {
-    onActiveChange?.(mode !== null);
-  }, [mode, onActiveChange]);
+    onActiveChange?.(true);
+  }, [onActiveChange]);
   const [messages, setMessages] = useState<unknown[]>([]);
-  const [bubbles, setBubbles] = useState<Bubble[]>([]);
+  const [bubbles, setBubbles] = useState<Bubble[]>(
+    seedMode ? [] : [{ role: "assistant", text: BOOK_TYPE_INTRO }],
+  );
   const [view, setView] = useState<View | null>(null);
   const [pendingBrief, setPendingBrief] = useState<BookBrief | null>(null);
+  const [pendingActivityPlan, setPendingActivityPlan] =
+    useState<ActivityBookPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -84,7 +94,7 @@ export function GuidedChat({
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [bubbles, view, busy, pendingBrief]);
+  }, [bubbles, view, busy, pendingBrief, pendingActivityPlan]);
 
   // Consume the seed once on mount when the shell handed us a mode + idea.
   const seedConsumedRef = useRef(false);
@@ -113,6 +123,22 @@ export function GuidedChat({
     setMessages([]);
     setView(null);
     setPendingBrief(null);
+    setPendingActivityPlan(null);
+    setError(null);
+  }
+
+  function pickBookType(label: string) {
+    const opt = BOOK_TYPE_OPTIONS.find((o) => o.label === label);
+    if (opt) pickMode(opt.mode);
+  }
+
+  function resetToBookType() {
+    setMode(null);
+    setBubbles([{ role: "assistant", text: BOOK_TYPE_INTRO }]);
+    setMessages([]);
+    setView(null);
+    setPendingBrief(null);
+    setPendingActivityPlan(null);
     setError(null);
   }
 
@@ -182,6 +208,15 @@ export function GuidedChat({
           ...b,
           { role: "assistant", text: v.text || "(no response)" },
         ]);
+      } else if (v.kind === "activity-plan") {
+        setBubbles((b) => [
+          ...b,
+          {
+            role: "assistant",
+            text: `Here's your ${v.plan.pages.length}-page activity plan. Take a look — open the studio to start, or tell me what to tweak.`,
+          },
+        ]);
+        setPendingActivityPlan(v.plan);
       } else {
         setBubbles((b) => [
           ...b,
@@ -215,7 +250,7 @@ export function GuidedChat({
   }
 
   function confirmBrief() {
-    if (!pendingBrief || !mode) return;
+    if (!pendingBrief || !mode || mode === "activity") return;
     onBrief(pendingBrief, mode, reference);
   }
 
@@ -224,26 +259,32 @@ export function GuidedChat({
     void send(`Please revise the plan: ${feedback}`);
   }
 
-  if (!mode) {
-    return <ModePicker onPick={pickMode} />;
+  function confirmActivity() {
+    if (!pendingActivityPlan || !onActivityPlan) return;
+    onActivityPlan(pendingActivityPlan);
   }
 
-  // Free-form typing is always allowed when not busy — chips are a convenience.
-  const inputDisabled = busy;
+  function tweakActivity(feedback: string) {
+    setPendingActivityPlan(null);
+    void send(`Please revise the activity plan: ${feedback}`);
+  }
+
+  // Free-form typing is allowed once a book type is chosen and we're not busy.
+  const inputDisabled = busy || !mode;
+  // Activity is only offered where the host can hand a plan to the studio.
+  const bookTypeOptions = onActivityPlan
+    ? BOOK_TYPE_OPTIONS
+    : BOOK_TYPE_OPTIONS.filter((o) => o.mode !== "activity");
 
   return (
-    <div className="flex flex-col min-h-[72vh] max-h-[88vh]">
+    <div
+      className={`flex flex-col max-h-[90vh] ${mode ? "min-h-[82vh]" : "min-h-[62vh]"}`}
+    >
       <ChatHeader
         mode={mode}
         busy={busy}
         showClear={bubbles.some((b) => b.role === "user")}
-        onSwitchMode={() => {
-          setMode(null);
-          setBubbles([]);
-          setMessages([]);
-          setView(null);
-          setError(null);
-        }}
+        onSwitchMode={resetToBookType}
         onClearChat={clearChat}
       />
 
@@ -275,6 +316,14 @@ export function GuidedChat({
             </div>
           );
         })}
+
+        {!mode && !busy && (
+          <QuestionOptions
+            options={bookTypeOptions.map((o) => o.label)}
+            optionDescriptions={bookTypeOptions.map((o) => o.description)}
+            onPick={pickBookType}
+          />
+        )}
 
         {bubbles.length === 1 && !busy && !view && !pendingBrief && mode && (
           <QuickStartChips
@@ -311,6 +360,14 @@ export function GuidedChat({
           />
         )}
 
+        {pendingActivityPlan && !busy && (
+          <ActivityPlanPreview
+            plan={pendingActivityPlan}
+            onConfirm={confirmActivity}
+            onTweak={tweakActivity}
+          />
+        )}
+
         {error && (
           <div className="text-sm text-red-300 bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2">
             {error}
@@ -319,7 +376,7 @@ export function GuidedChat({
       </div>
 
       <div className="border-t border-white/10 p-3 md:p-4 space-y-2">
-        {mode !== "story" && (
+        {mode === "qa" && (
           <ReferenceAttachment
             reference={reference}
             referenceError={referenceError}
@@ -334,17 +391,19 @@ export function GuidedChat({
 
         <PlaceholdersAndVanishInput
           ref={inputHandleRef}
-          key={`${mode}-${pendingBrief ? "preview" : "open"}`}
+          key={`${mode ?? "pick"}-${pendingBrief ? "preview" : "open"}`}
           placeholders={
-            pendingBrief
-              ? ["Use the buttons above to confirm or tweak…"]
-              : view?.kind === "question" && view.options?.length
-                ? ["Pick an option above or type your own answer…"]
-                : bubbles.length <= 1
-                  ? MODE_INTROS[mode].placeholders
-                  : TYPE_ANSWER_PLACEHOLDERS
+            !mode
+              ? ["Pick a book type above to start…"]
+              : pendingBrief || pendingActivityPlan
+                ? ["Use the buttons above to confirm or tweak…"]
+                : view?.kind === "question" && view.options?.length
+                  ? ["Pick an option above or type your own answer…"]
+                  : bubbles.length <= 1
+                    ? MODE_INTROS[mode].placeholders
+                    : TYPE_ANSWER_PLACEHOLDERS
           }
-          disabled={inputDisabled || !!pendingBrief}
+          disabled={inputDisabled || !!pendingBrief || !!pendingActivityPlan}
           loading={busy}
           onStop={stopInFlight}
           onSubmit={() => {
