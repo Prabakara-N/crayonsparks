@@ -14,7 +14,8 @@ export type ActivityType =
   | "shapes"
   | "patterns"
   | "sorting"
-  | "opposites";
+  | "opposites"
+  | "color-reference";
 
 // Types the planner can include in a book (client-safe — no server deps,
 // so the studio UI can import this without pulling in the Gemini SDK).
@@ -35,6 +36,7 @@ export const PLANNABLE_TYPES: ActivityType[] = [
   "patterns",
   "sorting",
   "opposites",
+  "color-reference",
 ];
 
 export const ACTIVITY_TYPES: ActivityType[] = [
@@ -54,6 +56,7 @@ export const ACTIVITY_TYPES: ActivityType[] = [
   "patterns",
   "sorting",
   "opposites",
+  "color-reference",
 ];
 
 // Exact number of pages the user wants per activity type. Client-safe.
@@ -88,6 +91,8 @@ export interface ActivityParams {
   referenceWord?: string;
   aiObjects?: string[];
   aiTrace?: boolean;
+  color?: boolean;
+  model?: string;
 }
 
 // What the planner produces per page; what the generator consumes.

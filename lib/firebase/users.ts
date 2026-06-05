@@ -31,13 +31,28 @@ export async function ensureUserDocument(
   input: EnsureUserInput,
 ): Promise<UserProfileSnapshot> {
   const ref = db.collection("users").doc(input.uid);
-  const snap = await ref.get();
   const now = FieldValue.serverTimestamp();
 
-  if (!snap.exists) {
-    // New account — seed the Free-tier signup bonus + its ledger entry.
-    const batch = db.batch();
-    batch.set(ref, {
+  // Transaction makes the new-account check atomic; concurrent ensureUser
+  // calls can't both pass the !exists gate and double-seed the bonus.
+  const created = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (snap.exists) {
+      tx.set(
+        ref,
+        {
+          email: input.email,
+          displayName: input.displayName ?? null,
+          photoURL: input.photoURL ?? null,
+          signInProvider: input.signInProvider ?? null,
+          updatedAt: now,
+          lastSignInAt: now,
+        },
+        { merge: true },
+      );
+      return false;
+    }
+    tx.set(ref, {
       uid: input.uid,
       email: input.email,
       displayName: input.displayName ?? null,
@@ -50,7 +65,7 @@ export async function ensureUserDocument(
       lastSignInAt: now,
       welcomedAt: now,
     });
-    batch.set(ref.collection("credits").doc(), {
+    tx.set(ref.collection("credits").doc("signup"), {
       delta: SIGNUP_FREE_CREDITS,
       balanceAfter: SIGNUP_FREE_CREDITS,
       reason: "Welcome bonus — free credits for new accounts.",
@@ -60,28 +75,16 @@ export async function ensureUserDocument(
       createdByEmail: null,
       createdAt: now,
     });
-    await batch.commit();
+    return true;
+  });
 
-    if (input.email) {
-      const firstName = input.displayName?.trim().split(/\s+/)[0] ?? null;
-      sendWelcomeEmail({ to: input.email, firstName }).then((result) => {
-        if (!result.ok) {
-          console.warn("[users] welcome email send failed:", result.error);
-        }
-      });
-    }
-  } else {
-    await ref.set(
-      {
-        email: input.email,
-        displayName: input.displayName ?? null,
-        photoURL: input.photoURL ?? null,
-        signInProvider: input.signInProvider ?? null,
-        updatedAt: now,
-        lastSignInAt: now,
-      },
-      { merge: true },
-    );
+  if (created && input.email) {
+    const firstName = input.displayName?.trim().split(/\s+/)[0] ?? null;
+    sendWelcomeEmail({ to: input.email, firstName }).then((result) => {
+      if (!result.ok) {
+        console.warn("[users] welcome email send failed:", result.error);
+      }
+    });
   }
 
   const after = await ref.get();

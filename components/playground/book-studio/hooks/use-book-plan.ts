@@ -5,6 +5,7 @@ import { type StoryType } from "@/lib/story-book-planner";
 import type { DialogueStyle } from "@/lib/prompts";
 import type { ActivityBookPlan } from "@/lib/activity-book-planner";
 import type { ActivityCounts, ActivityDifficulty } from "@/lib/activities/types";
+import { NANO_BANANA_25, type ImageModel } from "@/lib/constants";
 import {
   getAuthIdToken,
   redirectToLogin,
@@ -91,6 +92,9 @@ export function useBookPlan({
   const [activityCounts, setActivityCounts] = useState<ActivityCounts>({});
   const [activityDifficulty, setActivityDifficulty] = useState<ActivityDifficulty | "auto">("auto");
   const [activityAiPictures, setActivityAiPictures] = useState(true);
+  const [activityColorMode, setActivityColorMode] = useState(false);
+  const [activityImageModel, setActivityImageModel] =
+    useState<ImageModel>(NANO_BANANA_25);
   const [activityPlan, setActivityPlan] = useState<ActivityBookPlan | null>(
     initialActivityPlan ?? null,
   );
@@ -167,6 +171,8 @@ export function useBookPlan({
             difficulty: activityDifficulty === "auto" ? undefined : activityDifficulty,
             counts: Object.keys(activityCounts).length ? activityCounts : undefined,
             aiPictures: activityAiPictures,
+            colorActivities: activityColorMode,
+            imageModel: activityImageModel,
             regenerationHint: hint,
           }),
         });
@@ -241,6 +247,8 @@ export function useBookPlan({
     activityCounts,
     activityDifficulty,
     activityAiPictures,
+    activityColorMode,
+    activityImageModel,
     storyType,
     storyCharacterNames,
     dialogueStyle,
@@ -333,6 +341,10 @@ export function useBookPlan({
     setActivityDifficulty,
     activityAiPictures,
     setActivityAiPictures,
+    activityColorMode,
+    setActivityColorMode,
+    activityImageModel,
+    setActivityImageModel,
     activityPlan,
     setActivityPlan,
     storyType,

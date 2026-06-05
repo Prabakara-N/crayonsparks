@@ -14,6 +14,7 @@ import {
 } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase/client";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { resetEnsureUser } from "@/lib/auth/ensure-user";
 
 interface AuthContextValue {
   user: FirebaseUser | null;
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })();
       } else {
         lastEnsuredUidRef.current = null;
+        resetEnsureUser();
         void fetch("/api/auth/session", { method: "DELETE" }).catch(() => {
           // Non-fatal.
         });

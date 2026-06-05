@@ -32,6 +32,8 @@ export interface ActivityBookPlanInput {
   counts?: ActivityCounts;
   weights?: Partial<Record<ActivityType, number>>;
   aiPictures?: boolean;
+  colorActivities?: boolean;
+  imageModel?: string;
   regenerationHint?: string;
 }
 
@@ -90,6 +92,19 @@ function assemblePlan(input: ActivityBookPlanInput, pool: ContentPool): Activity
     weights: input.weights,
     mix: input.mix,
   });
+  // A book is "dedicated" to letters/numbers when the theme says so OR when that
+  // tracing type dominates the page mix. Dedicated → one letter/number per page;
+  // general → trace a whole sentence, and numbers in ranges (0-4, 5-9).
+  const ideaLc = (input.idea ?? "").toLowerCase();
+  const letterPages = seq.filter((t) => t === "letter-tracing").length;
+  const numberPages = seq.filter((t) => t === "number-tracing").length;
+  const isAlphabetBook =
+    /\balphabet\b|\babc\b|a-z|a to z|letter book|letters? tracing/.test(ideaLc) ||
+    letterPages >= Math.max(8, Math.ceil(seq.length * 0.5));
+  const isNumberBook =
+    /\bnumbers?\b|counting book|\b123\b|0-9|0-10|1-10|1-20|1 to (10|20)/.test(ideaLc) ||
+    numberPages >= Math.max(6, Math.ceil(seq.length * 0.5));
+
   const counters: Record<string, number> = {};
   const take = <T>(arr: T[], key: string, fallback: T): T => {
     if (!arr.length) return fallback;
@@ -117,8 +132,17 @@ function assemblePlan(input: ActivityBookPlanInput, pool: ContentPool): Activity
         return { ...base, title: "Crossword", params: { clues: slice.length >= 4 ? slice : pool.crosswordWords.slice(0, 10), seed: i + 1 } };
       }
       case "letter-tracing": {
-        // Letters are universal — walk A→Z in order so an alphabet book covers
-        // every letter exactly once (then repeats only past 26 pages).
+        // Dedicated alphabet book → one letter per page, walking A→Z. General
+        // book → trace a whole sentence instead of a single letter.
+        if (!isAlphabetBook) {
+          const phrase = take(pool.phrases, "sw", "I can read");
+          return {
+            ...base,
+            type: "sight-word-tracing",
+            title: `Trace: ${phrase}`,
+            params: { phrase },
+          };
+        }
         const idx = counters.ltSeq ?? 0;
         counters.ltSeq = idx + 1;
         const ltr = ALPHABET[idx % ALPHABET.length];
@@ -129,6 +153,22 @@ function assemblePlan(input: ActivityBookPlanInput, pool: ContentPool): Activity
         return { ...base, title: `Trace the Letter ${ltr}`, params };
       }
       case "number-tracing": {
+        // Dedicated number book → one number per page. General book → a range
+        // per page (0-4, then 5-9), so a few pages cover all digits.
+        if (!isNumberBook) {
+          const ranges = [
+            [0, 1, 2, 3, 4],
+            [5, 6, 7, 8, 9],
+          ];
+          const r = counters.ntRange ?? 0;
+          counters.ntRange = r + 1;
+          const nums = ranges[r % ranges.length];
+          return {
+            ...base,
+            title: `Trace Numbers ${nums[0]}-${nums[nums.length - 1]}`,
+            params: { numbers: nums },
+          };
+        }
         const idx = counters.ntSeq ?? 0;
         counters.ntSeq = idx + 1;
         const n = (idx % 20) + 1;
@@ -195,7 +235,25 @@ function assemblePlan(input: ActivityBookPlanInput, pool: ContentPool): Activity
       case "color-by-number":
         return { ...base, title: "Color by Number", params: { paletteLegend: take(pool.colorLegends, "cbn", [{ n: 1, label: "red" }]), seed: i + 1 } };
       case "spot-difference":
-        return { ...base, title: "Spot the Difference", params: { seed: i + 1 } };
+        return {
+          ...base,
+          title: "Spot the Difference",
+          params: {
+            seed: i + 1,
+            color: input.colorActivities === true,
+            model: input.imageModel,
+          },
+        };
+      case "color-reference":
+        return {
+          ...base,
+          title: "Color the Picture",
+          params: {
+            shape: take(pool.objectWords, "cref", "a friendly cartoon animal"),
+            seed: i + 1,
+            model: input.imageModel,
+          },
+        };
       default:
         return { ...base, title: "Maze", params: { seed: i + 1 } };
     }

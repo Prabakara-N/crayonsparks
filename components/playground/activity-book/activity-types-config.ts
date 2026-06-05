@@ -5,6 +5,7 @@ import {
   Grid3x3,
   Hash,
   Link2,
+  Palette,
   PenLine,
   Repeat,
   Route,
@@ -40,6 +41,7 @@ export const ACTIVITY_TYPE_META: Record<ActivityType, ActivityTypeMeta> = {
   patterns: { type: "patterns", label: "Patterns", icon: Repeat, blurb: "Finish the repeating pattern" },
   sorting: { type: "sorting", label: "Sorting", icon: Filter, blurb: "Circle the one that's different" },
   opposites: { type: "opposites", label: "Opposites", icon: ArrowLeftRight, blurb: "Match each pair of opposites" },
+  "color-reference": { type: "color-reference", label: "Color by Reference", icon: Palette, blurb: "Color the picture to match a reference (AI)" },
 };
 
 export const PLANNABLE_TYPE_META: ActivityTypeMeta[] = PLANNABLE_TYPES.map(

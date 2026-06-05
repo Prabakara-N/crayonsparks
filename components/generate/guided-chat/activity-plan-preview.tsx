@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ActivityBookPlan } from "@/lib/book-chat";
 import type { ActivityType } from "@/lib/activities/types";
 import { ACTIVITY_TYPE_META } from "@/components/playground/activity-book/activity-types-config";
+import { ActivityTypeChecklist } from "./activity-type-checklist";
 
 interface ActivityPlanPreviewProps {
   plan: ActivityBookPlan;
@@ -17,11 +18,20 @@ export function ActivityPlanPreview({
   onTweak,
 }: ActivityPlanPreviewProps) {
   const [tweakOpen, setTweakOpen] = useState(false);
+  const [pickOpen, setPickOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
 
   const counts = new Map<ActivityType, number>();
   for (const p of plan.pages) counts.set(p.type, (counts.get(p.type) ?? 0) + 1);
   const breakdown = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const planTypes = [...counts.keys()];
+
+  const applyTypes = (types: ActivityType[]) => {
+    setPickOpen(false);
+    onTweak(
+      `Rebuild the activity book using ONLY these activity types: ${types.join(", ")}. Keep the same theme, age and page count.`,
+    );
+  };
 
   return (
     <div className="mt-2 rounded-2xl border border-violet-500/40 bg-linear-to-br from-violet-500/10 to-cyan-500/5 p-4 space-y-3">
@@ -49,7 +59,13 @@ export function ActivityPlanPreview({
         ))}
       </div>
 
-      {tweakOpen ? (
+      {pickOpen ? (
+        <ActivityTypeChecklist
+          initial={planTypes}
+          onApply={applyTypes}
+          onCancel={() => setPickOpen(false)}
+        />
+      ) : tweakOpen ? (
         <div className="space-y-2">
           <textarea
             value={feedback}
@@ -84,6 +100,12 @@ export function ActivityPlanPreview({
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-linear-to-r from-emerald-500 to-cyan-500 shadow-lg shadow-emerald-500/30 hover:shadow-xl"
           >
             ✓ Looks good — open the studio
+          </button>
+          <button
+            onClick={() => setPickOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-violet-100 bg-white/5 border border-white/15 hover:bg-white/10"
+          >
+            ☑ Choose activities
           </button>
           <button
             onClick={() => setTweakOpen(true)}

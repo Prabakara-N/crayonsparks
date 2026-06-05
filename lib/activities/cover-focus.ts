@@ -19,6 +19,7 @@ const ACTIVITY_COVER_DEPICTION: Record<ActivityType, string> = {
   patterns: "finishing a row of repeating shapes",
   sorting: "circling the picture that is different",
   opposites: "matching opposite words like big and small",
+  "color-reference": "coloring a picture to match a colorful reference",
 };
 
 // Short noun label per activity, for building the cover title.
@@ -39,6 +40,7 @@ const ACTIVITY_TITLE_LABEL: Record<ActivityType, string> = {
   patterns: "Patterns",
   sorting: "Sorting",
   opposites: "Opposites",
+  "color-reference": "Color by Reference",
 };
 
 export interface ActivityTypeCount {

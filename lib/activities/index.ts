@@ -20,6 +20,7 @@ import { generateShapes } from "./shapes";
 import { generatePatterns } from "./patterns";
 import { generateSorting } from "./sorting";
 import { generateOpposites } from "./opposites";
+import { generateColorReference } from "./color-reference";
 
 function proc(type: ActivityType, fn: (s: ActivitySpec) => ActivityResult): ActivityGenerator {
   return { type, isProcedural: true, generate: (spec) => fn(spec) };
@@ -46,6 +47,7 @@ export const ACTIVITY_GENERATORS: Partial<Record<ActivityType, ActivityGenerator
   patterns: proc("patterns", generatePatterns),
   sorting: proc("sorting", generateSorting),
   opposites: proc("opposites", generateOpposites),
+  "color-reference": illus("color-reference", generateColorReference),
 };
 
 export function getActivityGenerator(type: ActivityType): ActivityGenerator | undefined {

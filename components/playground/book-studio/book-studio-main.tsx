@@ -422,6 +422,10 @@ export function BookStudio({
           setActivityDifficulty={bookPlan.setActivityDifficulty}
           activityAiPictures={bookPlan.activityAiPictures}
           setActivityAiPictures={bookPlan.setActivityAiPictures}
+          activityColorMode={bookPlan.activityColorMode}
+          setActivityColorMode={bookPlan.setActivityColorMode}
+          activityImageModel={bookPlan.activityImageModel}
+          setActivityImageModel={bookPlan.setActivityImageModel}
           storyType={bookPlan.storyType}
           setStoryType={bookPlan.setStoryType}
           storyCharacterNames={bookPlan.storyCharacterNames}

@@ -28,7 +28,7 @@ export function HeroSection() {
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 py-20 text-center">
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white">
-          Create kids&apos; books
+          Create kid&apos;s books
           <br />
           <span className="gradient-text">in minutes, not months</span>
         </h1>
@@ -44,7 +44,7 @@ export function HeroSection() {
               { text: "·" },
               { text: "Activity", className: "text-cyan-400" },
               { text: "books", className: "text-cyan-400" },
-              { text: "(soon)", className: "text-cyan-400/60" },
+              { text: ".", className: "text-cyan-400/60" },
             ]}
             className="text-lg md:text-xl text-neutral-300"
           />

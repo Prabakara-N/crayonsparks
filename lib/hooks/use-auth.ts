@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { orpc } from "@/lib/orpc/client";
+import { ensureUserOnce } from "@/lib/auth/ensure-user";
 
 /**
  * Wraps the oRPC `auth.*` procedures so any component can call them
@@ -9,13 +10,7 @@ import { orpc } from "@/lib/orpc/client";
  * server errors — these calls are non-fatal for the sign-in flow.
  */
 export function useAuth() {
-  const ensureUser = useCallback(async () => {
-    try {
-      return await orpc.auth.ensureUser();
-    } catch {
-      return null;
-    }
-  }, []);
+  const ensureUser = useCallback(() => ensureUserOnce(), []);
 
   const me = useCallback(async () => {
     try {

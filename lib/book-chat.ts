@@ -330,6 +330,7 @@ WHEN YOU CALL finalize_activity
 - difficulty: easy / medium / hard, or null for an automatic difficulty ramp ("Auto").
 - mix: ONLY the specific activity-type slugs the user explicitly chose; null/empty for an auto-balanced mix.
 - aiPictures: true unless the user asked for line-art-only.
+- color: true only if the user wants the picture activities (spot-the-difference, color-by-reference) in full color; default false (black-and-white).
 
 CRITICAL TOOL-CALLING RULE — READ TWICE:
 You MUST call exactly ONE tool per turn (\`ask_user\` OR \`finalize_activity\`). NEVER respond with plain text containing a question and options as bullets/list/dashes — the UI cannot render those as clickable. Instead call \`ask_user\` with the question + options array. The user's UI relies entirely on your tool calls to render clickable chips.`;
@@ -364,6 +365,12 @@ const finalizeActivitySchema = z.object({
     .boolean()
     .describe(
       "Whether to include AI-illustrated activity pages (seek-and-find, color-by-number, spot-the-difference). Default true unless the user asked for simple line-art only.",
+    ),
+  color: z
+    .boolean()
+    .nullable()
+    .describe(
+      "Whether the picture activities (spot-the-difference, color-by-reference) should render in full COLOR instead of black-and-white. Default false (B&W) unless the user asks for color.",
     ),
   mix: z
     .array(z.enum(PLANNABLE_TYPES as [ActivityType, ...ActivityType[]]))
@@ -647,6 +654,7 @@ function activityInputFromArgs(
     difficulty: args.difficulty ?? undefined,
     mix: mix.length ? mix : undefined,
     aiPictures: args.aiPictures,
+    colorActivities: args.color === true,
   };
 }
 

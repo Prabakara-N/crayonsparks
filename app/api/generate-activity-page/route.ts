@@ -3,7 +3,13 @@ import { readBoundedJson } from "@/lib/api/bounded-json";
 import { requireAuth } from "@/lib/auth/server-require-auth";
 import { preauthorizeCharge } from "@/lib/credits/charge";
 import { generateImageByModel } from "@/lib/image-providers";
-import { DEFAULT_INTERIOR_MODEL, GPT_IMAGE_1_MINI } from "@/lib/constants";
+import {
+  DEFAULT_INTERIOR_MODEL,
+  GPT_IMAGE_1_MINI,
+  NANO_BANANA_25,
+  GPT_IMAGE_1,
+  type ImageModel,
+} from "@/lib/constants";
 import { getActivityGenerator } from "@/lib/activities";
 import { rasterizeActivitySvg } from "@/lib/activity-rasterize";
 import { SEEK_AND_FIND_PROMPT } from "@/lib/prompts/activities/seek-and-find";
@@ -18,6 +24,11 @@ import {
   SPOT_DIFFERENCE_CIRCLE_PROMPT,
 } from "@/lib/prompts/activities/spot-difference";
 import { generateSpotDifference, spotDifferenceCount } from "@/lib/activities/spot-difference";
+import {
+  COLOR_REFERENCE_COLOR_PROMPT,
+  COLOR_REFERENCE_BW_PROMPT,
+} from "@/lib/prompts/activities/color-reference";
+import { generateColorReference } from "@/lib/activities/color-reference";
 import { generateMatching } from "@/lib/activities/matching";
 import { generateCounting } from "@/lib/activities/counting";
 import { generatePatterns } from "@/lib/activities/patterns";
@@ -49,6 +60,15 @@ function sanitizeSpec(spec: ActivitySpec): ActivitySpec {
     title: String(spec.title).slice(0, 120),
     theme: typeof spec.theme === "string" ? spec.theme.slice(0, 80) : "",
   };
+}
+
+// Color picture-activities (color-reference, color spot-difference) may pick
+// between Nano Banana 2.5 and GPT Image 1; anything else falls back to default.
+const ACTIVITY_IMAGE_MODELS: ImageModel[] = [NANO_BANANA_25, GPT_IMAGE_1];
+function pickActivityModel(m: unknown): ImageModel {
+  return typeof m === "string" && ACTIVITY_IMAGE_MODELS.includes(m as ImageModel)
+    ? (m as ImageModel)
+    : DEFAULT_INTERIOR_MODEL;
 }
 
 function illustratedPrompt(spec: ActivitySpec): string {
@@ -222,19 +242,19 @@ export async function POST(req: Request) {
       const charge = await preauthorizeCharge(req, { kind: "activity", op: "page" });
       if (!charge.ok) return charge.response;
       const count = spotDifferenceCount(spec);
+      const isColor = spec.params.color === true;
       const specWithCount = { ...spec, params: { ...spec.params, differenceCount: count } };
-      const model = DEFAULT_INTERIOR_MODEL;
-      const img1 = await generateImageByModel(SPOT_DIFFERENCE_PROMPT({ theme: spec.theme }), {
-        aspectRatio: "4:3",
-        model,
-      });
+      const model = pickActivityModel(spec.params.model);
+      const img1 = await generateImageByModel(
+        SPOT_DIFFERENCE_PROMPT({ theme: spec.theme, color: isColor }),
+        { aspectRatio: "4:3", model },
+      );
       const ref1 = { mimeType: img1.mimeType, data: img1.data };
       const p1 = `data:${img1.mimeType};base64,${img1.data}`;
-      const img2 = await generateImageByModel(SPOT_DIFFERENCE_CHANGES_PROMPT({ count }), {
-        aspectRatio: "4:3",
-        model,
-        sourceImage: ref1,
-      });
+      const img2 = await generateImageByModel(
+        SPOT_DIFFERENCE_CHANGES_PROMPT({ count, color: isColor }),
+        { aspectRatio: "4:3", model, sourceImage: ref1 },
+      );
       const ref2 = { mimeType: img2.mimeType, data: img2.data };
       const p2 = `data:${img2.mimeType};base64,${img2.data}`;
       let p2c: string | undefined;
@@ -251,6 +271,34 @@ export async function POST(req: Request) {
       }
       const payload = await rasterizeResult(generateSpotDifference(specWithCount, p1, p2, p2c));
       await charge.commit("Generated spot-difference page");
+      return NextResponse.json(payload);
+    }
+
+    // Color-by-reference: a small COLOR picture (the reference), then the SAME
+    // picture redrawn as B&W line art (img2img) for the child to color to match.
+    if (spec.type === "color-reference") {
+      const charge = await preauthorizeCharge(req, { kind: "coloring", op: "page" });
+      if (!charge.ok) return charge.response;
+      const subject =
+        (typeof spec.params.shape === "string" && spec.params.shape.trim()) ||
+        spec.theme ||
+        "a friendly cartoon animal";
+      const model = pickActivityModel(spec.params.model);
+      const colorImg = await generateImageByModel(
+        COLOR_REFERENCE_COLOR_PROMPT({ theme: spec.theme, subject }),
+        { aspectRatio: "1:1", model },
+      );
+      const colorUrl = `data:${colorImg.mimeType};base64,${colorImg.data}`;
+      const bwImg = await generateImageByModel(COLOR_REFERENCE_BW_PROMPT(), {
+        aspectRatio: "1:1",
+        model,
+        sourceImage: { mimeType: colorImg.mimeType, data: colorImg.data },
+      });
+      const bwUrl = `data:${bwImg.mimeType};base64,${bwImg.data}`;
+      const payload = await rasterizeResult(
+        generateColorReference(spec, colorUrl, bwUrl),
+      );
+      await charge.commit("Generated color-by-reference page");
       return NextResponse.json(payload);
     }
 

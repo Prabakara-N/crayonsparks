@@ -1,6 +1,10 @@
 import type { ActivityResult, ActivitySpec } from "./types";
 import { escapeXml, PAGE, SANS, svgDocument, titleBlock } from "./page";
-import { traceAdvanceWidth, traceTextPathData } from "./trace-font";
+import {
+  traceAdvanceWidth,
+  traceTextPathData,
+  traceMetrics,
+} from "./trace-font";
 
 export interface TracingOptions {
   headerLine: string;
@@ -13,10 +17,30 @@ export interface TracingOptions {
 
 const TRACE_STROKE = "#9aa0a6";
 
+interface RowGeometry {
+  top: number;
+  mid: number;
+  base: number;
+  fontSize: number;
+}
+
+// Derive the glyph size + three ruled lines from the font's real ink metrics:
+// caps/ascenders reach the top line, everything rests on the baseline with
+// descender room, and the dashed guide sits at the exact CENTRE between the top
+// and base lines (what reads as "centred" on the page).
+function rowGeometry(y: number, rowH: number): RowGeometry {
+  const { ascent, descent } = traceMetrics();
+  const fontSize = (rowH * 0.78) / (ascent + descent);
+  const ascPx = ascent * fontSize;
+  const descPx = descent * fontSize;
+  const topPad = (rowH - (ascPx + descPx)) / 2;
+  const base = y + topPad + ascPx;
+  const top = base - ascPx;
+  return { top, mid: (top + base) / 2, base, fontSize };
+}
+
 function ruledRow(y: number, rowH: number): string {
-  const top = y + rowH * 0.16;
-  const mid = y + rowH * 0.28;
-  const base = y + rowH * 0.76;
+  const { top, mid, base } = rowGeometry(y, rowH);
   const x1 = PAGE.margin;
   const x2 = PAGE.w - PAGE.margin;
   return (
@@ -26,19 +50,21 @@ function ruledRow(y: number, rowH: number): string {
   );
 }
 
+// Row 1 of a trace page: single-dotted skeleton glyphs to trace over. Each pen
+// stroke is one dotted line (single-stroke font) — no solid model, no double
+// outline.
 function traceGlyphs(y: number, rowH: number, text: string, repeat: boolean): string {
-  const base = y + rowH * 0.76;
-  const fontSize = rowH * 0.86;
+  const { base, fontSize } = rowGeometry(y, rowH);
   const x = PAGE.margin + 16;
-  const unit = `${text} `;
   let content = text;
   if (repeat) {
-    const available = PAGE.w - 2 * PAGE.margin - 16;
+    const unit = `${text} `;
     const unitWidth = traceAdvanceWidth(unit, fontSize);
+    const available = PAGE.w - 2 * PAGE.margin - 16;
     content = unit.repeat(Math.max(2, Math.floor(available / unitWidth)));
   }
   const d = traceTextPathData(content, x, base, fontSize);
-  return `<path d="${d}" fill="none" stroke="${TRACE_STROKE}" stroke-width="2.5" stroke-dasharray="2 7" stroke-linecap="round"/>`;
+  return `<path d="${d}" fill="none" stroke="${TRACE_STROKE}" stroke-width="2.5" stroke-dasharray="2 6" stroke-linecap="round"/>`;
 }
 
 function referenceBlock(opts: TracingOptions, assetDataUrl: string): string {

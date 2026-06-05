@@ -28,6 +28,12 @@ import { StoryTypePicker } from "@/components/playground/story-type-picker";
 import { DialogueStylePicker } from "@/components/playground/dialogue-style-picker";
 import type { DialogueStyle } from "@/lib/prompts";
 import type { ActivityCounts, ActivityDifficulty, ActivityType } from "@/lib/activities/types";
+import {
+  NANO_BANANA_25,
+  GPT_IMAGE_1,
+  MODEL_LABELS,
+  type ImageModel,
+} from "@/lib/constants";
 import { ActivityCountPicker } from "@/components/playground/activity-book/activity-count-picker";
 import { ActivitySplitPreview } from "@/components/playground/activity-book/activity-split-preview";
 import { ACTIVITY_TYPE_META } from "@/components/playground/activity-book/activity-types-config";
@@ -65,6 +71,10 @@ export function IdeaForm({
   setActivityDifficulty,
   activityAiPictures,
   setActivityAiPictures,
+  activityColorMode,
+  setActivityColorMode,
+  activityImageModel,
+  setActivityImageModel,
   storyType,
   setStoryType,
   storyCharacterNames,
@@ -100,6 +110,10 @@ export function IdeaForm({
   setActivityDifficulty: (v: ActivityDifficulty | "auto") => void;
   activityAiPictures: boolean;
   setActivityAiPictures: (v: boolean) => void;
+  activityColorMode: boolean;
+  setActivityColorMode: (v: boolean) => void;
+  activityImageModel: ImageModel;
+  setActivityImageModel: (v: ImageModel) => void;
   storyType: StoryType | null;
   setStoryType: (v: StoryType | null) => void;
   storyCharacterNames: string;
@@ -593,6 +607,47 @@ export function IdeaForm({
               </span>
             </span>
           </label>
+          <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-zinc-900/60 p-4 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={activityColorMode}
+              onChange={(e) => setActivityColorMode(e.target.checked)}
+              disabled={planning}
+              className="mt-0.5 w-4 h-4 accent-violet-500 shrink-0"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-neutral-100">
+                Color picture activities
+              </span>
+              <span className="block text-xs text-neutral-400 mt-0.5 leading-relaxed">
+                Spot-the-difference and color-by-reference pages render in full
+                color instead of black-and-white.
+              </span>
+            </span>
+          </label>
+          <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-4">
+            <span className="block text-sm font-semibold text-neutral-100 mb-2">
+              Picture model
+            </span>
+            <div className="flex gap-2">
+              {([NANO_BANANA_25, GPT_IMAGE_1] as ImageModel[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setActivityImageModel(m)}
+                  disabled={planning}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors",
+                    activityImageModel === m
+                      ? "bg-violet-500/15 border-violet-500/40 text-violet-100"
+                      : "bg-white/5 border-white/10 text-neutral-400 hover:bg-white/10",
+                  )}
+                >
+                  {MODEL_LABELS[m]}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

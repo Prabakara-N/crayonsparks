@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { orpc } from "@/lib/orpc/client";
+import { ensureUserOnce } from "@/lib/auth/ensure-user";
 import { useAuthContext } from "@/components/auth/auth-provider";
 import { REFERRAL_SOURCES } from "@/lib/referrals/sources";
 import { Button } from "@/components/ui/button";
@@ -33,10 +34,9 @@ export function ReferralSurvey() {
     if (checkedRef.current === user.uid) return;
     checkedRef.current = user.uid;
     let cancelled = false;
-    orpc.auth
-      .ensureUser()
+    ensureUserOnce()
       .then((profile) => {
-        if (cancelled) return;
+        if (cancelled || !profile) return;
         if (!profile.referralSource) {
           setOpen(true);
         }

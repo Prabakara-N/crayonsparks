@@ -3,8 +3,8 @@ import "server-only";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-// Point fontconfig at our bundled public/fonts dir so sharp/librsvg resolves "Patrick Hand" (it ignores SVG @font-face) instead of rendering tofu on font-less hosts.
-export const ACTIVITY_FONT_FAMILY = "Patrick Hand";
+// Point fontconfig at our bundled public/fonts dir so sharp/librsvg resolves the family (it ignores SVG @font-face) instead of rendering tofu on font-less hosts. Clean bold sans for activity titles/headers.
+export const ACTIVITY_FONT_FAMILY = "Liberation Sans";
 
 let registered = false;
 
