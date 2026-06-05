@@ -46,5 +46,20 @@ export function useCredits(options: { withLedger?: boolean } = {}) {
     void refresh();
   }, [refresh]);
 
-  return { balance, entries, loading, error, refresh };
+  const usage = useCallback(
+    (range?: { fromMs?: number; toMs?: number; days?: number }) =>
+      orpc.credits.usage(range ?? { days: 30 }),
+    [],
+  );
+
+  const ledgerPage = useCallback(
+    (params: {
+      category: "all" | "coloring" | "story" | "activity" | "grant";
+      page: number;
+      pageSize: number;
+    }) => orpc.credits.ledgerPage(params),
+    [],
+  );
+
+  return { balance, entries, loading, error, refresh, usage, ledgerPage };
 }

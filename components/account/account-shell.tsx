@@ -5,7 +5,7 @@ import { useRequireAuth } from "@/lib/hooks/use-require-auth";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { SidebarMobileClose } from "@/components/ui/sidebar-mobile-close";
 import { AccountSidebar } from "./account-sidebar";
-import { AccountShellSkeleton } from "./account-shell-skeleton";
+import { ShellSkeleton } from "@/components/ui/shell-skeleton";
 import { AccountMobileHeader } from "./account-mobile-header";
 
 interface AccountShellProps {
@@ -16,7 +16,7 @@ export function AccountShell({ children }: AccountShellProps) {
   const { user, loading } = useRequireAuth();
 
   if (loading || !user) {
-    return <AccountShellSkeleton />;
+    return <ShellSkeleton />;
   }
 
   return (

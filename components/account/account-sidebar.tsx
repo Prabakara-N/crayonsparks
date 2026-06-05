@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   BookOpen,
   CreditCard,
+  Coins,
   Store,
   type LucideIcon,
 } from "lucide-react";
@@ -37,6 +38,7 @@ interface NavItem {
 const BASE_NAV_ITEMS: NavItem[] = [
   { href: "/account", label: "Dashboard", icon: LayoutDashboard },
   { href: "/account/books", label: "My Books", icon: BookOpen },
+  { href: "/account/credits", label: "Credits", icon: Coins },
   { href: "/account/billing", label: "Billing", icon: CreditCard },
 ];
 

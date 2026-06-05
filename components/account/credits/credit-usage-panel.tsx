@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { TrendingUp } from "lucide-react";
-import { useBilling } from "@/lib/hooks/use-billing";
+import { useCredits } from "@/lib/hooks/use-credits";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   CostBarChart,
@@ -23,7 +23,7 @@ interface UsageData {
 const DAY = 24 * 60 * 60 * 1000;
 
 export function CreditUsagePanel() {
-  const { usage } = useBilling();
+  const { usage } = useCredits();
   const [data, setData] = useState<UsageData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rangeId, setRangeId] = useState<CostRangeId>("30d");

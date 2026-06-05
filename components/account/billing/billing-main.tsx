@@ -1,20 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Receipt } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useCredits } from "@/lib/hooks/use-credits";
 import { useBilling } from "@/lib/hooks/use-billing";
 import { usePlan } from "@/lib/hooks/use-plan";
 import { useDialog } from "@/components/ui/confirm-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { CREDIT_PACKS } from "@/lib/billing/packs";
 import type { BillingCycle, PlanId } from "@/lib/billing/plans";
 import { PageHeader } from "../page-header";
 import { CreditPackCard } from "./credit-pack-card";
 import { CurrentPlanCard } from "./current-plan-card";
 import { PlanTiers } from "./plan-tiers";
-import { CreditUsagePanel } from "./credit-usage-panel";
 
 export function BillingMain() {
   const { balance, entries, loading, refresh } = useCredits({
@@ -188,73 +187,21 @@ export function BillingMain() {
         </p>
       </div>
 
-      <CreditUsagePanel />
-
-      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-white/10 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="font-display text-lg font-semibold text-white">
-              Credit ledger
-            </h2>
-            <p className="text-sm text-neutral-400 mt-1">
-              Every grant, purchase, and spend on your account.
-            </p>
-          </div>
-          <Receipt className="w-5 h-5 text-neutral-500" />
+      <Link
+        href="/account/credits"
+        className="flex items-center justify-between gap-3 rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-white/10 p-5 hover:border-violet-500/40 transition-colors"
+      >
+        <div>
+          <h2 className="font-display text-lg font-semibold text-white">
+            Credit usage &amp; history
+          </h2>
+          <p className="text-sm text-neutral-400 mt-1">
+            See where your credits go by book type, and review every
+            transaction.
+          </p>
         </div>
-        {loading ? (
-          <ul className="space-y-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <li
-                key={i}
-                className="flex items-center justify-between gap-3 rounded-xl bg-black/30 border border-white/5 px-3 py-2.5"
-              >
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <Skeleton className="h-3.5 w-2/3" />
-                  <Skeleton className="h-2.5 w-1/3" />
-                </div>
-                <Skeleton className="h-4 w-10" />
-              </li>
-            ))}
-          </ul>
-        ) : entries.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/10 py-10 text-center text-sm text-neutral-500">
-            No transactions yet.
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {entries.map((e) => {
-              const positive = e.delta > 0;
-              return (
-                <li
-                  key={e.id}
-                  className="flex items-center justify-between gap-3 rounded-xl bg-black/30 border border-white/5 px-3 py-2.5"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm text-neutral-200 truncate">
-                      {e.reason}
-                    </p>
-                    <p className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono mt-0.5">
-                      {e.refKind}
-                      {e.createdAt
-                        ? ` · ${new Date(e.createdAt).toLocaleString()}`
-                        : ""}
-                    </p>
-                  </div>
-                  <span
-                    className={`font-mono text-sm font-semibold shrink-0 ${
-                      positive ? "text-emerald-300" : "text-red-300"
-                    }`}
-                  >
-                    {positive ? "+" : ""}
-                    {e.delta}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+        <ArrowRight className="w-5 h-5 text-neutral-400 shrink-0" />
+      </Link>
     </div>
   );
 }

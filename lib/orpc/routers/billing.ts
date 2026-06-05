@@ -11,15 +11,7 @@ import {
 } from "@/lib/billing/lemonsqueezy";
 import { getBillingSummary } from "@/lib/firebase/users";
 import { getSubscriptionId } from "@/lib/firebase/subscriptions";
-import { db } from "@/lib/firebase/admin";
-import { buildUsageSeries, type UsageSpend } from "@/lib/credits/usage-series";
 import { protectedProcedure } from "../base";
-
-const UsageInput = z.object({
-  fromMs: z.number().int().nonnegative().optional(),
-  toMs: z.number().int().nonnegative().optional(),
-  days: z.number().int().min(1).max(120).optional(),
-});
 
 const CheckoutInput = z.object({
   packId: z.string().min(1),
@@ -34,34 +26,6 @@ export const billingRouter = {
   summary: protectedProcedure.handler(async ({ context }) => {
     return getBillingSummary(context.userId as string);
   }),
-
-  usage: protectedProcedure
-    .input(UsageInput)
-    .handler(async ({ context, input }) => {
-      const DAY = 24 * 60 * 60 * 1000;
-      const now = Date.now();
-      const end = input.toMs ?? now;
-      const start = input.fromMs ?? end - (input.days ?? 30) * DAY;
-
-      const snap = await db
-        .collection("users")
-        .doc(context.userId as string)
-        .collection("credits")
-        .orderBy("createdAt", "desc")
-        .limit(3000)
-        .get();
-
-      const spends: UsageSpend[] = snap.docs
-        .map((d) => d.data())
-        .filter((data) => (data.refKind as string | undefined) === "spend")
-        .map((data) => ({
-          at: (data.createdAt?.toMillis?.() as number | undefined) ?? 0,
-          delta: (data.delta as number) ?? 0,
-          reason: (data.reason as string | undefined) ?? "",
-        }));
-
-      return buildUsageSeries(spends, start, end);
-    }),
 
   createCheckout: protectedProcedure
     .input(CheckoutInput)

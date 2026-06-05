@@ -1,8 +1,8 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Layout-shaped placeholder shown while the account shell resolves auth —
- *  the sidebar and content area shimmer in place instead of bare text. */
-export function AccountShellSkeleton() {
+// Layout-shaped placeholder shown while an account/admin shell resolves auth —
+// the sidebar and content area shimmer in place instead of a bare spinner.
+export function ShellSkeleton() {
   return (
     <div className="pt-16 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
