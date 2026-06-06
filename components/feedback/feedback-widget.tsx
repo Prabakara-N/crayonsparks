@@ -113,9 +113,9 @@ export function FeedbackWidget() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Send feedback"
-        className="fixed bottom-4 right-4 z-40 flex h-10 w-10 items-center justify-center rounded-lg text-violet-300 hover:bg-white/5 hover:text-violet-200 transition-colors"
+        className="fixed bottom-4 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-linear-to-r from-violet-500 to-cyan-400 text-white shadow-lg shadow-violet-500/30 hover:scale-105 active:scale-100 transition-transform"
       >
-        <MessageSquare className="h-6 w-6" />
+        <MessageSquare className="h-5 w-5" fill="currentColor" strokeWidth={1.5} />
       </button>
 
       <Sheet open={open} onOpenChange={setOpen}>
