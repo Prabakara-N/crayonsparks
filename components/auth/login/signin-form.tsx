@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signInWithEmail } from "@/lib/auth/sign-in-helpers";
 import { getFriendlyAuthError } from "@/lib/auth/friendly-errors";
@@ -24,6 +25,7 @@ export function SignInForm({ onSuccess }: SignInFormProps) {
   const [busy, setBusy] = useState(false);
 
   const signUpHref = `/signup${params.toString() ? `?${params.toString()}` : ""}`;
+  const forgotHref = `/forgot-password${params.toString() ? `?${params.toString()}` : ""}`;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -81,6 +83,14 @@ export function SignInForm({ onSuccess }: SignInFormProps) {
         disabled={busy}
         required
       />
+      <div className="-mt-2 text-right">
+        <Link
+          href={forgotHref}
+          className="text-xs font-medium text-neutral-500 transition hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
+        >
+          Forgot password?
+        </Link>
+      </div>
       <AuthError
         message={error}
         suggestSignUp={suggestSignUp}

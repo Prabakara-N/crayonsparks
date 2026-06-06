@@ -6,6 +6,8 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signOut as firebaseSignOut,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
   type User,
 } from "firebase/auth";
 import { firebaseAuth, googleProvider } from "@/lib/firebase/client";
@@ -67,4 +69,17 @@ export async function signInWithGoogle(): Promise<User> {
 export async function signOut(): Promise<void> {
   const auth = ensureAuth();
   await firebaseSignOut(auth);
+}
+
+export async function verifyResetCode(oobCode: string): Promise<string> {
+  const auth = ensureAuth();
+  return verifyPasswordResetCode(auth, oobCode);
+}
+
+export async function confirmReset(
+  oobCode: string,
+  newPassword: string,
+): Promise<void> {
+  const auth = ensureAuth();
+  await confirmPasswordReset(auth, oobCode, newPassword);
 }

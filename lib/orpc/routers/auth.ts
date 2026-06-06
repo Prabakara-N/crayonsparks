@@ -8,12 +8,21 @@ import {
   setReferralSource,
 } from "@/lib/firebase/users";
 import { isReferralSource } from "@/lib/referrals/sources";
-import { protectedProcedure } from "../base";
+import { sendPasswordResetEmail } from "@/lib/email/send-password-reset-email";
+import { protectedProcedure, publicProcedure } from "../base";
 
 const ReferralInput = z.object({
   source: z.string().min(1).max(40),
   other: z.string().max(200).optional(),
 });
+
+const PasswordResetInput = z.object({
+  email: z.string().email().max(320),
+});
+
+function getSiteUrl(): string {
+  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+}
 
 export const authRouter = {
   me: protectedProcedure.handler(async ({ context }) => {
@@ -51,5 +60,27 @@ export const authRouter = {
         other: input.source === "other" ? input.other ?? null : null,
       });
       return { ok: true };
+    }),
+  requestPasswordReset: publicProcedure
+    .input(PasswordResetInput)
+    .handler(async ({ input }) => {
+      const email = input.email.trim().toLowerCase();
+      try {
+        const link = await getAdminAuth().generatePasswordResetLink(email);
+        const oobCode = new URL(link).searchParams.get("oobCode");
+        if (oobCode) {
+          const resetUrl = `${getSiteUrl()}/reset-password?oobCode=${encodeURIComponent(oobCode)}`;
+          await sendPasswordResetEmail({ to: email, resetUrl });
+        }
+      } catch (err) {
+        const code =
+          err && typeof err === "object" && "code" in err
+            ? (err as { code?: string }).code
+            : undefined;
+        if (code !== "auth/user-not-found") {
+          console.warn("[auth.requestPasswordReset] suppressed error", err);
+        }
+      }
+      return { ok: true as const };
     }),
 };

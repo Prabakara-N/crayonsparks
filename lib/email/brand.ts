@@ -13,13 +13,19 @@ const LOGO_URL =
 
 const HOME_URL = "https://www.crayonsparks.com";
 
-export type EmailKind = "welcome" | "feedback" | "contact" | "leads";
+export type EmailKind =
+  | "welcome"
+  | "feedback"
+  | "contact"
+  | "leads"
+  | "password-reset";
 
 const FROM_BY_KIND: Record<EmailKind, string> = {
   welcome: "CrayonSparks <welcome@crayonsparks.com>",
   feedback: "CrayonSparks <feedback@crayonsparks.com>",
   contact: "CrayonSparks <contact@crayonsparks.com>",
   leads: "CrayonSparks <pages@crayonsparks.com>",
+  "password-reset": "CrayonSparks <accounts@crayonsparks.com>",
 };
 
 export function getEmailBrand() {

@@ -43,9 +43,9 @@ export function WelcomeEmail({
             <Section
               className="rounded-t-2xl px-8 py-12 text-center"
               style={{
-                backgroundColor: "#7c3aed",
+                backgroundColor: "#8b5cf6",
                 backgroundImage:
-                  "linear-gradient(to bottom right, #7c3aed, #d946ef, #fbbf24)",
+                  "linear-gradient(to bottom right, #8b5cf6, #22d3ee)",
               }}
             >
               <Img

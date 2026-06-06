@@ -20,5 +20,9 @@ export function useAuth() {
     }
   }, []);
 
-  return { ensureUser, me };
+  const requestPasswordReset = useCallback(async (email: string) => {
+    return orpc.auth.requestPasswordReset({ email });
+  }, []);
+
+  return { ensureUser, me, requestPasswordReset };
 }
