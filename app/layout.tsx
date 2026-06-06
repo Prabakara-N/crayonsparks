@@ -5,6 +5,7 @@ import { buildOrganization, buildWebSite } from "@/lib/seo-schema";
 import { Analytics } from "@vercel/analytics/next";
 import { DialogProvider } from "@/components/ui/confirm-dialog";
 import { Toaster } from "@/components/ui/sonner";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { ReferralSurvey } from "@/components/onboarding/referral-survey";
@@ -106,6 +107,7 @@ export default function RootLayout({
           </TooltipProvider>
         </AuthProvider>
         <Toaster position="bottom-right" richColors closeButton />
+        <OfflineIndicator />
         <Analytics />
       </body>
     </html>
