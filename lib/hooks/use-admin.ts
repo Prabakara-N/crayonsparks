@@ -57,10 +57,12 @@ export function useAdmin() {
           | "purchase"
           | "spend"
           | "refund";
+        cursor?: number;
       }) =>
         orpc.admin.credits.list({
-          limit: params.limit ?? 100,
+          limit: params.limit ?? 50,
           refKind: params.refKind ?? "all",
+          cursor: params.cursor,
         }),
       [],
     ),

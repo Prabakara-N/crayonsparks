@@ -12,20 +12,26 @@ interface ActionRow {
 const ACTION_ROWS: ReadonlyArray<ActionRow> = [
   {
     icon: <Palette className="w-4 h-4" />,
-    label: "Coloring page",
-    creditValue: "3 credits",
-    hint: "9 credits on Pro models",
+    label: "Coloring / activity page",
+    creditValue: "5 credits",
+    hint: "black & white line art",
   },
   {
     icon: <BookOpen className="w-4 h-4" />,
     label: "Story page (full color)",
-    creditValue: "4 credits",
-    hint: "11 credits on Pro models",
+    creditValue: "12 credits",
+    hint: "full-color art on every page",
+  },
+  {
+    icon: <FileText className="w-4 h-4" />,
+    label: "Book cover (front or back)",
+    creditValue: "12 credits",
+    hint: "cover-quality model",
   },
   {
     icon: <Wand2 className="w-4 h-4" />,
     label: "Refine an existing page",
-    creditValue: "3 credits",
+    creditValue: "2–3 credits",
     hint: "small tweak via Sparky chat",
   },
   {
@@ -58,13 +64,13 @@ export function CreditExplainer() {
           <div className="space-y-3.5">
             <BookCostRow
               label="A typical 24-page coloring book"
-              cost="~90 credits"
-              hint="cover + back + nameplate + 24 pages + a couple of refines"
+              cost="~150 credits"
+              hint="front + back cover + nameplate + 24 pages"
             />
             <BookCostRow
-              label="A 24-page story book (Pro models)"
-              cost="~295 credits"
-              hint="Pro-quality painterly art on every page"
+              label="A 24-page story book (full color)"
+              cost="~325 credits"
+              hint="full-color painterly art on every page"
             />
           </div>
         </div>

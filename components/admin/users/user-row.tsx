@@ -27,7 +27,7 @@ export function UserRow({ user }: { user: AdminUserSummary }) {
   return (
     <Link
       href={`/admin/users/${user.uid}`}
-      className="grid grid-cols-[2fr_1fr_1fr_auto] gap-3 items-center px-4 py-3 rounded-xl bg-zinc-900/60 border border-white/10 hover:border-amber-500/40 hover:bg-white/5 transition-colors"
+      className="grid grid-cols-[1fr_auto] md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-center px-4 py-3 rounded-xl bg-zinc-900/60 border border-white/10 hover:border-amber-500/40 hover:bg-white/5 transition-colors"
     >
       <div className="flex items-center gap-3 min-w-0">
         {user.photoURL ? (

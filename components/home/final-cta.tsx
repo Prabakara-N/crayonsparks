@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Spotlight } from "@/components/ui/spotlight";
 import { Wand2, Sparkles } from "lucide-react";
 
 const SAMPLE_COVERS = [
@@ -13,7 +12,6 @@ const SAMPLE_COVERS = [
 export function FinalCta() {
   return (
     <section className="relative py-28 bg-black overflow-hidden">
-      <Spotlight className="-top-20 left-1/2 -translate-x-1/2" fill="#8b5cf6" />
       <div className="absolute inset-0 grid-pattern opacity-15 pointer-events-none" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,black_75%)] pointer-events-none" />
 

@@ -9,11 +9,15 @@ import { CreditRow, type AdminCreditEntry } from "./credit-row";
 import { RefKindFilter, type RefKindFilter as RefKind } from "./refkind-filter";
 import { CreditCsvExportButton } from "./credit-csv-export-button";
 
+const PAGE_SIZE = 50;
+
 export function CreditsMain() {
   const { listCredits } = useAdmin();
   const [items, setItems] = useState<AdminCreditEntry[] | null>(null);
   const [refKind, setRefKind] = useState<RefKind>("all");
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchCredits = useCallback(
@@ -21,8 +25,9 @@ export function CreditsMain() {
       setLoading(true);
       setError(null);
       try {
-        const res = await listCredits({ refKind: rk, limit: 200 });
+        const res = await listCredits({ refKind: rk, limit: PAGE_SIZE });
         setItems(res.items);
+        setNextCursor(res.nextCursor);
       } catch {
         setError(
           "Couldn't load credit ledger. If filtering by kind, the composite index (refKind ASC, createdAt DESC) may not be built yet — check the server log for the auto-generated console link.",
@@ -34,7 +39,26 @@ export function CreditsMain() {
     [listCredits],
   );
 
+  const loadMore = useCallback(async () => {
+    if (nextCursor == null || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await listCredits({
+        refKind,
+        limit: PAGE_SIZE,
+        cursor: nextCursor,
+      });
+      setItems((prev) => [...(prev ?? []), ...res.items]);
+      setNextCursor(res.nextCursor);
+    } catch {
+      setError("Couldn't load more entries. Try again.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [listCredits, refKind, nextCursor, loadingMore]);
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchCredits(refKind);
   }, [refKind, fetchCredits]);
 
@@ -82,6 +106,16 @@ export function CreditsMain() {
       ) : (
         <div className="space-y-2">
           {items?.map((entry) => <CreditRow key={entry.id} entry={entry} />)}
+          {nextCursor != null && (
+            <button
+              type="button"
+              onClick={() => void loadMore()}
+              disabled={loadingMore}
+              className="w-full mt-2 rounded-xl border border-white/10 bg-zinc-900/60 px-4 py-2.5 text-sm font-medium text-neutral-300 hover:text-white hover:border-amber-500/40 disabled:opacity-50 transition-colors"
+            >
+              {loadingMore ? "Loading…" : "Load more"}
+            </button>
+          )}
         </div>
       )}
     </div>

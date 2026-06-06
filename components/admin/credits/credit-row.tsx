@@ -84,11 +84,11 @@ export function CreditRow({ entry }: CreditRowProps) {
         <p className="mt-0.5 text-xs text-neutral-300 truncate">
           {entry.reason || "—"}
         </p>
-        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-neutral-500">
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-neutral-500">
           {entry.ownerUid ? (
             <Link
               href={`/admin/users/${entry.ownerUid}`}
-              className="hover:text-amber-300 truncate max-w-[16ch]"
+              className="hover:text-amber-300 truncate max-w-[16ch] sm:max-w-none"
             >
               {entry.ownerEmail ?? entry.ownerUid.slice(0, 8)}
             </Link>
@@ -100,7 +100,7 @@ export function CreditRow({ entry }: CreditRowProps) {
           {entry.createdByEmail && (
             <>
               <span aria-hidden>·</span>
-              <span className="truncate max-w-[20ch]">
+              <span className="truncate max-w-[20ch] sm:max-w-none">
                 by {entry.createdByEmail}
               </span>
             </>

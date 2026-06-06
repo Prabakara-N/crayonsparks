@@ -64,7 +64,10 @@ export interface BookTypeOption {
 }
 
 export const BOOK_TYPE_INTRO =
-  "Hi, I'm Sparky AI ✨ I can plan three kinds of kids' books. Which one are we making today?";
+  "Hi, I'm Sparky AI ✨ I can plan coloring, story, or activity books — pick one below, or just ask me anything.";
+
+export const GENERAL_GREETING =
+  "Hi, I'm Sparky AI ✨ Ask me anything — or tell me what you'd like to make. I can plan coloring books, story books, or activity books for kids.";
 
 export const BOOK_TYPE_OPTIONS: BookTypeOption[] = [
   {

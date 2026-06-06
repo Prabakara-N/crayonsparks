@@ -2,32 +2,52 @@
 
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
+import type { Mode } from "./guided-chat/types";
 
-const THINKING_MESSAGES = [
+const GENERIC_MESSAGES = [
   "Sparky is thinking…",
   "Sparking up an idea…",
   "Drafting the next question…",
   "Reviewing your answer…",
-  "Calling on Sparky's classic-fable memory…",
-  "Tuning the brief for KDP…",
   "Lining up the best options…",
 ];
 
-/**
- * Branded loading bubble shown while Sparky AI is generating its next chat
- * response. Combines the Sparky icon (from the brand sparkle), animated dots,
- * and a rotating status message that cycles every 2.5 seconds so users get
- * a sense the AI is actively working.
- */
-export function SparkyThinkingBubble() {
+const MESSAGES_BY_MODE: Record<Mode, string[]> = {
+  qa: [
+    "Sketching coloring-page ideas…",
+    "Designing line-art subjects…",
+    "Thinking up colorable scenes…",
+    "Reviewing your answer…",
+    "Tuning the brief for KDP…",
+  ],
+  story: [
+    "Spinning up your story…",
+    "Shaping characters and scenes…",
+    "Drafting the next story beat…",
+    "Calling on Sparky's classic-fable memory…",
+    "Tuning the brief for KDP…",
+  ],
+  activity: [
+    "Designing puzzles and mazes…",
+    "Planning the activity pages…",
+    "Mixing tracing, counting and games…",
+    "Reviewing your answer…",
+    "Tuning the brief for KDP…",
+  ],
+};
+
+// Branded loading bubble shown while Sparky AI drafts its next reply.
+export function SparkyThinkingBubble({ mode }: { mode?: Mode | null }) {
+  const messages = mode ? MESSAGES_BY_MODE[mode] : GENERIC_MESSAGES;
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
+    setMessageIndex(0);
     const id = setInterval(() => {
-      setMessageIndex((i) => (i + 1) % THINKING_MESSAGES.length);
+      setMessageIndex((i) => (i + 1) % messages.length);
     }, 2500);
     return () => clearInterval(id);
-  }, []);
+  }, [messages]);
 
   return (
     <div className="flex justify-start">
@@ -41,7 +61,7 @@ export function SparkyThinkingBubble() {
         </span>
         <div className="min-w-0">
           <p className="text-xs font-semibold text-violet-100 leading-tight transition-opacity">
-            {THINKING_MESSAGES[messageIndex]}
+            {messages[messageIndex]}
           </p>
           <p
             className="text-[11px] text-violet-300/80 mt-0.5 inline-flex items-center gap-1"

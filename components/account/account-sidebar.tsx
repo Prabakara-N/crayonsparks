@@ -9,6 +9,7 @@ import {
   CreditCard,
   Coins,
   Store,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 import type { User } from "firebase/auth";
@@ -28,6 +29,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { SidebarSectionSwitcher } from "@/components/ui/sidebar-section-switcher";
 
 interface NavItem {
   href: string;
@@ -101,7 +103,16 @@ export function AccountSidebar({ user }: AccountSidebarProps) {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
+          {isAdmin ? (
+            <SidebarSectionSwitcher
+              label="Account"
+              href="/admin"
+              itemLabel="Admin console"
+              icon={Shield}
+            />
+          ) : (
+            <SidebarGroupLabel>Account</SidebarGroupLabel>
+          )}
           <SidebarMenu className="gap-1">
             {navItems.map((item) => {
               const active =

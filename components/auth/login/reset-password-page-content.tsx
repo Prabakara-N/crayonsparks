@@ -23,14 +23,16 @@ export function ResetPasswordPageContent() {
       }
       footerSlot={
         <>
-          <p className="mt-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
-            <Link
-              href="/login"
-              className="font-semibold text-neutral-800 transition hover:text-neutral-900 dark:text-neutral-100 dark:hover:text-white"
-            >
-              Back to sign in
-            </Link>
-          </p>
+          {!done && (
+            <p className="mt-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
+              <Link
+                href="/login"
+                className="font-semibold text-neutral-800 transition hover:text-neutral-900 dark:text-neutral-100 dark:hover:text-white"
+              >
+                Back to sign in
+              </Link>
+            </p>
+          )}
           <AuthFooter />
         </>
       }

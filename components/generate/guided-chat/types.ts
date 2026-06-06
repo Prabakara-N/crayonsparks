@@ -19,7 +19,8 @@ export type View =
     }
   | { kind: "brief"; brief: BookBrief }
   | { kind: "activity-plan"; plan: ActivityBookPlan }
-  | { kind: "message"; text: string };
+  | { kind: "message"; text: string }
+  | { kind: "route"; mode: Mode; idea?: string };
 
 export interface ApiResponse {
   messages: unknown[];

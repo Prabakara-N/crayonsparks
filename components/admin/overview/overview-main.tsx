@@ -5,10 +5,8 @@ import { Users, Wand2, Coins, Activity } from "lucide-react";
 import { useAdmin } from "@/lib/hooks/use-admin";
 import { PageHeader } from "@/components/account/page-header";
 import { StatTile } from "./stat-tile";
-import {
-  GenerationRow,
-  type AdminGeneration,
-} from "@/components/admin/generations/generation-row";
+import { type AdminGeneration } from "@/components/admin/generations/generation-row";
+import { GenerationCard } from "@/components/admin/generations/generation-card";
 
 interface OverviewStats {
   totalUsers: number;
@@ -87,9 +85,9 @@ export function OverviewMain() {
         ) : recent.length === 0 ? (
           <p className="text-sm text-neutral-500">No activity yet.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {recent.map((g) => (
-              <GenerationRow key={g.bookId} item={g} />
+              <GenerationCard key={g.bookId} item={g} />
             ))}
           </div>
         )}

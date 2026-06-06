@@ -36,6 +36,7 @@ export function GuidedChat({
   seedIdea,
   onSeedConsumed,
   onActiveChange,
+  immersiveOnMobile = false,
 }: {
   onBrief: (
     brief: BookBrief,
@@ -48,6 +49,7 @@ export function GuidedChat({
   seedIdea?: string;
   onSeedConsumed?: () => void;
   onActiveChange?: (active: boolean) => void;
+  immersiveOnMobile?: boolean;
 }) {
   const [reference, setReference] = useState<string | null>(null);
   const [referenceError, setReferenceError] = useState<string | null>(null);
@@ -91,10 +93,32 @@ export function GuidedChat({
   const inputHandleRef = useRef<PlaceholdersAndVanishInputHandle | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  const hasUserMessage = bubbles.some((b) => b.role === "user");
+  // Go full-screen on mobile once the conversation starts or a type is chosen.
+  const immersive = immersiveOnMobile && (hasUserMessage || !!mode);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [bubbles, view, busy, pendingBrief, pendingActivityPlan]);
+
+  // Lock page scroll while the full-screen mobile chat is open.
+  useEffect(() => {
+    if (!immersive) return;
+    const mq = window.matchMedia("(max-width: 639px)");
+    const apply = () => {
+      const lock = mq.matches;
+      document.documentElement.style.overflow = lock ? "hidden" : "";
+      document.body.style.overflow = lock ? "hidden" : "";
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => {
+      mq.removeEventListener("change", apply);
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+  }, [immersive]);
 
   // Consume the seed once on mount when the shell handed us a mode + idea.
   const seedConsumedRef = useRef(false);
@@ -153,7 +177,7 @@ export function GuidedChat({
   }
 
   async function clearChat() {
-    if (!mode || busy) return;
+    if (busy) return;
     if (bubbles.length <= 1) return;
     const ok = await dialog.confirm({
       title: "Clear chat?",
@@ -163,7 +187,9 @@ export function GuidedChat({
       variant: "danger",
     });
     if (!ok) return;
-    setBubbles([{ role: "assistant", text: MODE_INTROS[mode].greeting }]);
+    setBubbles([
+      { role: "assistant", text: mode ? MODE_INTROS[mode].greeting : BOOK_TYPE_INTRO },
+    ]);
     setMessages([]);
     setView(null);
     setPendingBrief(null);
@@ -172,7 +198,8 @@ export function GuidedChat({
 
   async function send(text: string) {
     const trimmed = text.trim();
-    if (!trimmed || busy || !mode) return;
+    if (!trimmed || busy) return;
+    const activeMode = mode ?? "general";
     setError(null);
     setBubbles((b) => [...b, { role: "user", text: trimmed }]);
     setView(null);
@@ -186,15 +213,28 @@ export function GuidedChat({
         body: JSON.stringify({
           messages,
           userMessage: trimmed,
-          mode,
+          mode: activeMode,
         }),
       });
       const data = (await res.json()) as ApiResponse | { error: string };
       if (!res.ok || "error" in data) {
         throw new Error("error" in data ? data.error : "Chat failed.");
       }
-      setMessages(data.messages);
       const v = data.view;
+      if (v.kind === "route") {
+        setMode(v.mode);
+        setMessages([]);
+        setBubbles((b) => [
+          ...b,
+          { role: "assistant", text: MODE_INTROS[v.mode].greeting },
+        ]);
+        if (v.idea && v.idea.trim()) {
+          const idea = v.idea.trim();
+          setTimeout(() => inputHandleRef.current?.setText(idea), 0);
+        }
+        return;
+      }
+      setMessages(data.messages);
       if (v.kind === "question") {
         setBubbles((b) => {
           const next = [...b];
@@ -269,17 +309,19 @@ export function GuidedChat({
     void send(`Please revise the activity plan: ${feedback}`);
   }
 
-  // Free-form typing is allowed once a book type is chosen and we're not busy.
-  const inputDisabled = busy || !mode;
+  // Typing is always allowed; Sparky chats generally until a type is chosen.
+  const inputDisabled = busy;
   // Activity is only offered where the host can hand a plan to the studio.
   const bookTypeOptions = onActivityPlan
     ? BOOK_TYPE_OPTIONS
     : BOOK_TYPE_OPTIONS.filter((o) => o.mode !== "activity");
 
+  const rootClass = immersive
+    ? "flex flex-col overflow-hidden bg-zinc-950 fixed left-0 right-0 bottom-0 top-16 z-[45] sm:static sm:top-auto sm:z-auto sm:overflow-visible sm:bg-transparent sm:max-h-[90vh] sm:min-h-[82vh]"
+    : `flex flex-col max-h-[90vh] ${mode ? "min-h-[82vh]" : "min-h-[76vh]"}`;
+
   return (
-    <div
-      className={`flex flex-col max-h-[90vh] ${mode ? "min-h-[82vh]" : "min-h-[62vh]"}`}
-    >
+    <div className={rootClass}>
       <ChatHeader
         mode={mode}
         busy={busy}
@@ -317,7 +359,7 @@ export function GuidedChat({
           );
         })}
 
-        {!mode && !busy && (
+        {!mode && !busy && !hasUserMessage && (
           <QuestionOptions
             options={bookTypeOptions.map((o) => o.label)}
             optionDescriptions={bookTypeOptions.map((o) => o.description)}
@@ -332,7 +374,7 @@ export function GuidedChat({
           />
         )}
 
-        {busy && <SparkyThinkingBubble />}
+        {busy && <SparkyThinkingBubble mode={mode} />}
 
         {view?.kind === "question" && view.options.length > 0 && !busy && (
           view.allow_multi ? (
@@ -394,7 +436,11 @@ export function GuidedChat({
           key={`${mode ?? "pick"}-${pendingBrief ? "preview" : "open"}`}
           placeholders={
             !mode
-              ? ["Pick a book type above to start…"]
+              ? [
+                  "Ask Sparky anything…",
+                  "Tell me your book idea…",
+                  "Say hi, or describe what you want to make…",
+                ]
               : pendingBrief || pendingActivityPlan
                 ? ["Use the buttons above to confirm or tweak…"]
                 : view?.kind === "question" && view.options?.length

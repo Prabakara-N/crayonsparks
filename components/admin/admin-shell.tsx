@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useRequireAdmin } from "@/lib/hooks/use-require-admin";
-import { ShellSkeleton } from "@/components/ui/shell-skeleton";
+import { AdminVerifyingState } from "@/components/ui/admin-verifying-state";
 import {
   SidebarInset,
   SidebarProvider,
@@ -19,7 +19,7 @@ export function AdminShell({ children }: AdminShellProps) {
   const { user, loading, isAdmin } = useRequireAdmin();
 
   if (loading || !user || !isAdmin) {
-    return <ShellSkeleton />;
+    return <AdminVerifyingState />;
   }
 
   return (

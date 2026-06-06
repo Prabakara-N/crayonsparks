@@ -33,7 +33,7 @@ export type { ActivityBookPlan } from "@/lib/activity-book-planner";
 // stay on the strong planner / vision models even when helper text models change.
 const MODEL_ID = OPENAI_PLANNER_MODEL;
 
-export type BookChatMode = "qa" | "story" | "activity";
+export type BookChatMode = "qa" | "story" | "activity" | "general";
 
 /**
  * One locked story-book character. Story-mode briefs include 1-3 of these so
@@ -104,7 +104,8 @@ export type BookChatView =
     }
   | { kind: "brief"; brief: BookBrief }
   | { kind: "activity-plan"; plan: ActivityBookPlan }
-  | { kind: "message"; text: string };
+  | { kind: "message"; text: string }
+  | { kind: "route"; mode: "qa" | "story" | "activity"; idea?: string };
 
 export interface BookChatTurnResult {
   messages: ModelMessage[];
@@ -607,6 +608,36 @@ const ACTIVITY_TOOLS = {
   }),
 } as const;
 
+const startBookSchema = z.object({
+  mode: z.enum(["qa", "story", "activity"]),
+  idea: z
+    .string()
+    .describe("One-line summary of what the user wants to make, in their words."),
+});
+type StartBookInput = z.infer<typeof startBookSchema>;
+
+const GENERAL_TOOLS = {
+  ask_user: askUserTool,
+  start_book: tool({
+    description:
+      "Call once the user has decided which kind of book to make: coloring book (mode 'qa'), story book (mode 'story'), or activity book (mode 'activity'). Hands off to that book type's planner.",
+    inputSchema: startBookSchema,
+  }),
+} as const;
+
+const GENERAL_SYSTEM_PROMPT = `You are Sparky AI — the friendly assistant inside CrayonSparks, a tool for making kids' books. If the user asks who you are, say "I'm Sparky AI, the assistant inside CrayonSparks".
+
+Chat naturally and helpfully, like a general-purpose assistant. Answer everyday questions, greetings, and brainstorming in a warm, concise way (under 4 sentences). For ordinary conversation, reply with plain text and NO tool call. When you list 3 or more items in plain text, put each on its own line with a leading "- ".
+
+CrayonSparks can make three kinds of kids' books: coloring books (black-and-white line art), story books (full-color picture stories), and activity books (mazes, tracing, puzzles, counting and more). You can help plan any of them. Do not bring this up in every reply — only when the user wants to make something, or asks what you can do. When they do ask, briefly tell them you can make coloring, story, or activity books and ask which one they have in mind.
+
+WHEN THE USER WANTS TO MAKE A BOOK:
+- If their idea clearly implies one type, call start_book with that mode and a one-line idea summary. Coloring pages / things to color -> mode "qa". A narrative, characters, a fable or bedtime tale -> mode "story". Mazes, puzzles, tracing, worksheets, counting -> mode "activity".
+- If it is unclear which of the three they want, call ask_user with the question "Which kind of book would you like to make?" and options EXACTLY ["Coloring book", "Story book", "Activity book"], with allow_freeform false and allow_multi false. After they pick, call start_book with the matching mode (Coloring book -> qa, Story book -> story, Activity book -> activity).
+- Do NOT plan pages, run a discovery questionnaire, or write a brief yourself. start_book hands off to the specialized planner for that. Your only jobs are general conversation and routing to the right book type.
+
+Never write a question with an inline list of choices as plain text — always use ask_user so the interface can render clickable options.`;
+
 function viewFromAsk(args: AskUserInput, intro?: string): BookChatView {
   const allowMulti = args.allow_multi ?? false;
   const max = allowMulti ? 8 : 5;
@@ -761,8 +792,20 @@ export async function runBookChatTurn(
       ? STORY_SYSTEM_PROMPT
       : mode === "activity"
         ? ACTIVITY_SYSTEM_PROMPT
-        : QA_SYSTEM_PROMPT;
-  const tools = mode === "activity" ? ACTIVITY_TOOLS : BRIEF_TOOLS;
+        : mode === "general"
+          ? GENERAL_SYSTEM_PROMPT
+          : QA_SYSTEM_PROMPT;
+  const tools =
+    mode === "activity"
+      ? ACTIVITY_TOOLS
+      : mode === "general"
+        ? GENERAL_TOOLS
+        : BRIEF_TOOLS;
+  // General chat + routing don't need deep reasoning — keep small talk fast.
+  const providerOptions =
+    mode === "general"
+      ? { openai: { reasoningEffort: "low" as const } }
+      : undefined;
 
   let messages: ModelMessage[] = incoming;
   let groundingsLeft = mode === "story" ? MAX_GROUNDING_PASSES : 0;
@@ -777,6 +820,7 @@ export async function runBookChatTurn(
       messages,
       tools,
       toolChoice: "auto",
+      providerOptions,
     });
 
     const newAssistant = result.response.messages
@@ -836,6 +880,13 @@ export async function runBookChatTurn(
     };
     messages = [...messages, stubResult];
 
+    if (first.toolName === "start_book") {
+      const args = first.input as StartBookInput;
+      return {
+        messages,
+        view: { kind: "route", mode: args.mode, idea: args.idea },
+      };
+    }
     if (first.toolName === "ask_user") {
       return {
         messages,

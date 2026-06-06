@@ -14,7 +14,6 @@ import { useUser } from "@/lib/hooks/use-user";
 import { useCredits } from "@/lib/hooks/use-credits";
 import { useBooks } from "@/lib/hooks/use-books";
 import { PageHeader } from "../page-header";
-import { ComingSoonTag } from "../coming-soon-tag";
 
 interface RecentBook {
   bookId: string;
@@ -78,7 +77,7 @@ export function DashboardMain() {
       </div>
 
       <div className="rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-white/10 p-5 md:p-6">
-        <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
           <div>
             <h3 className="font-display text-lg font-semibold text-white">
               Recent books
@@ -89,7 +88,15 @@ export function DashboardMain() {
                 : "Your generated coloring + story books will appear here."}
             </p>
           </div>
-          {recent.length === 0 && <ComingSoonTag />}
+          {recent.length === 0 && (
+            <Link
+              href="/playground"
+              className="inline-flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold text-violet-200 border border-violet-400/30 hover:text-white hover:border-violet-400/60 transition-colors"
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              Start your first book
+            </Link>
+          )}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {recent.length > 0
@@ -127,15 +134,17 @@ export function DashboardMain() {
                 </div>
               ))}
         </div>
-        <div className="mt-5 text-center">
-          <Link
-            href={recent.length > 0 ? "/account/books" : "/playground"}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-violet-200 hover:text-white"
-          >
-            {recent.length > 0 ? "See all books" : "Start your first book"}
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
+        {recent.length > 0 && (
+          <div className="mt-5 text-center">
+            <Link
+              href="/account/books"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-violet-200 hover:text-white"
+            >
+              See all books
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

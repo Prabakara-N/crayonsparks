@@ -24,9 +24,10 @@ export const SPOT_DIFFERENCE_CHANGES_PROMPT = (opts: {
   color?: boolean;
 }): string =>
   [
-    `Redraw the provided scene EXACTLY — same composition, same objects, same positions, same ${opts.color ? "colors and " : ""}line style — but introduce exactly ${opts.count} clear, visible differences.`,
-    "Each difference must be obvious enough for a child to spot: add a small object, remove an object, change a shape's pattern, flip a detail, or change how many of something there are.",
-    "Do NOT move, redraw, or restyle anything else — every other element must stay pixel-for-pixel as close to the original as possible.",
+    `Recreate the provided scene keeping the SAME overall composition, the SAME characters and objects, and the same ${opts.color ? "colors and " : ""}line style — BUT you MUST change exactly ${opts.count} things so the new image is a spot-the-difference partner to the original.`,
+    `This is the whole point: the two images HAVE to differ in exactly ${opts.count} places. Returning an identical or near-identical copy is WRONG and unusable.`,
+    "Make every change BIG and easy for a young child to notice. Use changes like: ADD a whole new object that was not there, REMOVE an object that was there, CHANGE one object's color to a clearly different color, or CHANGE how many of something there are. Do NOT make tiny or subtle tweaks.",
+    "Apart from those exact changes, keep every other element in the same position and style as the original — do not rearrange or restyle the rest of the scene.",
     opts.color
       ? "Keep the same bright flat full-color cartoon style, no text, no numbers, no border. Same 4:3 landscape framing."
       : "Keep it pure black-and-white line art on white, no shading, no grey, no color, no text, no numbers, no border. Same 4:3 landscape framing.",

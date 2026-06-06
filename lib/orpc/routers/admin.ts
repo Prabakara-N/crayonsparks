@@ -46,7 +46,7 @@ export const adminRouter = {
     list: adminProcedure
       .input(UsersListInput)
       .handler(async ({ input }) => {
-        let q = db
+        const q = db
           .collection("users")
           .orderBy("createdAt", "desc")
           .limit(input.limit);
@@ -325,23 +325,28 @@ export const adminRouter = {
     list: adminProcedure
       .input(
         z.object({
-          limit: z.number().int().min(1).max(500).default(100),
+          limit: z.number().int().min(1).max(200).default(50),
           refKind: z
             .enum(["all", "signup", "grant", "purchase", "spend", "refund"])
             .default("all"),
+          cursor: z.number().optional(),
         }),
       )
       .handler(async ({ input }) => {
-        const base = db.collectionGroup("credits");
-        let query = base.orderBy("createdAt", "desc").limit(input.limit * 2);
-        if (input.refKind !== "all") {
-          query = base
-            .where("refKind", "==", input.refKind)
-            .orderBy("createdAt", "desc")
-            .limit(input.limit);
+        let query =
+          input.refKind === "all"
+            ? db.collectionGroup("credits").orderBy("createdAt", "desc")
+            : db
+                .collectionGroup("credits")
+                .where("refKind", "==", input.refKind)
+                .orderBy("createdAt", "desc");
+        if (input.cursor != null) {
+          query = query.startAfter(Timestamp.fromMillis(input.cursor));
         }
-        const snap = await query.get();
-        const items = snap.docs.map((d) => {
+        const snap = await query.limit(input.limit + 1).get();
+        const hasMore = snap.docs.length > input.limit;
+        const pageDocs = hasMore ? snap.docs.slice(0, input.limit) : snap.docs;
+        const items = pageDocs.map((d) => {
           const data = d.data();
           const ownerUid = d.ref.parent.parent?.id ?? null;
           return {
@@ -356,9 +361,8 @@ export const adminRouter = {
             createdAt: data.createdAt?.toMillis?.() ?? null,
           };
         });
-        const limited = items.slice(0, input.limit);
         const ownerUids = Array.from(
-          new Set(limited.map((it) => it.ownerUid).filter(Boolean)),
+          new Set(items.map((it) => it.ownerUid).filter(Boolean)),
         ) as string[];
         const userDocs = await Promise.all(
           ownerUids.map((uid) => db.collection("users").doc(uid).get()),
@@ -369,11 +373,13 @@ export const adminRouter = {
             (d.data()?.email as string | null) ?? null,
           ]),
         );
+        const lastCreatedAt = items.at(-1)?.createdAt ?? null;
         return {
-          items: limited.map((it) => ({
+          items: items.map((it) => ({
             ...it,
             ownerEmail: it.ownerUid ? userMap.get(it.ownerUid) ?? null : null,
           })),
+          nextCursor: hasMore ? lastCreatedAt : null,
         };
       }),
   },

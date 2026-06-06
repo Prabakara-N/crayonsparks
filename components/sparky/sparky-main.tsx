@@ -195,6 +195,7 @@ export function SparkyMain() {
         onBrief={handleBrief}
         onActivityPlan={handleActivityPlan}
         onBack={() => router.push("/")}
+        immersiveOnMobile
         seedMode={chatSeedMode ?? undefined}
         seedIdea={chatSeedIdea || undefined}
         onSeedConsumed={() => {

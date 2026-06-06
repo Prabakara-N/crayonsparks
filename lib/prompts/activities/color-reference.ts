@@ -6,10 +6,12 @@ export const COLOR_REFERENCE_COLOR_PROMPT = (opts: {
   subject: string;
 }): string =>
   [
-    `Draw ONE friendly, simple full-color cartoon character for a young child's coloring activity, themed: ${opts.theme}.`,
-    `The single subject is: ${opts.subject}. Center it, large and clear.`,
+    `Draw ONE simple, friendly full-color cartoon subject for a young child's coloring activity, themed: ${opts.theme}.`,
+    `The single subject is: ${opts.subject}. Center it.`,
+    "Draw the ENTIRE subject fully inside the frame with generous empty margin on all four sides — no part of the subject may touch or extend past the edges, and nothing may be cropped.",
+    "If the subject is a living creature (an animal or a person), a simple friendly face is fine. If the subject is NOT alive (a vehicle, plant, flower, food, or household object), draw it as a plain object with NO face — no eyes, no mouth, no facial features.",
     "Use bright, flat, kid-friendly colors with clean bold black outlines — the colors must be obvious and easy for a child to copy with crayons.",
-    "CRITICAL: ONLY the single main character. PLAIN WHITE background with absolutely NO background scene, NO decorative swirls, sparkles, stars, dots, confetti, frames, or any extra elements around the subject.",
+    "CRITICAL: ONLY the single main subject. PLAIN WHITE background with absolutely NO background scene, NO decorative swirls, sparkles, stars, dots, confetti, frames, or any extra elements around the subject.",
     "Keep it simple: one main subject, few distinct color areas, nothing tiny or fiddly.",
     "No text, no numbers, no border, no watermark. 1:1 square, print quality.",
   ].join("\n");

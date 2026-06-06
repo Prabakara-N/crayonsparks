@@ -4,6 +4,9 @@ import { useState } from "react";
 import { COST_RANGE_PRESETS, type CostRangeId } from "./cost-range-config";
 import { CostDateRangePopover } from "./cost-date-range-popover";
 
+const DEFAULT_PRESET =
+  COST_RANGE_PRESETS.find((p) => p.id === "30d") ?? COST_RANGE_PRESETS[0];
+
 const DAY = 24 * 60 * 60 * 1000;
 
 interface CostRangePickerProps {
@@ -48,6 +51,14 @@ export function CostRangePicker({ selected, onChange }: CostRangePickerProps) {
         onApply={(fromMs, toMs) => {
           setCustom({ fromMs, toMs });
           onChange("custom", fromMs, toMs);
+        }}
+        onClear={() => {
+          setCustom(null);
+          onChange(
+            DEFAULT_PRESET.id,
+            Date.now() - DEFAULT_PRESET.days * DAY,
+            Date.now(),
+          );
         }}
       />
     </div>

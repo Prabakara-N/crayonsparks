@@ -9,6 +9,7 @@ interface CostDateRangePopoverProps {
   fromMs: number | null;
   toMs: number | null;
   onApply: (fromMs: number, toMs: number) => void;
+  onClear?: () => void;
 }
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -26,6 +27,7 @@ export function CostDateRangePopover({
   fromMs,
   toMs,
   onApply,
+  onClear,
 }: CostDateRangePopoverProps) {
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState<Date>(() => new Date());
@@ -82,7 +84,7 @@ export function CostDateRangePopover({
       </button>
 
       {open && (
-        <div className="absolute right-0 z-30 mt-2 rounded-2xl border border-white/10 bg-zinc-950/95 backdrop-blur-xl p-3 shadow-2xl">
+        <div className="absolute right-0 z-50 mt-2 rounded-2xl border border-white/10 bg-zinc-950/95 backdrop-blur-xl p-3 shadow-2xl">
           <MiniCalendar
             month={month}
             onMonthChange={setMonth}
@@ -90,11 +92,27 @@ export function CostDateRangePopover({
             toMs={pendTo}
             onPickDay={pickDay}
           />
-          <p className="mt-2 text-[10px] text-neutral-500">
-            {pendFrom != null && pendTo == null
-              ? "Pick an end date"
-              : "Pick a start date"}
-          </p>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <p className="text-[10px] text-neutral-500">
+              {pendFrom != null && pendTo == null
+                ? "Pick an end date"
+                : "Pick a start date"}
+            </p>
+            {(active || pendFrom != null) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPendFrom(null);
+                  setPendTo(null);
+                  onClear?.();
+                  setOpen(false);
+                }}
+                className="text-[10px] font-semibold text-neutral-400 hover:text-white"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

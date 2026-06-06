@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { WifiOff } from "lucide-react";
+import { Wifi, WifiOff } from "lucide-react";
 import { useOnlineStatus } from "@/lib/hooks/use-online-status";
 
 const TOAST_ID = "connection-status";
@@ -22,7 +22,12 @@ export function OfflineIndicator() {
       });
     } else if (wasOffline.current) {
       wasOffline.current = false;
-      toast.success("Back online", { id: TOAST_ID, duration: 3000 });
+      toast.success("Back online", {
+        id: TOAST_ID,
+        description: "Your connection is back.",
+        icon: <Wifi className="h-4 w-4" />,
+        duration: 3000,
+      });
     }
   }, [isOnline]);
 

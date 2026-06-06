@@ -26,13 +26,13 @@ export function CostSummaryCard({
   const styles = TONE_STYLES[tone];
   return (
     <div className="rounded-2xl bg-zinc-900/60 backdrop-blur-xl border border-white/10 p-5">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <span
-          className={`w-10 h-10 rounded-xl flex items-center justify-center border ${styles}`}
+          className={`w-10 h-10 rounded-xl flex items-center justify-center border shrink-0 ${styles}`}
         >
           <Icon className="w-5 h-5" />
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="text-xs text-neutral-500 uppercase tracking-wider font-semibold">
             {label}
           </p>

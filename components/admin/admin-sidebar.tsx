@@ -20,7 +20,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -30,6 +29,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { SidebarSectionSwitcher } from "@/components/ui/sidebar-section-switcher";
 
 interface NavItem {
   href: string;
@@ -82,7 +82,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Manage</SidebarGroupLabel>
+          <SidebarSectionSwitcher
+            label="Manage"
+            href="/account"
+            itemLabel="User dashboard"
+            icon={LayoutDashboard}
+          />
           <SidebarMenu className="gap-1">
             {NAV_ITEMS.map((item) => {
               const active =

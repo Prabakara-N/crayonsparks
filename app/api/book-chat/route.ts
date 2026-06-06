@@ -22,7 +22,12 @@ export async function POST(req: Request) {
   const incoming = Array.isArray(body.messages) ? body.messages : [];
   const userText = (body.userMessage ?? "").trim();
   const mode: BookChatMode =
-    body.mode === "story" || body.mode === "activity" ? body.mode : "qa";
+    body.mode === "story" ||
+    body.mode === "activity" ||
+    body.mode === "qa" ||
+    body.mode === "general"
+      ? body.mode
+      : "general";
 
   const messages: ModelMessage[] = userText
     ? [...incoming, { role: "user", content: userText }]
