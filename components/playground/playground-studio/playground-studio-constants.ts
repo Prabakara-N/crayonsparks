@@ -3,10 +3,7 @@ import type { AspectRatio, ImageCategory } from "./types";
 export const CATEGORIES: { value: ImageCategory; label: string }[] = [
   { value: "generic", label: "Generic — anything goes" },
   { value: "coloring-page", label: "Coloring page (B&W line art)" },
-  { value: "wall-art", label: "Wall art / poster" },
-  { value: "nursery-print", label: "Nursery print" },
   { value: "sticker", label: "Sticker design" },
-  { value: "greeting-card", label: "Greeting card" },
   { value: "book-illustration", label: "Children's book illustration" },
   { value: "pinterest-pin", label: "Pinterest pin (9:16)" },
 ];

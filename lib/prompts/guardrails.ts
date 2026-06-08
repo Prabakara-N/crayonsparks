@@ -209,6 +209,13 @@ export const FILL_CANVAS_RULE =
 export const PRINT_TRIM_SAFETY_RULE =
   "PRINTER TRIM SAFETY: Keep the subject's critical features (face, eyes, hands, paws, tail tip) at least 5% inside from every edge of the page so a small binding-trim variance doesn't crop them. The subject silhouette should not bump directly into the page edge.";
 
+// KDP rejects covers whose text sits inside the 0.375" trim safe zone. The
+// cover image is placed full-bleed (it extends ~0.125" past the trim), so any
+// lettering near the image edge ends up in the cut zone. This rule pulls ALL
+// text inward; backgrounds and color bands may still bleed to the edge.
+export const KDP_COVER_TEXT_SAFE_ZONE =
+  "KDP PRINT SAFE ZONE — CRITICAL: this cover is trimmed during printing, so ALL text, letters, numbers, and readable lettering MUST sit inside the central safe area — at least 8% of the cover's width and height away from EVERY edge (top, bottom, left, right). Background art, colors, scenery, and decorative ribbons/bands MAY extend to the edges and bleed off, but NO readable letter or number may fall in the outer 8% margin on any side. Pull the title down from the top edge, keep badges and plaques inset from the corners and sides, and keep every bottom-strip line inset from the bottom and side edges. Nothing readable touches or nearly touches a cut edge.";
+
 // SINGLE source of truth for the printed page outline. Compressed to one
 // concise rule on purpose — earlier versions repeated "border" 13+ times
 // in one paragraph and the model started drawing two of them. KDP-framed:

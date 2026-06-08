@@ -1,7 +1,7 @@
 import { PLAYFAIR_FAMILY } from "@/lib/fonts";
 import type { PromptItem } from "../types";
 
-export type GridAspect = "3 / 4" | "2 / 3";
+export type GridAspect = "3 / 4" | "2 / 3" | "1 / 1" | "8.27 / 11.69";
 
 export type GridSize = "2x2" | "3x2";
 

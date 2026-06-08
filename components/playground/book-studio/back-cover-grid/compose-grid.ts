@@ -74,7 +74,8 @@ function wrapLines(
 
 export async function composeBackCover(args: ComposeArgs): Promise<string> {
   const { design } = args;
-  const ratio = args.aspect === "2 / 3" ? 2 / 3 : 3 / 4;
+  const [aspectW, aspectH] = args.aspect.split("/").map((n) => parseFloat(n.trim()));
+  const ratio = aspectW && aspectH ? aspectW / aspectH : 3 / 4;
   const width = CANVAS_WIDTH;
   const height = Math.round(width / ratio);
 

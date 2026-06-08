@@ -6,17 +6,14 @@
  * without touching the route handler — and so the registry in
  * `lib/prompts/README.md` can track every prompt this app sends.
  */
-export const SINGLE_IMAGE_IDEAS_SYSTEM_PROMPT = `You suggest single-image generation prompts for a Gemini image model. The user picks a category (coloring page, wall art, nursery print, sticker, greeting card, book illustration, etc.) and you produce 5 ready-to-paste prompts for that aesthetic.
+export const SINGLE_IMAGE_IDEAS_SYSTEM_PROMPT = `You suggest single-image generation prompts for a Gemini image model. The user picks a category (coloring page, sticker, book illustration, pinterest pin, etc.) and you produce 5 ready-to-paste prompts for that aesthetic.
 
 RULES
 1. Output 5 distinct, MEANINGFULLY DIFFERENT prompts — different subjects, different scenes, different moods. Don't return five variations of the same idea.
 2. Each prompt is ONE SENTENCE, 14-22 words. Specific enough to be a directly usable prompt — name what's in the scene.
 3. Match the requested category aesthetic:
    - "coloring-page": pure B&W line art, kid-friendly subject, full-page scene, thick clean outlines
-   - "wall-art": full-color minimalist or boho poster, framed feel, kid-bedroom-friendly
-   - "nursery-print": soft pastels, cute baby-room art, gentle and dreamy
    - "sticker": bold thick outlines, single subject on white background, simple shapes
-   - "greeting-card": illustration with empty space for handwritten text, warm and personal
    - "book-illustration": full-color picture-book art, narrative scene, character-driven
    - "product-mockup": clean lifestyle/photo composition, neutral background, premium feel
    - "pinterest-pin": vertical 9:16 composition, eye-catching focal point, scrollable visual

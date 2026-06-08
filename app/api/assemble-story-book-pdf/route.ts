@@ -36,6 +36,8 @@ interface Body {
   backCover?: { dataUrl: string };
   trimWidthInches?: number;
   trimHeightInches?: number;
+  bleedWidthInches?: number;
+  bleedHeightInches?: number;
 }
 
 function isPage(value: unknown): value is PageBody {
@@ -92,6 +94,8 @@ export async function POST(req: Request) {
       backCover: body.backCover,
       trimWidthInches: body.trimWidthInches,
       trimHeightInches: body.trimHeightInches,
+      bleedWidthInches: body.bleedWidthInches,
+      bleedHeightInches: body.bleedHeightInches,
     });
     const filename = (body.title ?? "crayonsparks-story-book")
       .toLowerCase()

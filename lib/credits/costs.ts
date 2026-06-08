@@ -24,11 +24,11 @@ export type GenOp = "cover" | "page" | "refine" | "single";
 export const SIGNUP_FREE_CREDITS = 50;
 
 const COST_TABLE: Record<BookKind, Record<GenOp, number>> = {
-  coloring: { cover: 12, page: 5, refine: 2, single: 2 },
-  story: { cover: 12, page: 12, refine: 3, single: 2 },
+  coloring: { cover: 12, page: 5, refine: 2, single: 3 },
+  story: { cover: 12, page: 12, refine: 3, single: 3 },
   // Activity: procedural interior pages are free (the route charges nothing
   // for them); cover + illustrated pages bill at the coloring rate.
-  activity: { cover: 12, page: 5, refine: 2, single: 2 },
+  activity: { cover: 12, page: 5, refine: 2, single: 3 },
 };
 
 export function creditCost(kind: BookKind, op: GenOp): number {

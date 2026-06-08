@@ -3,6 +3,7 @@ import { escapeXml, PAGE, SANS, svgDocument, titleBlock } from "./page";
 import {
   traceAdvanceWidth,
   traceTextPathData,
+  traceTextDots,
   traceMetrics,
 } from "./trace-font";
 
@@ -66,7 +67,13 @@ function traceGlyphs(y: number, rowH: number, text: string, repeat: boolean): st
     content = unit.repeat(Math.max(2, Math.floor(available / unitWidth)));
   }
   const d = traceTextPathData(content, x, base, fontSize);
-  return `<path d="${d}" fill="none" stroke="${TRACE_STROKE}" stroke-width="2.5" stroke-dasharray="2 6" stroke-linecap="round"/>`;
+  const dots = traceTextDots(content, x, base, fontSize)
+    .map(
+      (dt) =>
+        `<circle cx="${dt.cx.toFixed(2)}" cy="${dt.cy.toFixed(2)}" r="${dt.r.toFixed(2)}" fill="${TRACE_STROKE}"/>`,
+    )
+    .join("");
+  return `<path d="${d}" fill="none" stroke="${TRACE_STROKE}" stroke-width="2.5" stroke-dasharray="2 6" stroke-linecap="round"/>${dots}`;
 }
 
 function referenceBlock(opts: TracingOptions, assetDataUrl: string): string {

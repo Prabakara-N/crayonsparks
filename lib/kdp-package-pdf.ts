@@ -221,6 +221,14 @@ export async function buildKdpPackagePdf(
     drawValue(input.metadata.notes);
   }
 
+  // Print settings — which bleed option to choose at upload. Picking the wrong
+  // one is the #1 cause of KDP "insufficient bleed" / "text too close to edge"
+  // rejections.
+  drawLabel("KDP print settings (choose these at upload)");
+  drawValue(
+    'Bleed -> Coloring & Activity books: select "No Bleed". Story books (full-page color art): select "Bleed". Paper -> B&W interior: "Black & white"; full-color interior: "Premium color". Always open KDP\'s Previewer and check the cover safe zone before you publish.',
+  );
+
   if (input.metadata.etsy) {
     ensureSpace(LINE * 3);
     y -= LINE;

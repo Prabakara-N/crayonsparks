@@ -31,6 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const lastEnsuredUidRef = useRef<string | null>(null);
+  // Tracks the live uid so same-uid token echoes (refresh / cross-tab sync) don't churn the context.
+  const currentUidRef = useRef<string | null | undefined>(undefined);
   const { ensureUser } = useAuth();
 
   useEffect(() => {
@@ -39,20 +41,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const unsub = onIdTokenChanged(firebaseAuth, (nextUser) => {
-      setUser(nextUser);
+      const nextUid = nextUser?.uid ?? null;
+      const identityChanged = currentUidRef.current !== nextUid;
+      currentUidRef.current = nextUid;
       setLoading(false);
+
+      // Swap the context user only on a real identity change — never on a same-uid echo (would flash the shells).
+      if (identityChanged) setUser(nextUser);
+
       if (nextUser) {
-        writeCachedUserProfile({
-          uid: nextUser.uid,
-          email: nextUser.email,
-          displayName: nextUser.displayName,
-          photoURL: nextUser.photoURL,
-        });
-        // Serialize: set the server session cookie FIRST, then call
-        // ensureUser. Running them in parallel races — ensureUser fires
-        // before the cookie exists, the oRPC protectedProcedure rejects
-        // as unauthenticated, and the Firestore user doc never gets
-        // created (no credits, no billing).
+        if (identityChanged) {
+          writeCachedUserProfile({
+            uid: nextUser.uid,
+            email: nextUser.email,
+            displayName: nextUser.displayName,
+            photoURL: nextUser.photoURL,
+          });
+        }
+        // Refresh the session cookie on every token change (keeps it alive); ensureUser stays guarded to run once per uid.
         void (async () => {
           try {
             const idToken = await nextUser.getIdToken();
@@ -69,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             void ensureUser();
           }
         })();
-      } else {
+      } else if (identityChanged) {
         lastEnsuredUidRef.current = null;
         resetEnsureUser();
         clearCachedMe();

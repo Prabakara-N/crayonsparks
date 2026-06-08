@@ -1,6 +1,6 @@
 "use client";
 
-import { Palette, BookOpen, Wand2, FileText, MessagesSquare } from "lucide-react";
+import { Palette, BookOpen, Wand2, FileText, MessagesSquare, ImageIcon } from "lucide-react";
 
 interface ActionRow {
   icon: React.ReactNode;
@@ -24,9 +24,15 @@ const ACTION_ROWS: ReadonlyArray<ActionRow> = [
   },
   {
     icon: <FileText className="w-4 h-4" />,
-    label: "Book cover (front or back)",
+    label: "Book front cover",
     creditValue: "12 credits",
     hint: "cover-quality model",
+  },
+  {
+    icon: <ImageIcon className="w-4 h-4" />,
+    label: "Single playground image",
+    creditValue: "3 credits",
+    hint: "one freeform generation",
   },
   {
     icon: <Wand2 className="w-4 h-4" />,

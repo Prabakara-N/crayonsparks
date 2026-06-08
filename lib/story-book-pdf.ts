@@ -7,12 +7,11 @@
  *   - No CSS-style border overlay: story books are full-bleed art.
  *   - Default trim 6x9" portrait (KDP color paperback standard).
  *
- * Bleed math: KDP wants 0.125" extra on each outer edge. The image is
- * generated AT TRIM size (6x9). The PDF places each image at trim size
- * — KDP's previewer treats 0 outside the trim as "no bleed needed" since
- * the art is full-bleed at the trim boundary. If we want strict 0.125"
- * bleed, the generator must be asked for 6.25x9.25" and we need a trim
- * mask layer; that's a follow-up after the visual pipeline is proven.
+ * Bleed: KDP full-bleed interiors need the page sized to trim + 0.125" width
+ * and + 0.25" height, with art filling the whole page. Pass bleedWidthInches /
+ * bleedHeightInches for the KDP target; the home-print Etsy variants leave them
+ * 0 (standard paper has no bleed). drawFullBleed fills whatever page size it's
+ * given, so the art always reaches every edge.
  */
 
 import { PDFDocument, type PDFImage } from "pdf-lib";
@@ -33,6 +32,10 @@ export interface AssembleStoryBookOptions {
   pages: StoryPageInput[];
   trimWidthInches?: number;
   trimHeightInches?: number;
+  // KDP full-bleed interior: 0.125" added to width, 0.25" to height. Left 0
+  // for the home-print Etsy variants (standard paper has no bleed).
+  bleedWidthInches?: number;
+  bleedHeightInches?: number;
 }
 
 function decodeDataUrl(dataUrl: string): { mime: string; bytes: Uint8Array } {
@@ -88,8 +91,9 @@ export async function assembleStoryBookPdf(
 
   const trimWidth = opts.trimWidthInches ?? 6.0;
   const trimHeight = opts.trimHeightInches ?? 9.0;
-  const pageWidthPt = trimWidth * INCH_TO_PT;
-  const pageHeightPt = trimHeight * INCH_TO_PT;
+  const pageWidthPt = (trimWidth + (opts.bleedWidthInches ?? 0)) * INCH_TO_PT;
+  const pageHeightPt =
+    (trimHeight + (opts.bleedHeightInches ?? 0)) * INCH_TO_PT;
 
   const doc = await PDFDocument.create();
   doc.setTitle(opts.title ?? "CrayonSparks story book");

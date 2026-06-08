@@ -92,6 +92,8 @@ export async function downloadStoryBook(
         pages: storyPages,
         trimWidthInches: 6,
         trimHeightInches: 9,
+        bleedWidthInches: 0.125,
+        bleedHeightInches: 0.25,
       }),
     ]);
     zip.file(`${safeName}_cover_KDP.pdf`, await ensureOk(coverRes, "Story cover-wrap PDF"));

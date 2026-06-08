@@ -123,54 +123,34 @@ export async function assembleColoringBookPdf(opts: AssembleOptions): Promise<Ui
   }
 
   // "This Book Belongs To" page — page 2, between cover and content.
+  // Drawn within the safe margins (NOT full-bleed) so the no-bleed interior
+  // never lands artwork in KDP's trim/bleed zone — a full-bleed decorative
+  // page here was getting the whole interior flagged for "insufficient bleed".
   if (opts.belongsTo) {
     const bp = await embedImage(doc, opts.belongsTo.dataUrl);
     const page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-    if (opts.belongsTo.style === "color") {
-      // Full-bleed like the cover — purely decorative page.
-      const imgRatio = bp.width / bp.height;
-      const pageRatio = PAGE_WIDTH / PAGE_HEIGHT;
-      let drawW: number;
-      let drawH: number;
-      if (imgRatio > pageRatio) {
-        drawH = PAGE_HEIGHT;
-        drawW = PAGE_HEIGHT * imgRatio;
-      } else {
-        drawW = PAGE_WIDTH;
-        drawH = PAGE_WIDTH / imgRatio;
-      }
-      const drawX = (PAGE_WIDTH - drawW) / 2;
-      const drawY = (PAGE_HEIGHT - drawH) / 2;
-      page.drawImage(bp, { x: drawX, y: drawY, width: drawW, height: drawH });
+    const isColor = opts.belongsTo.style === "color";
+    const drawable = {
+      x: MARGIN_OUTER,
+      y: MARGIN_OUTER,
+      w: PAGE_WIDTH - MARGIN_OUTER * 2,
+      h: PAGE_HEIGHT - 2 * MARGIN_OUTER,
+    };
+    const imgRatio = bp.width / bp.height;
+    const boxRatio = drawable.w / drawable.h;
+    let drawW = drawable.w;
+    let drawH = drawable.h;
+    if (imgRatio > boxRatio) {
+      drawH = drawable.w / imgRatio;
     } else {
-      // B&W coloring-style page — same border + drawable area treatment
-      // as content pages, so the kid can color it within the same frame.
-      const drawable = {
-        x: MARGIN_OUTER,
-        y: MARGIN_OUTER,
-        w: PAGE_WIDTH - MARGIN_OUTER * 2,
-        h: PAGE_HEIGHT - 2 * MARGIN_OUTER,
-      };
-      const imgRatio = bp.width / bp.height;
-      const boxRatio = drawable.w / drawable.h;
-      let drawW = drawable.w;
-      let drawH = drawable.h;
-      if (imgRatio > boxRatio) {
-        drawH = drawable.w / imgRatio;
-      } else {
-        drawW = drawable.h * imgRatio;
-      }
-      const drawX = drawable.x + (drawable.w - drawW) / 2;
-      const drawY = drawable.y + (drawable.h - drawH) / 2;
-      page.drawImage(bp, {
-        x: drawX,
-        y: drawY,
-        width: drawW,
-        height: drawH,
-      });
-      // Vector printer border — drawn TIGHT around the image rectangle so
-      // the line sits flush against the artwork (no white matte). Same
-      // style as the interior pages so the whole book reads as one set.
+      drawW = drawable.h * imgRatio;
+    }
+    const drawX = drawable.x + (drawable.w - drawW) / 2;
+    const drawY = drawable.y + (drawable.h - drawH) / 2;
+    page.drawImage(bp, { x: drawX, y: drawY, width: drawW, height: drawH });
+    // B&W version keeps the printer border (it reads as a colorable page);
+    // the color version is decorative, so no frame.
+    if (!isColor) {
       page.drawRectangle({
         x: drawX,
         y: drawY,

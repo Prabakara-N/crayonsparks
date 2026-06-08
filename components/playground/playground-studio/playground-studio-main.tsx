@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Wand2, Loader2, Sparkles, X, RefreshCw } from "lucide-react";
+import { Wand2, Loader2, Sparkles, X, RefreshCw, BookCopy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/components/auth/auth-provider";
 import {
@@ -235,6 +236,13 @@ export function PlaygroundStudio() {
   return (
     <>
       <div className="rounded-3xl p-6 md:p-8 bg-zinc-900/60 backdrop-blur-xl border border-white/10 space-y-5">
+        <Link
+          href="/playground/cover"
+          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-white/5 border border-violet-500/40 hover:bg-violet-500/10 transition-colors"
+        >
+          <BookCopy className="w-4 h-4" />
+          Make a book cover
+        </Link>
         <div>
           <label className="block text-sm font-semibold text-neutral-200 mb-2">
             Category
@@ -428,6 +436,7 @@ export function PlaygroundStudio() {
           />
         )}
       </PlaygroundModal>
+
     </>
   );
 }

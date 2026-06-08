@@ -19,16 +19,15 @@ const LETTER_SPACING = 5; // extra Hershey units between glyphs
 const SPACE_WIDTH = 16; // advance for a space (renderTextArray returns null)
 
 // Per-glyph shape fixes over the raw futural letterforms (kid-tracing tweaks):
-// a — small tail at the stem end; i — round dot (was an angular diamond);
-// O — widened so it reads round, not egg; z — bottom stroke lifted just off
-// the baseline so it stays visible against the baseline guide.
+// a — small tail at the stem end; i/j — stem only (the dot is drawn separately
+// as a solid round dot via traceTextDots); O — widened so it reads round, not
+// egg; z — bottom stroke lifted just off the baseline so it stays visible.
 const GLYPH_OVERRIDES: Record<string, { d: string; width?: number }> = {
   a: {
     d: "M15,8 L15,20 16,22 18,22 M15,11 L13,9 11,8 8,8 6,9 4,11 3,14 3,16 4,19 6,21 8,22 11,22 13,21 15,19",
   },
-  i: {
-    d: "M4,-0.3 L4.9,0.1 5.3,1 4.9,1.9 4,2.3 3.1,1.9 2.7,1 3.1,0.1 4,-0.3 M4,8 L4,22",
-  },
+  i: { d: "M4,8 L4,22" },
+  j: { d: "M6,8 L6,25 5,28 3,29 1,29" },
   O: {
     width: 14,
     d: "M8.4,1 L5.8,2 3.2,4 1.9,6 0.6,9 0.6,14 1.9,17 3.2,19 5.8,21 8.4,22 13.6,22 16.2,21 18.8,19 20.1,17 21.4,14 21.4,9 20.1,6 18.8,4 16.2,2 13.6,1 8.4,1",
@@ -36,6 +35,12 @@ const GLYPH_OVERRIDES: Record<string, { d: string; width?: number }> = {
   z: {
     d: "M14,8 L3,21 M3,8 L14,8 M3,21 L14,21",
   },
+};
+
+// Solid round dots for i / j, drawn below the top line (futural units).
+const DOT_UNITS: Record<string, { x: number; y: number; r: number }> = {
+  i: { x: 4, y: 4, r: 1.3 },
+  j: { x: 6, y: 4, r: 1.3 },
 };
 
 // renderTextArray yields one entry per char and `null` for spaces.
@@ -161,4 +166,37 @@ export function traceTextPathData(
     cursor += (g?.width ?? SPACE_WIDTH) + LETTER_SPACING;
   }
   return parts.join(" ");
+}
+
+export interface TraceDot {
+  cx: number;
+  cy: number;
+  r: number;
+}
+
+// Solid round dots (i / j) placed in absolute coords alongside the dashed path.
+export function traceTextDots(
+  text: string,
+  x: number,
+  baselineY: number,
+  fontSize: number,
+): TraceDot[] {
+  const geo = geometry();
+  const scale = fontSize / geo.em;
+  const chars = [...text];
+  const gs = glyphs(text);
+  const dots: TraceDot[] = [];
+  let cursor = 0;
+  for (let i = 0; i < gs.length; i++) {
+    const dot = DOT_UNITS[chars[i]];
+    if (dot) {
+      dots.push({
+        cx: x + (cursor + dot.x) * scale,
+        cy: baselineY + (dot.y - geo.baseline) * scale,
+        r: dot.r * scale,
+      });
+    }
+    cursor += (gs[i]?.width ?? SPACE_WIDTH) + LETTER_SPACING;
+  }
+  return dots;
 }
